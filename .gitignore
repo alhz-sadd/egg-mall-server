@@ -27,6 +27,9 @@ node_modules/
 # Optional REPL history
 .node_repl_history
 
+# 不上传规范文档
+.规范/
+
 # Output of 'npm pack'
 *.tgz
 
@@ -42,6 +45,9 @@ node_modules/
 *.swp
 *.swo
 
+# Trae IDE 配置文件
+.trae/
+
 # OS
 .DS_Store
 Thumbs.db
@@ -49,3 +55,17 @@ Thumbs.db
 # Egg.js
 run/
 logs/
+typings/
+
+# 本地上传的临时文件 (避免把本地测试图片推送到服务器)
+app/public/uploads/
+app/public/upload/
+
+# 本地环境变量文件 (避免敏感信息泄露)
+.env.*
+!.env.example
+
+# 测试报告
+mochawesome-report/
+coverage/
+.nyc_output/
