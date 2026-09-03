@@ -1,0 +1,23 @@
+{
+  "development": {
+    "username": "egg_mall",
+    "password": "pizEe5PLjGWJhnWL",
+    "database": "egg_mall",
+    "host": "47.238.77.10",
+    "dialect": "mysql"
+  },
+  "test": {
+    "username": "egg_mall",
+    "password": "pizEe5PLjGWJhnWL",
+    "database": "egg_mall",
+    "host": "47.238.77.10",
+    "dialect": "mysql"
+  },
+  "production": {
+    "username": "egg_mall",
+    "password": "pizEe5PLjGWJhnWL",
+    "database": "egg_mall",
+    "host": "47.238.77.10",
+    "dialect": "mysql"
+  }
+}
