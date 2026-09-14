@@ -391,7 +391,7 @@ class AdminOuterTaskController extends Controller {
         for (const oldBind of existBinds) {
           // 删除关联的进度表数据
           await ctx.model.ShopTaskUserItemProgress.destroy({
-            where: { user_task_id: oldBind.id }
+            where: { shop_task_user_id: oldBind.id }
           });
           // 删除主绑定记录
           await oldBind.destroy();
@@ -455,16 +455,16 @@ class AdminOuterTaskController extends Controller {
       await userTask.update({ task_status: 1 }, { transaction });
 
       // 2. 初始化子项进度
-        if (taskItems.length > 0) {
-          const progressItems = taskItems.map(item => ({
-            user_task_id: userTask.id,
-            user_id,
-            task_item_id: item.item_id,
-            status: 0, // 未完成
-            revenue: 0.00000,
-            is_triggered: 0,
-            is_processing: 0,
-          }));
+      if (taskItems.length > 0) {
+        const progressItems = taskItems.map(item => ({
+          shop_task_user_id: userTask.id,
+          user_id,
+          task_item_id: item.item_id,
+          status: 0, // 未完成
+          revenue: 0.00000,
+          is_triggered: 0,
+          is_processing: 0,
+        }));
         await ctx.model.ShopTaskUserItemProgress.bulkCreate(progressItems, { transaction });
       }
 

@@ -500,7 +500,7 @@ class AdminOuterCustomerController extends Controller {
 
       // 4. 查询该用户的进度
       const progressItems = await ctx.model.ShopTaskUserItemProgress.findAll({
-        where: { user_task_id: userTask.id, user_id: userId }
+        where: { shop_task_user_id: userTask.id, user_id: userId }
       });
 
       // 5. 组装返回数据

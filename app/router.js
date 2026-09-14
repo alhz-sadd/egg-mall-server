@@ -2,7 +2,7 @@
 
 /**
  * 路由配置
- * 采用 BFF 模式：移动端前缀 /api/mobile/，管理端前缀 /api/admin/
+ * 采用 BFF 模式：移动端前缀 /api/mobile/，管理端前缀 /api/admin-inner/ 或 /api/admin-outer/
  * @param {Egg.Application} app 应用实例
  */
 module.exports = app => {
@@ -21,42 +21,40 @@ module.exports = app => {
   // 商品分类（公开接口）
   router.get('/api/mobile/categories', controller.mobile.category.index);
   router.get('/api/mobile/categories/tree', controller.mobile.category.tree);
-
-  // 商品（只读公开）
-  router.get('/api/mobile/products', controller.mobile.product.index);
-  router.get('/api/mobile/products/:id', controller.mobile.product.show);
-
-  // 以下接口需要登录鉴权
-  const auth = app.middleware.auth();
-
-  // 任务搜索 (需登录，且必须在 /api/mobile/tasks/:id 之前定义以免被拦截)
-  router.get('/api/mobile/tasks/search', auth, controller.mobile.task.search);
-
   // 任务（只读公开）
   router.get('/api/mobile/tasks', controller.mobile.task.index);
   router.get('/api/mobile/tasks/:id', controller.mobile.task.show);
 
+  // 商品（只读公开）
+  router.get('/api/mobile/public/home-products', controller.mobile.product.index);
+  // 商品详情（只读公开）
+  router.get('/api/mobile/public/home-products/:id', controller.mobile.product.show);
+
   // 轮播图（只读公开）
-  router.get('/api/mobile/banners', controller.mobile.banner.index);
+  router.get('/api/mobile/public/banners', controller.mobile.banner.index);
 
   // 公告（只读公开）
-  router.get('/api/mobile/notices', controller.mobile.notice.index);
+  router.get('/api/mobile/public/notices', controller.mobile.notice.index);
 
   // 客服（只读公开）
-  router.get('/api/mobile/customer-services', controller.mobile.customerService.index);
+  router.get('/api/mobile/public/customer-services', controller.mobile.customerService.index);
 
   // 规则（只读公开）
-  router.get('/api/mobile/rules', controller.mobile.rule.index);
+  router.get('/api/mobile/public/rules', controller.mobile.rule.index);
 
   // 充值方式列表（公开）
-  // router.get('/api/mobile/recharge-ways', controller.mobile.rechargeWay.index);
-
   // 提现方式列表（公开）
   router.get('/api/mobile/withdraw-ways', controller.mobile.withdrawWay.index);
 
+  // 以下接口需要登录鉴权
+  const auth = app.middleware.auth();
+
   // 当前用户
   router.get('/api/mobile/users/current', auth, controller.mobile.user.current);
+  router.get('/api/mobile/vip-levels', auth, controller.mobile.vipLevel.index);
   router.get('/api/mobile/getUserTaskInfo', auth, controller.mobile.task.getUserTaskInfo);
+  router.get('/api/mobile/searchTask', auth, controller.mobile.task.search);
+  router.get('/api/mobile/invite/info', auth, controller.mobile.invite.info);
   router.get('/api/mobile/users/invite-code', auth, controller.mobile.user.inviteCode);
   router.put('/api/mobile/users/vip-level', auth, controller.mobile.user.updateVipLevel);
   router.get('/api/mobile/users/balance', auth, controller.mobile.user.balance);
@@ -68,26 +66,29 @@ module.exports = app => {
   router.get('/api/mobile/users/my-tasks', auth, controller.mobile.user.myTasks);
   router.get('/api/mobile/users/team', auth, controller.mobile.user.team);
   router.get('/api/mobile/users/capital-logs', auth, controller.mobile.user.capitalLogs);
+  router.get('/api/mobile/users/receipt', auth, controller.mobile.user.getReceipt); // 新增：获取收货信息
+  router.put('/api/mobile/users/receipt', auth, controller.mobile.user.updateReceipt); // 新增：更新收货信息
+  router.get('/api/mobile/users/receipt-info', auth, controller.mobile.user.getReceiptInfo);
+  router.put('/api/mobile/users/receipt-info', auth, controller.mobile.user.updateReceiptInfo);
   router.put('/api/mobile/users/password', auth, controller.mobile.user.updatePassword);
   router.put('/api/mobile/users/withdraw-password', auth, controller.mobile.user.updateWithdrawPassword);
   router.put('/api/mobile/users/profile', auth, controller.mobile.user.updateProfile);
   router.post('/api/mobile/users/logout', auth, controller.mobile.user.logout);
   router.get('/api/mobile/getUserRevenue', auth, controller.mobile.user.getUserRevenue);
 
+  // 实名认证
+  router.get('/api/mobile/users/identity', auth, controller.mobile.userIdentity.show);
+  router.post('/api/mobile/users/identity', auth, controller.mobile.userIdentity.create);
+
   // 充值请求
-  router.post('/api/mobile/recharges', auth, controller.mobile.recharge.create);
+  router.post('/api/mobile/recharge/submit', auth, controller.mobile.recharge.create);
   router.get('/api/mobile/recharges', auth, controller.mobile.recharge.list);
-  router.get('/api/mobile/recharge-address', auth, controller.mobile.recharge.address);
+  router.get('/api/mobile/recharge/sales-address', auth, controller.mobile.recharge.address);
 
   // 提现请求
-  router.post('/api/mobile/withdraws', auth, controller.mobile.withdraw.create);
-  router.get('/api/mobile/withdraws', auth, controller.mobile.withdraw.list);
-
-  // 购物车
-  // router.get('/api/mobile/carts', auth, controller.mobile.cart.index);
-  // router.post('/api/mobile/carts', auth, controller.mobile.cart.create);
-  // router.put('/api/mobile/carts/:id', auth, controller.mobile.cart.update);
-  // router.delete('/api/mobile/carts/:id', auth, controller.mobile.cart.destroy);
+  router.post('/api/mobile/withdraw/submit', auth, controller.mobile.withdraw.create);
+  router.get('/api/mobile/withdraw/list', auth, controller.mobile.withdraw.list);
+  router.get('/api/mobile/withdraw/config', auth, controller.mobile.withdraw.getConfig);
 
   // 收货地址
   router.get('/api/mobile/addresses', auth, controller.mobile.address.index);
@@ -113,8 +114,6 @@ module.exports = app => {
   router.post('/api/mobile/upload/image', auth, controller.mobile.upload.image);
 
   // ==================== 管理端 BFF ====================
-  const adminAuth = app.middleware.adminOuterAuth();
-  const adminRole = app.middleware.adminRole;
 
   // ==================== 内部系统 (admin-inner) ====================
   const adminInnerAuth = app.middleware.adminInnerAuth();
@@ -134,6 +133,19 @@ module.exports = app => {
   router.post('/api/admin-inner/bindGoogle', controller.adminInner.auth.bindGoogle);
   router.post('/api/admin-inner/unbindGoogle', adminInnerAuth, controller.adminInner.auth.unbindSelfGoogle);
 
+  // admin-inner VIP 等级管理
+  router.get('/api/admin-inner/vip-levels', adminInnerAuth, controller.adminInner.vipLevel.index);
+  router.get('/api/admin-inner/shop-vip-levels', adminInnerAuth, controller.adminInner.vipLevel.index);
+  router.post('/api/admin-inner/vip-levels', adminInnerAuth, controller.adminInner.vipLevel.create);
+  router.post('/api/admin-inner/shop-vip-levels', adminInnerAuth, controller.adminInner.vipLevel.create);
+  router.put('/api/admin-inner/vip-levels/:id', adminInnerAuth, controller.adminInner.vipLevel.update);
+  router.put('/api/admin-inner/shop-vip-levels/:id', adminInnerAuth, controller.adminInner.vipLevel.update);
+  router.delete('/api/admin-inner/vip-levels/:id', adminInnerAuth, controller.adminInner.vipLevel.destroy);
+  router.delete('/api/admin-inner/shop-vip-levels/:id', adminInnerAuth, controller.adminInner.vipLevel.destroy);
+  router.post('/api/admin-inner/vip-levels/bind-shop', adminInnerAuth, controller.adminInner.vipLevel.bindShop);
+  router.post('/api/admin-inner/shop-vip-levels/bind-shop', adminInnerAuth, controller.adminInner.vipLevel.bindShop);
+
+
   // 商家(admin_user)增删改查
   router.get('/api/admin-inner/merchants', adminInnerAuth, controller.adminInner.merchant.index);
   router.get('/api/admin-inner/merchants/all', adminInnerAuth, controller.adminInner.merchant.allMerchants);
@@ -146,6 +158,18 @@ module.exports = app => {
   router.post('/api/admin-inner/merchants', adminInnerAuth, controller.adminInner.merchant.create);
   router.put('/api/admin-inner/merchants/:id', adminInnerAuth, controller.adminInner.merchant.update);
   router.delete('/api/admin-inner/merchants/:id', adminInnerAuth, controller.adminInner.merchant.destroy);
+
+  // admin-inner 店铺管理
+  router.get('/api/admin-inner/shops/all', adminInnerAuth, controller.adminInner.shop.all);
+  router.get('/api/admin-inner/shops', adminInnerAuth, controller.adminInner.shop.index);
+  router.get('/api/admin-inner/shops/:id', adminInnerAuth, controller.adminInner.shop.show);
+  router.get('/api/admin-inner/shops/:shop_id/setting', adminInnerAuth, controller.adminInner.shop.getSetting);
+  router.put('/api/admin-inner/shops/:shop_id/setting', adminInnerAuth, controller.adminInner.shop.updateSetting);
+  router.put('/api/admin-inner/shops/:shop_id/config', adminInnerAuth, controller.adminInner.config.updateShopConfig);
+
+  // admin-inner 系统基础参数
+  router.get('/api/admin-inner/system/config', adminInnerAuth, controller.adminInner.config.getGlobalConfig);
+  router.put('/api/admin-inner/system/config', adminInnerAuth, controller.adminInner.config.updateGlobalConfig);
 
   // admin-inner 业务员管理 (根据admin_user表)
   router.get('/api/admin-inner/salesperson/performance', adminInnerAuth, controller.adminInner.salesperson.performance);
@@ -160,35 +184,29 @@ module.exports = app => {
   router.delete('/api/admin-inner/operators/:id', adminInnerAuth, controller.adminInner.salesperson.destroy);
 
   // admin-inner 公告管理 (全平台公告，不隔离店铺)
-  router.get('/api/admin-inner/notices', adminInnerAuth, controller.adminInner.notice.index);
-  router.get('/api/admin-inner/notices/:id', adminInnerAuth, controller.adminInner.notice.show);
-  router.post('/api/admin-inner/notices', adminInnerAuth, controller.adminInner.notice.create);
-  router.put('/api/admin-inner/notices/:id', adminInnerAuth, controller.adminInner.notice.update);
-  router.delete('/api/admin-inner/notices/:id', adminInnerAuth, controller.adminInner.notice.destroy);
-
-  // admin-inner 规则管理 (全平台规则，不隔离店铺)
-  router.get('/api/admin-inner/rules', adminInnerAuth, controller.adminInner.rule.adminGet);
-  router.post('/api/admin-inner/rules', adminInnerAuth, controller.adminInner.rule.create);
-  router.put('/api/admin-inner/rules', adminInnerAuth, controller.adminInner.rule.update);
-  router.delete('/api/admin-inner/rules', adminInnerAuth, controller.adminInner.rule.destroy);
+  router.get('/api/admin-inner/notices', adminInnerAuth, controller.adminInner.h5Config.noticeList);
+  router.get('/api/admin-inner/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeList); // show logic handled by list or similar
+  router.post('/api/admin-inner/notices', adminInnerAuth, controller.adminInner.h5Config.noticeAdd);
+  router.put('/api/admin-inner/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeEdit);
+  router.delete('/api/admin-inner/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeRemove);
 
   // admin-inner 轮播图管理 (全平台轮播，不隔离店铺)
-  router.get('/api/admin-inner/banners', adminInnerAuth, controller.adminInner.banner.adminList);
-  router.post('/api/admin-inner/banners', adminInnerAuth, controller.adminInner.banner.create);
-  router.put('/api/admin-inner/banners/:id', adminInnerAuth, controller.adminInner.banner.update);
-  router.delete('/api/admin-inner/banners/:id', adminInnerAuth, controller.adminInner.banner.destroy);
+  router.get('/api/admin-inner/banners', adminInnerAuth, controller.adminInner.h5Config.bannerList);
+  router.post('/api/admin-inner/banners', adminInnerAuth, controller.adminInner.h5Config.bannerAdd);
+  router.put('/api/admin-inner/banners/:id', adminInnerAuth, controller.adminInner.h5Config.bannerEdit);
+  router.delete('/api/admin-inner/banners/:id', adminInnerAuth, controller.adminInner.h5Config.bannerRemove);
 
   // admin-inner 客服管理 (全平台客服，不隔离店铺)
-  router.get('/api/admin-inner/customer-services', adminInnerAuth, controller.adminInner.customerService.adminList);
-  router.post('/api/admin-inner/customer-services', adminInnerAuth, controller.adminInner.customerService.create);
-  router.put('/api/admin-inner/customer-services/:id', adminInnerAuth, controller.adminInner.customerService.update);
-  router.delete('/api/admin-inner/customer-services/:id', adminInnerAuth, controller.adminInner.customerService.destroy);
+  router.get('/api/admin-inner/customer-services', adminInnerAuth, controller.adminInner.h5Service.list);
+  router.post('/api/admin-inner/customer-services', adminInnerAuth, controller.adminInner.h5Service.add);
+  router.put('/api/admin-inner/customer-services/:id', adminInnerAuth, controller.adminInner.h5Service.edit);
+  router.delete('/api/admin-inner/customer-services/:id', adminInnerAuth, controller.adminInner.h5Service.remove);
 
   // admin-inner 首页商品管理 (全平台商品)
-  router.get('/api/admin-inner/products', adminInnerAuth, controller.adminInner.product.adminList);
-  router.post('/api/admin-inner/products', adminInnerAuth, controller.adminInner.product.create);
-  router.put('/api/admin-inner/products/:id', adminInnerAuth, controller.adminInner.product.update);
-  router.delete('/api/admin-inner/products/:id', adminInnerAuth, controller.adminInner.product.destroy);
+  router.get('/api/admin-inner/products', adminInnerAuth, controller.adminInner.goods.index);
+  router.post('/api/admin-inner/products', adminInnerAuth, controller.adminInner.goods.create);
+  router.put('/api/admin-inner/products/:id', adminInnerAuth, controller.adminInner.goods.update);
+  router.delete('/api/admin-inner/products/:id', adminInnerAuth, controller.adminInner.goods.destroy);
 
   // admin-inner 任务商品管理 (全平台任务商品)
   router.get('/api/admin-inner/tasks', adminInnerAuth, controller.adminInner.task.adminList);
@@ -209,177 +227,211 @@ module.exports = app => {
   router.delete('/api/admin-inner/login-logs/batch', adminInnerAuth, controller.adminInner.loginLog.batchDestroy);
   router.delete('/api/admin-inner/login-logs/clear', adminInnerAuth, controller.adminInner.loginLog.clear);
 
-  // 管理端公开接口
-  router.post('/api/admin/login', controller.admin.adminUser.login);
-  router.post('/api/admin/auth/refresh', controller.common.auth.refresh); // 管理端刷新 Token
-  router.post('/api/admin/generate-google-auth', controller.admin.adminUser.generateGoogleAuth);
-  router.post('/api/admin/bindGoogle', controller.admin.adminUser.bindGoogle);
 
-  // 以下接口需要管理系统登录鉴权
-  router.post('/api/admin/logout', adminAuth, controller.admin.adminUser.logout);
+  // admin-inner 系统菜单
+  router.get('/api/admin-inner/system/menu', adminInnerAuth, controller.adminInner.sysMenu.index);
+  router.get('/api/admin-inner/system/menu/:id', adminInnerAuth, controller.adminInner.sysMenu.show);
+  router.post('/api/admin-inner/system/menu', adminInnerAuth, controller.adminInner.sysMenu.create);
+  router.put('/api/admin-inner/system/menu/:id', adminInnerAuth, controller.adminInner.sysMenu.update);
+  router.delete('/api/admin-inner/system/menu/:id', adminInnerAuth, controller.adminInner.sysMenu.destroy);
+  router.post('/api/admin-inner/system/menu/delete', adminInnerAuth, controller.adminInner.sysMenu.destroy);
 
-  // 个人中心相关
-  router.get('/api/admin/system/user/profile', adminAuth, controller.admin.adminUser.profile);
-  router.put('/api/admin/system/user/profile', adminAuth, controller.admin.adminUser.updateProfile);
-  router.put('/api/admin/system/user/profile/updatePwd', adminAuth, controller.admin.adminUser.updatePwd);
-  router.post('/api/admin/unbindGoogle', adminAuth, controller.admin.adminUser.unbindSelfGoogle);
+  // admin-inner 仪表盘
+  router.get('/api/admin-inner/dashboard/stats', adminInnerAuth, controller.adminInner.dashboard.stats);
 
-  router.get('/api/admin/menus', adminAuth, controller.admin.adminUser.menus);
-  router.get('/api/admin/getInfo', adminAuth, controller.admin.adminUser.getInfo);
-  router.get('/api/admin/getRouters', adminAuth, controller.admin.adminUser.getRouters);
-  router.get('/api/admin/current', adminAuth, controller.admin.adminUser.current);
-  router.get('/api/admin/dashboard/stats', adminAuth, controller.admin.adminDashboard.stats);
-  router.get('/api/admin/login-logs', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.adminUser.loginLogs);
-  router.delete('/api/admin/login-logs/batch', adminAuth, adminRole([ 1 ]), controller.admin.adminUser.batchDestroyLoginLogs);
-  router.delete('/api/admin/login-logs/clear', adminAuth, adminRole([ 1 ]), controller.admin.adminUser.clearLoginLogs);
+  // admin-inner 系统角色
+  router.get('/api/admin-inner/system/role', adminInnerAuth, controller.adminInner.sysRole.index);
+  router.post('/api/admin-inner/system/role', adminInnerAuth, controller.adminInner.sysRole.create);
+  router.put('/api/admin-inner/system/role/:id', adminInnerAuth, controller.adminInner.sysRole.update);
+  router.delete('/api/admin-inner/system/role/:id', adminInnerAuth, controller.adminInner.sysRole.destroy);
+  router.get('/api/admin-inner/system/role/:id/menus', adminInnerAuth, controller.adminInner.sysRole.getRoleMenus);
+  router.put('/api/admin-inner/system/role/:id/menus', adminInnerAuth, controller.adminInner.sysRole.updateRoleMenus);
 
-  // 管理员账号管理（管理员和主管可管理，业务员无权限）
-  router.get('/api/admin/users', adminAuth, adminRole([ 1, 2 ]), controller.admin.adminUser.index);
-  router.get('/api/admin/users/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.adminUser.show);
-  router.post('/api/admin/users', adminAuth, adminRole([ 1, 2 ]), controller.admin.adminUser.create);
-  router.put('/api/admin/users/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.adminUser.update);
-  router.delete('/api/admin/users/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.adminUser.destroy);
-  router.post('/api/admin/users/:id/reset-google-auth', adminAuth, adminRole([ 1, 2 ]), controller.admin.adminUser.resetGoogleAuth);
-  router.post('/api/admin/users/:id/reset-password', adminAuth, adminRole([ 1, 2 ]), controller.admin.adminUser.resetPassword);
+  // admin-inner 商品
+  router.get('/api/admin-inner/goods', adminInnerAuth, controller.adminInner.goods.index);
+  router.get('/api/admin-inner/goods/:id', adminInnerAuth, controller.adminInner.goods.show);
+  router.post('/api/admin-inner/goods', adminInnerAuth, controller.adminInner.goods.create);
+  router.put('/api/admin-inner/goods/:id', adminInnerAuth, controller.adminInner.goods.update);
+  router.delete('/api/admin-inner/goods/:id', adminInnerAuth, controller.adminInner.goods.destroy);
 
-  // 业务员管理（管理员和主管可管理，业务员无权限）
-  router.get('/api/admin/salespersons', adminAuth, adminRole([ 1, 2 ]), controller.admin.salesperson.index);
-  router.get('/api/admin/salespersons/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.salesperson.show);
-  router.post('/api/admin/salespersons', adminAuth, adminRole([ 1, 2 ]), controller.admin.salesperson.create);
-  router.put('/api/admin/salespersons/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.salesperson.update);
-  router.delete('/api/admin/salespersons/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.salesperson.destroy);
-  router.post('/api/admin/salespersons/batch-delete', adminAuth, adminRole([ 1, 2 ]), controller.admin.salesperson.destroyBatch);
-  router.post('/api/admin/salespersons/:id/reset-password', adminAuth, adminRole([ 1, 2 ]), controller.admin.salesperson.resetPassword);
+  // admin-inner 员工
+  router.get('/api/admin-inner/employees', adminInnerAuth, controller.adminInner.employee.index);
+  router.get('/api/admin-inner/employees/:id', adminInnerAuth, controller.adminInner.employee.show);
+  router.post('/api/admin-inner/employees', adminInnerAuth, controller.adminInner.employee.create);
+  router.put('/api/admin-inner/employees/:id', adminInnerAuth, controller.adminInner.employee.update);
+  router.delete('/api/admin-inner/employees/:id', adminInnerAuth, controller.adminInner.employee.destroy);
+  router.get('/api/admin-inner/employees/:id/customers', adminInnerAuth, controller.adminInner.employee.listCustomers);
+  router.get('/api/admin-inner/employees/:id/performance', adminInnerAuth, controller.adminInner.employee.performance);
 
-  // 菜单管理
-  router.get('/api/admin/system/menu/getAllMenuTree', adminAuth, adminRole([ 1, 2 ]), controller.admin.menu.getAllMenuTree);
-  router.post('/api/admin/system/menu', adminAuth, adminRole([ 1, 2 ]), controller.admin.menu.create);
-  router.put('/api/admin/system/menu/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.menu.update);
-  router.delete('/api/admin/system/menu/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.menu.destroy);
+  // admin-inner 客户
+  router.get('/api/admin-inner/customers/active-info', adminInnerAuth, controller.adminInner.customer.activeInfo);
+  router.put('/api/admin-inner/customers/:id/withdraw-password', adminInnerAuth, controller.adminInner.customer.updateWithdrawPassword);
+  router.get('/api/admin-inner/customers/:customerUserId/login-log/list', adminInnerAuth, controller.adminInner.customer.loginLogList);
+  router.get('/api/admin-inner/customers/:customerUserId/relation-tree', adminInnerAuth, controller.adminInner.customer.relationTree);
+  router.get('/api/admin-inner/customers/:id/fund-details', adminInnerAuth, controller.adminInner.customer.fundDetails);
 
-  // 角色管理 (RESTful CRUD)
-  router.get('/api/admin/system/role/getRoleMenuIds', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.roles.getRoleMenuIds);
-  router.get('/api/admin/role', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.roles.index);
-  router.get('/api/admin/role/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.roles.show);
-  router.post('/api/admin/role', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.roles.create);
-  router.put('/api/admin/role/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.roles.update);
-  router.delete('/api/admin/role/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.roles.destroy);
+  // admin-inner H5配置
+  router.get('/api/admin-inner/h5-config/banners', adminInnerAuth, controller.adminInner.h5Config.bannerList);
+  router.post('/api/admin-inner/h5-config/banners', adminInnerAuth, controller.adminInner.h5Config.bannerAdd);
+  router.put('/api/admin-inner/h5-config/banners/:id', adminInnerAuth, controller.adminInner.h5Config.bannerEdit);
+  router.delete('/api/admin-inner/h5-config/banners/:id', adminInnerAuth, controller.adminInner.h5Config.bannerRemove);
 
-  // 会员管理（管理员、主管、业务员均可访问）
-  router.get('/api/admin/members', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.member.index);
+  router.get('/api/admin-inner/h5-config/notices', adminInnerAuth, controller.adminInner.h5Config.noticeList);
+  router.post('/api/admin-inner/h5-config/notices', adminInnerAuth, controller.adminInner.h5Config.noticeAdd);
+  router.put('/api/admin-inner/h5-config/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeEdit);
+  router.delete('/api/admin-inner/h5-config/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeRemove);
 
-  // VIP管理 (管理员、主管可访问)
-  router.get('/api/admin/vips', adminAuth, adminRole([ 1, 2 ]), controller.admin.vip.index);
-  router.get('/api/admin/vips/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.vip.show);
-  router.post('/api/admin/vips', adminAuth, adminRole([ 1, 2 ]), controller.admin.vip.create);
-  router.put('/api/admin/vips/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.vip.update);
-  router.delete('/api/admin/vips/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.vip.destroy);
+  router.get('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.adminGet);
+  router.post('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.create);
+  router.put('/api/admin-inner/h5-config/rules/:id', adminInnerAuth, controller.adminInner.rule.update);
+  router.put('/api/admin-inner/h5-config/rules/:id/status', adminInnerAuth, controller.adminInner.rule.updateStatus);
+  router.put('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.update); // 兼容不带id的调用
+  router.delete('/api/admin-inner/h5-config/rules/:id', adminInnerAuth, controller.adminInner.rule.destroy);
+  router.delete('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.destroy); // 兼容不带id的调用
 
-  router.get('/api/admin/members/statistics', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.member.statistics);
-  router.put('/api/admin/members/:id/remark', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.member.updateRemark);
-  router.put('/api/admin/members/:id/status', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.member.updateStatus);
-  router.put('/api/admin/members/:id/vip-level', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.member.updateVipLevel);
-  router.get('/api/admin/members/:id/fund-details', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.member.fundDetails);
-  router.post('/api/admin/members/:id/reset-password', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.member.resetPassword);
-  router.post('/api/admin/members/:id/reset-withdraw-password', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.member.resetWithdrawPassword);
-  router.get('/api/admin/members/:id/active-logs', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.member.activeLogs);
+  router.get('/api/admin-inner/h5-config/service-entries', adminInnerAuth, controller.adminInner.h5Config.serviceEntryList);
+  router.post('/api/admin-inner/h5-config/service-entries', adminInnerAuth, controller.adminInner.h5Config.serviceEntryAdd);
+  router.put('/api/admin-inner/h5-config/service-entries/:id', adminInnerAuth, controller.adminInner.h5Config.serviceEntryEdit);
+  router.delete('/api/admin-inner/h5-config/service-entries/:id', adminInnerAuth, controller.adminInner.h5Config.serviceEntryRemove);
 
-  // 管理端-修改用户提现地址 (管理员、主管、业务员均可访问)
-  router.post('/api/admin/ModifyUserWithdrawalAddress', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.member.modifyWithdrawalAddress);
+  // admin-inner H5客服配置
+  router.get('/api/admin-inner/h5-services', adminInnerAuth, controller.adminInner.h5Service.list);
+  router.post('/api/admin-inner/h5-services', adminInnerAuth, controller.adminInner.h5Service.add);
+  router.put('/api/admin-inner/h5-services/:id', adminInnerAuth, controller.adminInner.h5Service.edit);
+  router.delete('/api/admin-inner/h5-services/:id', adminInnerAuth, controller.adminInner.h5Service.remove);
 
-  // 会员资金操作（管理员、主管可操作，需要 googleCode 验证）
-  router.post('/api/admin/members/add-balance', adminAuth, controller.admin.member.addBalance);
-  router.post('/api/admin/members/deduct-balance', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.member.deductBalance);
 
-  // 用户凭证管理（管理员和主管可操作）
-  router.get('/api/admin/user-credentials', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.userCredential.index);
-  router.delete('/api/admin/user-credentials/:id', adminAuth, adminRole([ 1, 2 ]), controller.admin.userCredential.destroy);
-  router.post('/api/admin/user-credentials/:id/audit-success', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.userCredential.auditSuccess);
-  router.post('/api/admin/user-credentials/:id/audit-fail', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.userCredential.auditFail);
+  // ==================== B端/外层管理系统 (admin-outer) ====================
+  const adminOuterAuth = app.middleware.adminOuterAuth();
 
-  // 订单管理（管理员、主管、业务员均可访问）
-  router.get('/api/admin/orders', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.order.index);
-  router.delete('/api/admin/orders/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.order.destroy);
+  router.post('/api/admin-outer/login', controller.adminOuter.auth.login);
+  router.post('/api/admin-outer/logout', adminOuterAuth, controller.adminOuter.auth.logout);
+  router.post('/api/admin-outer/auth/refresh', controller.common.auth.refresh);
+  router.get('/api/admin-outer/current', adminOuterAuth, controller.adminOuter.auth.current);
+  router.get('/api/admin-outer/getUserInfo', adminOuterAuth, controller.adminOuter.auth.current); // 兼容旧版路由
+  router.get('/api/admin-outer/getMenu', adminOuterAuth, controller.adminOuter.auth.getMenu); // 兼容旧版路由
 
-  // 充值明细管理（管理员、主管、业务员均可访问）
-  router.get('/api/admin/recharges', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.recharge.index);
-  router.post('/api/admin/recharges', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.recharge.create);
-  router.put('/api/admin/recharges/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.recharge.update);
-  router.delete('/api/admin/recharges/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.recharge.destroy);
+  // admin-inner 人工资金调整 (上分/下分)
+  router.get('/api/admin-inner/points-give/list', adminInnerAuth, controller.adminInner.points.giveList);
+  router.post('/api/admin-inner/points-give/create', adminInnerAuth, controller.adminInner.points.giveCreate);
+  router.get('/api/admin-inner/points-deduct/list', adminInnerAuth, controller.adminInner.points.deductList);
+  router.post('/api/admin-inner/points-deduct/create', adminInnerAuth, controller.adminInner.points.deductCreate);
 
-  // 充值请求管理（管理员、主管、业务员均可访问）
-  router.get('/api/admin/recharge-requests', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.rechargeRequest.index);
-  router.post('/api/admin/recharge-requests/audit-success', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.rechargeRequest.auditSuccess);
-  router.post('/api/admin/recharge-requests/audit-fail', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.rechargeRequest.auditFail);
+  // admin-outer 客户管理
+  router.get('/api/admin-outer/customers/statistics', adminOuterAuth, controller.adminOuter.customer.statistics);
+  router.get('/api/admin-outer/customers', adminOuterAuth, controller.adminOuter.customer.index);
+  router.post('/api/admin-outer/customers', adminOuterAuth, controller.adminOuter.customer.create);
+  router.put('/api/admin-outer/customers/:id', adminOuterAuth, controller.adminOuter.customer.update);
+  router.get('/api/admin-outer/customers/active-info', adminOuterAuth, controller.adminOuter.customer.activeInfo);
+  router.get('/api/admin-outer/customers/:customerUserId/login-log/list', adminOuterAuth, controller.adminOuter.customer.loginLogList);
+  router.get('/api/admin-outer/customers/:customerUserId/relation-tree', adminOuterAuth, controller.adminOuter.customer.relationTree);
+  router.get('/api/admin-outer/customers/:id/fund-details', adminOuterAuth, controller.adminOuter.customer.fundDetails);
+  router.get('/api/admin-outer/customers/:id/policy', adminOuterAuth, controller.adminOuter.customer.policy);
 
-  // 提现管理（管理员、主管、业务员均可访问）
-  router.get('/api/admin/withdraws', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.withdraw.index);
-  router.post('/api/admin/withdraws/audit-success', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.withdraw.auditSuccess);
-  router.post('/api/admin/withdraws/audit-fail', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.withdraw.auditFail);
+  // admin-outer 人工资金调整 (上分/下分)
+  router.get('/api/admin-outer/points-give/list', adminOuterAuth, controller.adminOuter.points.giveList);
+  router.post('/api/admin-outer/points-give/create', adminOuterAuth, controller.adminOuter.points.giveCreate);
+  router.get('/api/admin-outer/points-deduct/list', adminOuterAuth, controller.adminOuter.points.deductList);
+  router.post('/api/admin-outer/points-deduct/create', adminOuterAuth, controller.adminOuter.points.deductCreate);
 
-  // 提现方式管理（管理员、主管、业务员均可访问）
-  router.get('/api/admin/withdraw-ways', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.withdrawWay.index);
-  router.post('/api/admin/withdraw-ways', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.withdrawWay.create);
-  router.put('/api/admin/withdraw-ways/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.withdrawWay.update);
-  router.delete('/api/admin/withdraw-ways/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.withdrawWay.destroy);
+  // admin-outer 员工管理
+  router.get('/api/admin-outer/employees', adminOuterAuth, controller.adminOuter.employee.index);
+  router.get('/api/admin-outer/employees/:id', adminOuterAuth, controller.adminOuter.employee.show);
+  router.post('/api/admin-outer/employees', adminOuterAuth, controller.adminOuter.employee.create);
+  router.put('/api/admin-outer/employees/:id', adminOuterAuth, controller.adminOuter.employee.update);
+  router.delete('/api/admin-outer/employees/:id', adminOuterAuth, controller.adminOuter.employee.destroy);
+  router.post('/api/admin-outer/employees/:id/reset-password', adminOuterAuth, controller.adminOuter.employee.resetPassword);
 
-  // 提现参数配置（仅管理员可操作）
-  router.get('/api/admin/withdraw-config', adminAuth, adminRole([ 1 ]), controller.admin.withdrawConfig.get);
-  router.get('/api/admin/withdraw-config/detail', adminAuth, adminRole([ 1 ]), controller.admin.withdrawConfig.adminGet);
-  router.put('/api/admin/withdraw-config', adminAuth, adminRole([ 1 ]), controller.admin.withdrawConfig.update);
+  // admin-outer 支付通道
+  router.get('/api/admin-outer/pay-channels', adminOuterAuth, controller.adminOuter.payChannel.index);
+  router.post('/api/admin-outer/pay-channels', adminOuterAuth, controller.adminOuter.payChannel.create);
+  router.put('/api/admin-outer/pay-channels/:id', adminOuterAuth, controller.adminOuter.payChannel.update);
+  router.delete('/api/admin-outer/pay-channels/:id', adminOuterAuth, controller.adminOuter.payChannel.destroy);
 
-  // 充值方式管理（管理员、主管、业务员均可访问）
-  router.get('/api/admin/recharge-ways', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.rechargeWay.index);
-  router.post('/api/admin/recharge-ways', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.rechargeWay.create);
-  router.put('/api/admin/recharge-ways/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.rechargeWay.update);
-  router.delete('/api/admin/recharge-ways/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.rechargeWay.destroy);
+  // admin-outer VIP 等级管理
+  router.get('/api/admin-outer/vip-levels', adminOuterAuth, controller.adminOuter.vipLevel.index);
+  router.post('/api/admin-outer/vip-levels', adminOuterAuth, controller.adminOuter.vipLevel.create);
+  router.put('/api/admin-outer/vip-levels/:id', adminOuterAuth, controller.adminOuter.vipLevel.update);
+  router.delete('/api/admin-outer/vip-levels/:id', adminOuterAuth, controller.adminOuter.vipLevel.destroy);
+  router.put('/api/admin-outer/vip-levels/user/update', adminOuterAuth, controller.adminOuter.vipLevel.updateUserVip);
 
-  // 业务统计（管理员、主管、业务员均可访问）
-  router.get('/api/admin/stats/recharge', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.stats.recharge);
-  router.get('/api/admin/stats/withdraw', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.stats.withdraw);
+  // admin-outer 充值管理
+  router.get('/api/admin-outer/recharge/stats', adminOuterAuth, controller.adminOuter.recharge.stats);
+  router.get('/api/admin-outer/recharge/list', adminOuterAuth, controller.adminOuter.recharge.index);
+  router.post('/api/admin-outer/recharge/:id/audit-success', adminOuterAuth, controller.adminOuter.recharge.auditSuccess);
+  router.post('/api/admin-outer/recharge/:id/audit-fail', adminOuterAuth, controller.adminOuter.recharge.auditFail);
 
-  // 操作日志管理（列表：管理员、主管、业务员均可访问；删除/清空：仅管理员）
-  router.get('/api/admin/operation-logs', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.operationLog.index);
-  router.delete('/api/admin/operation-logs/batch', adminAuth, adminRole([ 1 ]), controller.admin.operationLog.batchDestroy);
-  router.delete('/api/admin/operation-logs/clear', adminAuth, adminRole([ 1 ]), controller.admin.operationLog.clear);
+  // admin-outer 提现管理
+  router.get('/api/admin-outer/withdraw/stats', adminOuterAuth, controller.adminOuter.withdraw.stats);
+  router.get('/api/admin-outer/withdraw/list', adminOuterAuth, controller.adminOuter.withdraw.index);
+  router.put('/api/admin-outer/withdraw/:id/address', adminOuterAuth, controller.adminOuter.withdraw.updateAddress);
+  router.post('/api/admin-outer/withdraw/:id/audit-success', adminOuterAuth, controller.adminOuter.withdraw.auditSuccess);
+  router.post('/api/admin-outer/withdraw/:id/audit-fail', adminOuterAuth, controller.adminOuter.withdraw.auditFail);
 
-  // 策略管理（管理员、主管、业务员均可访问）
-  router.get('/api/admin/strategies', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.strategy.index);
-  router.get('/api/admin/getUserPolicy', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.strategy.getUserPolicy);
-  router.post('/api/admin/bindUserPolicy', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.strategy.bindUserPolicy);
-  router.post('/api/admin/startUserTask', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.strategy.startUserTask);
-  router.get('/api/admin/getUserTaskStatus', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.strategy.getUserTaskStatus);
-  router.get('/api/admin/strategies/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.strategy.show);
-  router.post('/api/admin/strategies', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.strategy.create);
-  router.put('/api/admin/strategies/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.strategy.update);
-  router.delete('/api/admin/strategies/:id', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.strategy.destroy);
-  router.put('/api/admin/strategies/:id/rules/:ruleModelId', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.strategy.updateRule);
+  // admin-outer 店铺信息与设置
+  router.get('/api/admin-outer/shop/info', adminOuterAuth, controller.adminOuter.shop.show);
+  router.get('/api/admin-outer/shop/settings', adminOuterAuth, controller.adminOuter.shopSetting.show);
+  router.put('/api/admin-outer/shop/settings', adminOuterAuth, controller.adminOuter.shopSetting.update);
 
-  // 权限树与角色权限分配（仅管理员可操作）
-  router.get('/api/admin/permissions/tree', adminAuth, adminRole([ 1 ]), controller.admin.permission.tree);
-  router.get('/api/admin/permissions', adminAuth, adminRole([ 1 ]), controller.admin.permission.index);
-  router.post('/api/admin/permissions', adminAuth, adminRole([ 1 ]), controller.admin.permission.create);
-  router.put('/api/admin/permissions/:id', adminAuth, adminRole([ 1 ]), controller.admin.permission.update);
-  router.delete('/api/admin/permissions/:id', adminAuth, adminRole([ 1 ]), controller.admin.permission.destroy);
-  router.get('/api/admin/roles/:role/permissions', adminAuth, adminRole([ 1 ]), controller.admin.permission.rolePermissions);
-  router.put('/api/admin/roles/:role/permissions', adminAuth, adminRole([ 1 ]), controller.admin.permission.assignRolePermissions);
+  // admin-outer 仪表盘
+  router.get('/api/admin-outer/dashboard/stats', adminOuterAuth, controller.adminOuter.dashboard.stats);
 
-  // 商城管理相关接口（仅管理员可操作）
-  router.get('/api/admin/notices', adminAuth, adminRole([ 1 ]), controller.admin.notice.adminList);
-  router.post('/api/admin/notices', adminAuth, adminRole([ 1 ]), controller.admin.notice.create);
-  router.put('/api/admin/notices/:id', adminAuth, adminRole([ 1 ]), controller.admin.notice.update);
-  router.delete('/api/admin/notices/:id', adminAuth, adminRole([ 1 ]), controller.admin.notice.destroy);
+  // admin-outer 任务管理
+  router.get('/api/admin-outer/tasks', adminOuterAuth, controller.adminOuter.task.index);
+  router.get('/api/admin-outer/tasks/:id', adminOuterAuth, controller.adminOuter.task.show);
+  router.post('/api/admin-outer/tasks', adminOuterAuth, controller.adminOuter.task.create);
+  router.put('/api/admin-outer/tasks/:id', adminOuterAuth, controller.adminOuter.task.update);
+  router.delete('/api/admin-outer/tasks/:id', adminOuterAuth, controller.adminOuter.task.destroy);
+  router.put('/api/admin-outer/tasks/items/:item_id', adminOuterAuth, controller.adminOuter.task.updateItem);
+  router.post('/api/admin-outer/tasks/bind-user', adminOuterAuth, controller.adminOuter.task.bindUser);
+  router.post('/api/admin-outer/tasks/start-user', adminOuterAuth, controller.adminOuter.task.startUserTask);
 
-  router.get('/api/admin/rules', adminAuth, adminRole([ 1 ]), controller.admin.rule.adminGet);
-  router.post('/api/admin/rules', adminAuth, adminRole([ 1 ]), controller.admin.rule.create);
-  router.put('/api/admin/rules', adminAuth, adminRole([ 1 ]), controller.admin.rule.update);
-  router.delete('/api/admin/rules', adminAuth, adminRole([ 1 ]), controller.admin.rule.destroy);
+  // admin-outer 操作日志
+  router.get('/api/admin-outer/operation-logs', adminOuterAuth, controller.adminOuter.operationLog.index);
+  router.delete('/api/admin-outer/operation-logs/batch', adminOuterAuth, controller.adminOuter.operationLog.batchDestroy);
+  router.delete('/api/admin-outer/operation-logs/clear', adminOuterAuth, controller.adminOuter.operationLog.clear);
 
-  // 系统配置管理
-  router.get('/api/admin/sys-config/getDaiMoneyConfig', adminAuth, adminRole([ 1 ]), controller.admin.sysConfig.getDaiMoneyConfig);
-  router.put('/api/admin/sys-config/updateConfig', adminAuth, adminRole([ 1 ]), controller.admin.sysConfig.updateConfig);
+  // admin-outer 登录日志
+  router.get('/api/admin-outer/login-logs', adminOuterAuth, controller.adminOuter.loginLog.index);
+  router.delete('/api/admin-outer/login-logs/batch', adminOuterAuth, controller.adminOuter.loginLog.batchDestroy);
+  router.delete('/api/admin-outer/login-logs/clear', adminOuterAuth, controller.adminOuter.loginLog.clear);
 
-  // 管理端文件上传
-  router.post('/api/admin/upload/image', adminAuth, adminRole([ 1, 2, 3 ]), controller.admin.upload.image);
+  // admin-outer 实名认证
+  router.get('/api/admin-outer/user-identities', adminOuterAuth, controller.adminOuter.userIdentity.index);
+  router.post('/api/admin-outer/user-identities/:id/audit-success', adminOuterAuth, controller.adminOuter.userIdentity.auditSuccess);
+  router.post('/api/admin-outer/user-identities/:id/audit-fail', adminOuterAuth, controller.adminOuter.userIdentity.auditFail);
+
+  // TEMPORARY: Get JWT Secret (REMOVE AFTER USE)
+  router.get('/api/dev/jwt-secret', controller.adminInner.auth.getJwtSecret);
+
+  // TEMPORARY: Create Outer Admin User (REMOVE AFTER USE)
+  router.post('/api/dev/create-outer-admin', controller.adminOuter.auth.createOuterAdminUser);
+
+  // TEMPORARY: Create C-end User (REMOVE AFTER USE)
+  router.post('/api/dev/create-mobile-user', controller.mobile.user.createMobileUser);
+
+  // A端 充提渠道管理
+  router.get('/api/admin-inner/pay-channels', adminInnerAuth, controller.adminInner.payChannel.index);
+  router.post('/api/admin-inner/pay-channels', adminInnerAuth, controller.adminInner.payChannel.create);
+  router.put('/api/admin-inner/pay-channels/:id', adminInnerAuth, controller.adminInner.payChannel.update);
+  router.delete('/api/admin-inner/pay-channels/:id', adminInnerAuth, controller.adminInner.payChannel.destroy);
+  router.post('/api/admin-inner/pay-channels/bind-shop', adminInnerAuth, controller.adminInner.payChannel.bindShop);
+
+  // B端 充提渠道管理
+  router.get('/api/admin-outer/pay-channels', adminOuterAuth, controller.adminOuter.payChannel.index);
+  router.post('/api/admin-outer/pay-channels', adminOuterAuth, controller.adminOuter.payChannel.create);
+  router.put('/api/admin-outer/pay-channels/:id', adminOuterAuth, controller.adminOuter.payChannel.update);
+  router.delete('/api/admin-outer/pay-channels/:id', adminOuterAuth, controller.adminOuter.payChannel.destroy);
+
+  // C端 充提渠道获取
+  router.get('/api/mobile/pay-channels', auth, controller.mobile.payChannel.list);
+  // 业务员充值收款地址管理 (B端)
+  router.get('/api/admin-outer/sales-address', adminOuterAuth, controller.adminOuter.salesRechargeAddress.index);
+  router.post('/api/admin-outer/sales-address', adminOuterAuth, controller.adminOuter.salesRechargeAddress.create);
+  router.put('/api/admin-outer/sales-address/:id', adminOuterAuth, controller.adminOuter.salesRechargeAddress.update);
+  router.delete('/api/admin-outer/sales-address/:id', adminOuterAuth, controller.adminOuter.salesRechargeAddress.destroy);
+
+  // 业务员默认充值地址获取 (C端)
+  router.get('/api/mobile/sales-address/default', auth, controller.mobile.salesRechargeAddress.getDefaultAddress);
+
 };
-
