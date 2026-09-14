@@ -95,11 +95,7 @@ class MobileRechargeController extends Controller {
 
     const limit = parseInt(page_size);
     const offset = (parseInt(page) - 1) * limit;
-    // app/service/admin_outer_customer.js:388-391
-    const customer = { ...row.toJSON(), ...r };
-    customer.user_level = calculateUserLevel(row, r);
-    customer.vip_level = row.vip_level;
-    return customer;
+
     const result = await ctx.model.UserRecharge.findAndCountAll({
       where,
       limit,

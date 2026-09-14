@@ -18,7 +18,7 @@ module.exports = {
   USER_COMMISSION_LOG: 'user_commission_log', // 业务员佣金明细表
 
 
-  // --- 商店相关 ---
+  // --- 商店相关1 ---
   SHOP: 'shop', // 商店主表
   SHOP_CONFIG: 'shop_config', // 商店配置表
   SHOP_GOODS: 'shop_goods', // 商店商品表

@@ -9,7 +9,8 @@ module.exports = {
     if (!tableInfo.user_withdraw_password) {
       await queryInterface.addColumn(TableNames.SYS_USER, 'user_withdraw_password', {
         type: Sequelize.STRING(128),
-        allowNull: true,
+        allowNull: false,
+        defaultValue: '',
         comment: '提现密码',
       });
     }

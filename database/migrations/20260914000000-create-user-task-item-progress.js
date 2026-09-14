@@ -5,7 +5,7 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     const { BIGINT, INTEGER, DATE, DECIMAL } = Sequelize;
 
-    await queryInterface.createTable(tableNames.USER_TASK_ITEM_PROGRESS, {
+    await queryInterface.createTable(tableNames.SHOP_TASK_USER_ITEM_PROGRESS, {
       id: {
         type: BIGINT(20),
         primaryKey: true,
@@ -16,16 +16,34 @@ module.exports = {
         type: BIGINT(20),
         allowNull: false,
         comment: '关联 user_task.id',
+        references: {
+          model: 'shop_task_user',
+          key: 'id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       user_id: {
         type: BIGINT(20),
         allowNull: false,
         comment: '关联 sys_user.user_id',
+        references: {
+          model: 'sys_user',
+          key: 'user_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       task_item_id: {
         type: BIGINT(20),
         allowNull: false,
         comment: '关联 shop_task_item.item_id',
+        references: {
+          model: 'shop_task_item',
+          key: 'item_id'
+        },
+        onUpdate: 'CASCADE',
+        onDelete: 'CASCADE'
       },
       order_id: {
         type: BIGINT(20),
@@ -63,6 +81,6 @@ module.exports = {
   },
 
   down: async (queryInterface) => {
-    await queryInterface.dropTable(tableNames.USER_TASK_ITEM_PROGRESS);
+    await queryInterface.dropTable(tableNames.SHOP_TASK_USER_ITEM_PROGRESS);
   }
 };

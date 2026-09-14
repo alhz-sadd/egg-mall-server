@@ -24,7 +24,8 @@ module.exports = app => {
     },
     user_withdraw_password: {
       type: STRING(128),
-      allowNull: true,
+      allowNull: false,
+      defaultValue: '',
       comment: '提现密码',
     },
     nickname: {
