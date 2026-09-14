@@ -10,7 +10,7 @@ const { v4: uuidv4 } = require('uuid');
 class OrderService extends Service {
   /**
    * 获取订单详情信息 (配合 searchTask 使用)
-   * @param {string} orderId 订单编号(order_no)
+   * @param {string} orderId 订单编号(order_id)
    * @param {number} userId 用户ID
    * @return {Object} 格式化后的订单详情
    */
@@ -19,68 +19,62 @@ class OrderService extends Service {
     const { Op } = ctx.app.Sequelize;
 
     // 获取当前请求用户的真实数据库主键ID
-    const userObj = await ctx.model.User.findOne({
-      where: { user_id: userId.toString() },
-    });
-    const dbUserId = userObj ? userObj.id : userId;
+    const userObj = await ctx.model.SysUser.findByPk(userId);
+    if (!userObj || userObj.user_type !== 4) {
+      ctx.throw(404, '用户不存在');
+    }
+    const dbUserId = userObj.user_id;
 
-    const order = await ctx.model.Order.findOne({
+    // 从进度表中查找订单
+    const progress = await ctx.model.ShopTaskUserItemProgress.findOne({
       where: {
-        [Op.or]: [
-          { order_no: orderId.toString() },
-          { id: Number(orderId) || 0 },
-        ],
-        user_id: dbUserId,
-      },
-      include: [{
-        model: ctx.model.OrderItem,
-        as: 'items',
-      }],
+        order_id: orderId.toString(),
+        user_id: dbUserId
+      }
     });
 
-    if (!order) {
-      ctx.throw(404, '订单不存在');
+    if (!progress) {
+      ctx.throw(404, '任务订单不存在');
     }
 
-    const user = await ctx.model.User.findByPk(dbUserId);
+    const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: progress.task_item_id } });
+    const shopTask = taskItem ? await ctx.model.ShopTask.findByPk(taskItem.task_id) : null;
+    const goods = progress.goods_id ? await ctx.model.Goods.findByPk(progress.goods_id) : null;
+
+    const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
     let needPrice = 0;
-    const totalAmount = Number(order.pay_amount || 0);
-    const balance = Number(user ? user.user_balance : 0);
+    const totalAmount = Number(progress.goods_price || 0);
+    const balance = Number(wallet ? wallet.balance : 0);
 
     if (totalAmount > balance) {
       needPrice = (totalAmount - balance).toFixed(2);
     }
 
-    // 这里需要查询订单项以获取商品名称和图片
-    let waresName = '';
-    let picUrl = '';
-    if (order.items && order.items.length > 0) {
-      waresName = order.items[0].product_name;
-      picUrl = order.items[0].product_image;
+    const revenueRate = shopTask ? Number(shopTask.yield_rate || 0) : 0;
+    const parentRevenueRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
+    
+    // 进度表中的 status: 0=未完成, 1=已完成
+    // 映射到前端期望的 status: 0=待支付, 1=已完成
+    let mappedStatus = 0;
+    if (progress.status === 1) {
+      mappedStatus = 1; // 对应已完成/已支付
     }
 
-    // 从订单记录中提取收益率数据，假设 searchTask 创建的未支付订单包含了这些信息
-    const revenueRate = Number(order.static_commission || 0) > 0 ? Number(order.static_commission) : 0;
-    const revenue = (totalAmount * revenueRate).toFixed(5);
-    const revenueRateView = (revenueRate * 100).toFixed(2) + '%';
-
-    // 返回组装好的数据结构
     return {
-      googleCod: null,
-      ids: null,
-      isLucky: false,
+      orderId: progress.order_id,
+      orderType: taskItem ? taskItem.item_type : 1, // 1:普通订单任务, 2:幸运订单任务
       needPrice: needPrice.toString(),
-      orderId: order.order_no,
-      remark: order.remark || null,
-      revenue,
+      remark: '任务订单',
       revenueRate: revenueRate.toString(),
+      revenue: progress.revenue.toString(),
       totalPrice: totalAmount.toString(),
-      revenueRateView,
-      status: order.status,
-      waresName,
-      picUrl,
-      cTime: order.created_at ? new Date(order.created_at).toISOString() : null,
-      uTime: order.updated_at ? new Date(order.updated_at).toISOString() : null,
+      parentRevenueRate: parentRevenueRate.toString(),
+      parentRevenue: (totalAmount * parentRevenueRate).toFixed(2),
+      status: mappedStatus,
+      picUrl: goods ? goods.cover_image : '',
+      waresName: progress.goods_title || '',
+      cTime: progress.create_time ? new Date(progress.create_time).toISOString() : null,
+      uTime: progress.update_time ? new Date(progress.update_time).toISOString() : null,
     };
   }
 
@@ -103,7 +97,7 @@ class OrderService extends Service {
    */
   async create(userId, payload) {
     const { ctx } = this;
-    const { address_id, cart_item_ids, remark } = payload;
+    const { address_id, product_id, quantity, remark } = payload;
 
     // 校验地址
     const address = await ctx.model.Address.findOne({
@@ -113,53 +107,30 @@ class OrderService extends Service {
       ctx.throw(404, '收货地址不存在');
     }
 
-    // 查询购物车记录
-    const carts = await ctx.model.Cart.findAll({
-      where: {
-        id: cart_item_ids,
-        user_id: userId,
-        selected: 1,
-      },
-      include: [{
-        model: ctx.model.Product,
-        as: 'product',
-      }],
-    });
-
-    if (!carts.length) {
-      ctx.throw(400, '请选择要购买的商品');
-    }
-
     const transaction = await ctx.model.transaction();
     try {
-      let totalAmount = 0;
-      const orderItems = [];
-
-      for (const cart of carts) {
-        const product = cart.product;
-        if (!product || product.status !== 1) {
-          throw new Error(`商品「${product ? product.title : '未知'}」已下架`);
-        }
-        if (product.stock < cart.quantity) {
-          throw new Error(`商品「${product.title}」库存不足`);
-        }
-
-        const itemTotal = Number(product.price) * cart.quantity;
-        totalAmount += itemTotal;
-
-        orderItems.push({
-          product_id: product.id,
-          product_name: product.title,
-          product_image: product.img,
-          price: product.price,
-          quantity: cart.quantity,
-          total_amount: itemTotal,
-        });
-
-        // 扣减库存
-        await product.decrement('stock', { by: cart.quantity, transaction });
-        await product.increment('sales', { by: cart.quantity, transaction });
+      const product = await ctx.model.Product.findByPk(product_id);
+      if (!product || product.status !== 1) {
+        throw new Error(`商品「${product ? product.title : '未知'}」已下架`);
       }
+      if (product.stock < quantity) {
+        throw new Error(`商品「${product.title}」库存不足`);
+      }
+
+      const totalAmount = Number(product.price) * quantity;
+
+      const orderItem = {
+        product_id: product.id,
+        product_name: product.title,
+        product_image: product.img,
+        price: product.price,
+        quantity,
+        total_amount: totalAmount,
+      };
+
+      // 扣减库存
+      await product.decrement('stock', { by: quantity, transaction });
+      await product.increment('sales', { by: quantity, transaction });
 
       const freightAmount = 0;
       const discountAmount = 0;
@@ -178,16 +149,10 @@ class OrderService extends Service {
       }, { transaction });
 
       // 创建订单商品快照
-      await ctx.model.OrderItem.bulkCreate(
-        orderItems.map(item => ({ ...item, order_id: order.id })),
+      await ctx.model.OrderItem.create(
+        { ...orderItem, order_id: order.id },
         { transaction },
       );
-
-      // 删除已下单的购物车记录
-      await ctx.model.Cart.destroy({
-        where: { id: cart_item_ids },
-        transaction,
-      });
 
       await transaction.commit();
 
@@ -209,69 +174,54 @@ class OrderService extends Service {
     const { status, page = 1, page_size = 10 } = query;
 
     // 获取当前请求用户的真实数据库主键ID
-    const userObj = await ctx.model.User.findOne({
-      where: { user_id: userId.toString() },
-    });
-    const dbUserId = userObj ? userObj.id : userId;
+    const userObj = await ctx.model.SysUser.findByPk(userId);
+    if (!userObj || userObj.user_type !== 4) {
+      ctx.throw(404, '用户不存在');
+    }
+    const dbUserId = userObj.user_id;
 
     const where = { user_id: dbUserId };
+    // 前端 status 参数: 0待支付，1已完成
+    // 对应进度表 status: 0未完成, 1已完成
     if (status !== undefined && status !== '' && status !== null && status !== 'null') {
-      where.status = Number(status);
+      where.status = parseInt(status, 10);
     }
 
-    const offset = (Number(page) - 1) * Number(page_size);
-    const limit = Number(page_size);
+    const limit = parseInt(page_size, 10);
+    const offset = (parseInt(page, 10) - 1) * limit;
 
-    const { count, rows } = await ctx.model.Order.findAndCountAll({
+    const { count, rows } = await ctx.model.ShopTaskUserItemProgress.findAndCountAll({
       where,
-      include: [{
-        model: ctx.model.OrderItem,
-        as: 'items',
-      }],
-      order: [[ 'id', 'DESC' ]],
-      offset,
       limit,
+      offset,
+      order: [['create_time', 'DESC']],
     });
 
-    const user = await ctx.model.User.findByPk(userId);
-    const balance = Number(user ? user.user_balance : 0);
-
-    const list = rows.map(order => {
-      let needPrice = 0;
-      const totalAmount = Number(order.pay_amount || 0);
-
-      if (totalAmount > balance) {
-        needPrice = (totalAmount - balance).toFixed(2);
+    const list = [];
+    for (const progress of rows) {
+      const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: progress.task_item_id } });
+      const shopTask = taskItem ? await ctx.model.ShopTask.findByPk(taskItem.task_id) : null;
+      const goods = progress.goods_id ? await ctx.model.Goods.findByPk(progress.goods_id) : null;
+      const totalAmount = Number(progress.goods_price || 0);
+      const revenueRate = shopTask ? Number(shopTask.yield_rate || 0) : 0;
+      
+      let mappedStatus = 0;
+      if (progress.status === 1) {
+        mappedStatus = 1; 
       }
 
-      let waresName = '';
-      let picUrl = '';
-      if (order.items && order.items.length > 0) {
-        waresName = order.items[0].product_name;
-        picUrl = order.items[0].product_image;
-      }
-
-      const revenueRate = Number(order.static_commission || 0) > 0 ? Number(order.static_commission) : 0;
-      const revenue = (totalAmount * revenueRate).toFixed(5);
-      const revenueRateView = (revenueRate * 100).toFixed(2) + '%';
-
-      return {
-        googleCod: null,
-        ids: null,
-        isLucky: false,
-        needPrice: needPrice.toString(),
-        orderId: order.order_no,
-        remark: order.remark || null,
-        revenue,
-        revenueRate: revenueRate.toString(),
+      list.push({
+        orderId: progress.order_id,
+        orderType: taskItem ? taskItem.item_type : 1,
         totalPrice: totalAmount.toString(),
-        revenueRateView,
-        status: order.status,
-        waresName,
-        picUrl,
-        cTime: order.created_at ? new Date(order.created_at).toISOString() : null,
-      };
-    });
+        revenueRate: revenueRate.toString(),
+        revenue: progress.revenue.toString(),
+        status: mappedStatus,
+        picUrl: goods ? goods.cover_image : '',
+        waresName: progress.goods_title || '',
+        cTime: progress.create_time ? new Date(progress.create_time).toISOString() : null,
+      });
+    }
 
     return {
       list,
@@ -356,79 +306,96 @@ class OrderService extends Service {
   /**
    * 模拟支付 (支持根据订单号或订单ID支付)
    * @param {string|number} idOrNo 订单ID或订单编号
-   * @param {number} userId 业务用户ID (如100861)
+   * @param {number} userId 业务用户ID
    * @return {Object} 更新后的订单
    */
   async pay(idOrNo, userId) {
     const { ctx } = this;
     const { Op } = ctx.app.Sequelize;
 
-    // 获取当前请求用户的真实数据库主键ID
-    const userObj = await ctx.model.User.findOne({
-      where: { user_id: userId },
-    });
-    const dbUserId = userObj ? userObj.id : userId;
+    // 1. 获取真实用户ID
+    const userObj = await ctx.model.SysUser.findByPk(userId);
+    if (!userObj || userObj.user_type !== 4) {
+      ctx.throw(404, '用户不存在');
+    }
+    const dbUserId = userObj.user_id;
 
-    // 支持按 order_no 或 id 查询
-    const order = await ctx.model.Order.findOne({
+    // 2. 查找订单对应的任务进度
+    const progress = await ctx.model.ShopTaskUserItemProgress.findOne({
       where: {
-        [Op.or]: [
-          { id: idOrNo },
-          { order_no: idOrNo.toString() },
-        ],
+        order_id: idOrNo.toString(),
         user_id: dbUserId,
-      },
-      include: [{ model: ctx.model.OrderItem, as: 'items' }],
+        status: 0,
+        is_processing: 1
+      }
     });
-    if (!order) {
-      ctx.throw(404, '订单不存在');
-    }
-    if (order.status !== 0) {
-      ctx.throw(400, '订单状态异常，无法支付');
+
+    if (!progress) {
+      ctx.throw(404, '订单不存在或已支付');
     }
 
-    // 更新订单状态为已支付，并更新用户余额等逻辑
+    const orderAmount = Number(progress.goods_price);
+    const revenue = Number(progress.revenue); // 静态收益
+
+    // 3. 校验余额是否足够扣除
+    const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
+    if (!userWallet || Number(userWallet.balance) < orderAmount) {
+      ctx.throw(400, '余额不足，无法支付订单');
+    }
+
+    // 4. 获取对应的任务配置和上级信息 (用于计算动态返佣)
+    const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: progress.task_item_id } });
+    const shopTask = await ctx.model.ShopTask.findByPk(taskItem.task_id);
+    const parentYieldRate = Number(shopTask.parent_yield_rate);
+    const dynamicRevenue = orderAmount * parentYieldRate; // 动态收益(返佣给上级)
+    const totalRevenue = revenue + orderAmount; // 结算给用户的金额(本金+静态收益)
+
     const transaction = await ctx.model.transaction();
     try {
-      await order.update({
-        status: 3, // 直接将状态更新为已完成(3)
-        pay_time: new Date(),
-        finish_time: new Date(),
+      // 5. 更新任务子项进度状态为已完成
+      await progress.update({
+        status: 1,
+        is_processing: 0,
+        update_time: new Date()
       }, { transaction });
 
-      const rewardAmount = Number(order.pay_amount || 0) * Number(order.static_commission || 0);
-
-      // 任务订单结算：返还本金 + 佣金
-      // 因为在 searchTask 时并未实际扣除本金，只是生成了待支付订单
-      // 所以完成订单时的净收益为：纯佣金 (rewardAmount)
-      // 增加 user_balance 余额，同时累加到 static_income (静态收益) 中，用于返款统计展示
-      await ctx.model.User.increment({
-        user_balance: rewardAmount,
-        static_income: rewardAmount,
+      // 6. 更新用户钱包 (扣除本金, 发放本金+静态收益)
+      // 在实际业务中，可以先扣除，再发放，或者直接计算净变动。这里为了清晰，直接计算净变动：
+      // 净变动 = (本金 + 静态收益) - 本金 = 静态收益 (revenue)
+      await ctx.model.UserWallet.update({
+        balance: ctx.app.Sequelize.literal(`balance + ${revenue}`),
+        static_income: ctx.app.Sequelize.literal(`static_income + ${revenue}`)
       }, {
-        where: { id: dbUserId },
-        transaction,
+        where: { user_id: dbUserId },
+        transaction
       });
 
-      // 支付/结算完成后，记录一条 UserTask（代表用户已完成该任务），以便 getUserTaskInfo 统计
-      const taskItem = order.items && order.items.length > 0 ? order.items[0] : null;
-      if (taskItem) {
-        await ctx.model.UserTask.create({
-          user_id: dbUserId,
-          task_id: taskItem.product_id,
-          status: 1, // 已完成
-          reward: rewardAmount,
-          task_date: dayjs().format('YYYY-MM-DD'),
-        }, { transaction });
+      // 7. 处理上级返佣 (如果有上级)
+      if (userObj.inviter_user_id && dynamicRevenue > 0) {
+        const parentWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userObj.inviter_user_id } });
+        if (parentWallet) {
+          await ctx.model.UserWallet.update({
+            balance: ctx.app.Sequelize.literal(`balance + ${dynamicRevenue}`),
+            dynamic_income: ctx.app.Sequelize.literal(`dynamic_income + ${dynamicRevenue}`)
+          }, {
+            where: { user_id: userObj.inviter_user_id },
+            transaction
+          });
+        }
       }
 
       await transaction.commit();
+      
+      return {
+        orderId: progress.order_id,
+        status: 1, // 已完成
+        payAmount: orderAmount,
+        revenue: revenue
+      };
     } catch (err) {
       await transaction.rollback();
       ctx.throw(400, '支付失败：' + err.message);
     }
-
-    return await this.detail(order.id, dbUserId);
   }
 
 
@@ -480,9 +447,9 @@ class OrderService extends Service {
           attributes: [ 'product_name' ],
         },
         {
-          model: ctx.model.User,
+          model: ctx.model.SysUser,
           as: 'user',
-          attributes: [ 'id', 'user_id', 'phone', 'nickname' ],
+          attributes: [ 'user_id', 'phone', 'nickname', 'username' ],
         },
       ],
       order: [[ 'id', 'DESC' ]],

@@ -28,6 +28,7 @@
     "egg-scripts": "^2.15.0",
     "egg-sequelize": "^6.0.0",
     "egg-swagger-doc": "^2.3.2",
+    "egg-validate": "^2.0.2",
     "google-translate-api-x": "^10.7.3",
     "ip2region": "^2.3.0",
     "lodash": "^4.17.21",

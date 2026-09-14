@@ -4,12 +4,12 @@
 module.exports = {
   async up(queryInterface, Sequelize) {
     const tables = [
-      'addresses', 'banners', 'carts', 'categories', 'commission_records',
-      'customer_services', 'logistics_addresses', 'menus', 'notices',
+      'addresses', 'banners', 'categories', 'commission_records',
+      'customer_services', 'logistics_addresses', 'menus',
       'orders', 'order_items', 'order_carousels', 'permissions', 'products',
       'recharge_records', 'recharge_ways', 'roles', 'role_menus',
       'role_permissions', 'rules', 'strategy_rules', 'sys_config', 'tasks',
-      'user_credentials', 'user_login_logs', 'user_tasks', 'vips',
+      'user_credentials', 'user_tasks', 'vips',
       'withdraw_config', 'withdraw_ways',
     ];
 
@@ -37,12 +37,12 @@ module.exports = {
 
   async down(queryInterface) {
     const tables = [
-      'addresses', 'banners', 'carts', 'categories', 'commission_records',
-      'customer_services', 'logistics_addresses', 'menus', 'notices',
+      'addresses', 'banners', 'categories', 'commission_records',
+      'customer_services', 'logistics_addresses', 'menus',
       'orders', 'order_items', 'order_carousels', 'permissions', 'products',
       'recharge_records', 'recharge_ways', 'roles', 'role_menus',
       'role_permissions', 'rules', 'strategy_rules', 'sys_config', 'tasks',
-      'user_credentials', 'user_login_logs', 'user_tasks', 'vips',
+      'user_credentials', 'user_tasks', 'vips',
       'withdraw_config', 'withdraw_ways',
     ];
 

@@ -10,7 +10,7 @@ class NoticeController extends Controller {
   /**
    * @summary 获取公告列表
    * @description 移动端公告列表，仅返回启用状态（status=1）且为全平台（admin_id=null）的公告，支持关键词搜索
-   * @router get /api/mobile/notices
+   * @router get /api/mobile/public/notices
    * @request query string keyword 关键词（按标题模糊搜索）
    * @request query integer page 页码 默认 1
    * @request query integer page_size 每页数量 默认 10
@@ -27,26 +27,6 @@ class NoticeController extends Controller {
       code: 200,
       message: 'success',
       data: result,
-    };
-  }
-
-  /**
-   * @summary 获取公告详情
-   * @description 根据公告ID获取详情
-   * @router get /api/mobile/notices/:id
-   * @request path integer *id 公告ID
-   * @response 200 ApiResponse 公告详情
-   */
-  async show() {
-    const { ctx, service } = this;
-    const { id } = ctx.params;
-
-    const notice = await service.notice.detail(id);
-
-    ctx.body = {
-      code: 200,
-      message: 'success',
-      data: notice,
     };
   }
 }

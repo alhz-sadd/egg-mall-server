@@ -15,8 +15,8 @@ module.exports = () => {
         ctx.throw(401, '无效的 Token');
       }
 
-      const adminInner = await ctx.model.AdminInnerUser.findByPk(decoded.adminInnerId);
-      if (!adminInner) {
+      const adminInner = await ctx.model.SysUser.findByPk(decoded.adminInnerId);
+      if (!adminInner || adminInner.user_type !== 1) {
         ctx.throw(401, '账号不存在或已被删除');
       }
       if (adminInner.status !== 1) {
@@ -24,7 +24,7 @@ module.exports = () => {
       }
 
       ctx.state.adminInner = {
-        adminInnerId: adminInner.id,
+        adminInnerId: adminInner.user_id,
         username: adminInner.username,
       };
 

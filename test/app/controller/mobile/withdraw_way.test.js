@@ -8,14 +8,13 @@ function getUniquePhone() {
 
 async function createTestUser(phone) {
   const ctx = app.mockContext();
-  return await ctx.model.User.create({
+  return await ctx.model.SysUser.create({
     username: phone,
     phone,
     password: await ctx.genHash('123456'),
-    withdraw_password: '123456',
     nickname: '测试用户',
-    balance: 0,
     status: 1,
+    user_type: 4,
   });
 }
 
@@ -35,7 +34,7 @@ describe('test/app/controller/mobile/withdraw_way.test.js', () => {
   afterEach(async () => {
     if (testUser) {
       const ctx = app.mockContext();
-      await ctx.model.User.destroy({ where: { id: testUser.id } });
+      await ctx.model.SysUser.destroy({ where: { user_id: testUser.user_id } });
       testUser = null;
       token = null;
     }

@@ -8,15 +8,19 @@ function getUniquePhone() {
 
 async function createTestUser(phone, balance = 0) {
   const ctx = app.mockContext();
-  return await ctx.model.User.create({
+  const sysUser = await ctx.model.SysUser.create({
     username: phone,
     phone,
     password: await ctx.genHash('123456'),
-    withdraw_password: '123456',
     nickname: '测试用户',
-    balance,
     status: 1,
+    user_type: 4,
   });
+  await ctx.model.UserWallet.create({
+    user_id: sysUser.user_id,
+    voucher_balance: balance,
+  });
+  return sysUser;
 }
 
 async function getToken(phone) {
@@ -34,8 +38,9 @@ describe('test/app/controller/mobile/recharge.test.js', () => {
   afterEach(async () => {
     if (testUser) {
       const ctx = app.mockContext();
-      await ctx.model.RechargeRequest.destroy({ where: { user_id: testUser.id } });
-      await ctx.model.User.destroy({ where: { id: testUser.id } });
+      await ctx.model.RechargeRequest.destroy({ where: { user_id: testUser.user_id } });
+      await ctx.model.UserWallet.destroy({ where: { user_id: testUser.user_id } });
+      await ctx.model.SysUser.destroy({ where: { user_id: testUser.user_id } });
       testUser = null;
       token = null;
     }
@@ -55,7 +60,7 @@ describe('test/app/controller/mobile/recharge.test.js', () => {
 
       assert(res.body.code === 200);
       assert(res.body.message === '充值请求已提交');
-      assert(res.body.data.user_id === testUser.id);
+      assert(res.body.data.user_id === testUser.user_id);
       assert(Number(res.body.data.do_money) === 300);
     });
 

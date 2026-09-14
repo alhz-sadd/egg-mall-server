@@ -10,27 +10,25 @@ class BackMoneyService extends Service {
   async getUserBackMoney(userId) {
     const { ctx } = this;
 
-    // 获取用户主键
-    const userObj = await ctx.model.User.findOne({ where: { user_id: userId } });
-    const dbUserId = userObj ? userObj.id : userId;
-
-    const user = await ctx.model.User.findByPk(dbUserId, {
-      attributes: [ 'id', 'user_id', 'static_income', 'dynamic_income' ],
+    // 获取用户
+    const user = await ctx.model.SysUser.findOne({
+      where: { user_id: userId, user_type: 4 },
+      attributes: [ 'user_id' ],
     });
 
     if (!user) {
       ctx.throw(404, '用户不存在');
     }
 
-    // staticBack 取自用户做任务的总收入 (通过统计 user_tasks 表的 reward 字段得出)
-    const totalReward = await ctx.model.UserTask.sum('reward', {
-      where: { user_id: dbUserId, status: 1 },
+    // staticBack 取自用户做任务的总收益 (通过统计 shop_task_user 表的 reward 字段得出)
+    const totalReward = await ctx.model.ShopTaskUser.sum('reward', {
+      where: { user_id: user.user_id, status: 1 },
     });
     const staticBack = Number(totalReward || 0);
 
     // trendBacks: 查询用户所有已完成的任务订单记录
     const tasks = await ctx.model.UserTask.findAll({
-      where: { user_id: dbUserId, status: 1 },
+      where: { user_id: user.user_id, status: 1 },
       order: [[ 'updated_at', 'DESC' ]],
     });
 

@@ -140,22 +140,15 @@ class SalespersonController extends Controller {
 
     // 2. 遍历业务员，统计其下级用户数据
     for (const sp of salespersons) {
-      // 查询归属于该业务员的移动端用户 (admin_role 不为 1 且不为 2)
-      // 在当前逻辑中，用户注册时可能将 admin_id 或者 bind_salesperson_id 指向业务员
-      // 兼容两种字段绑定
-      const users = await ctx.model.User.findAll({
-        where: {
-          [Op.or]: [
-            { bind_salesperson_id: sp.id },
-            { admin_id: sp.id },
-          ],
-          admin_role: { [Op.or]: [{ [Op.notIn]: [ 1, 2 ] }, { [Op.is]: null }] },
-        },
-        attributes: [ 'id' ],
+      // 查询归属于该业务员的移动端用户
+      // 关系通过 customer_relation 管理
+      const relations = await ctx.model.CustomerRelation.findAll({
+        where: { salesman_user_id: sp.id, is_deleted: 0 },
+        attributes: [ 'c_user_id' ],
         raw: true,
       });
 
-      const userIds = users.map(u => u.id);
+      const userIds = relations.map(u => u.c_user_id);
       const userCount = userIds.length;
 
       let topUpCount = 0;

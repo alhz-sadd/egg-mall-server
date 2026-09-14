@@ -26,38 +26,37 @@ module.exports = app => {
   router.get('/api/mobile/products', controller.mobile.product.index);
   router.get('/api/mobile/products/:id', controller.mobile.product.show);
 
+  // 以下接口需要登录鉴权
+  const auth = app.middleware.auth();
+
+  // 任务搜索 (需登录，且必须在 /api/mobile/tasks/:id 之前定义以免被拦截)
+  router.get('/api/mobile/tasks/search', auth, controller.mobile.task.search);
+
   // 任务（只读公开）
   router.get('/api/mobile/tasks', controller.mobile.task.index);
   router.get('/api/mobile/tasks/:id', controller.mobile.task.show);
 
   // 轮播图（只读公开）
   router.get('/api/mobile/banners', controller.mobile.banner.index);
-  router.get('/api/mobile/banners/:id', controller.mobile.banner.show);
 
   // 公告（只读公开）
   router.get('/api/mobile/notices', controller.mobile.notice.index);
-  router.get('/api/mobile/notices/:id', controller.mobile.notice.show);
 
   // 客服（只读公开）
   router.get('/api/mobile/customer-services', controller.mobile.customerService.index);
-  router.get('/api/mobile/customer-services/:id', controller.mobile.customerService.show);
 
   // 规则（只读公开）
   router.get('/api/mobile/rules', controller.mobile.rule.index);
 
   // 充值方式列表（公开）
-  router.get('/api/mobile/recharge-ways', controller.mobile.rechargeWay.index);
+  // router.get('/api/mobile/recharge-ways', controller.mobile.rechargeWay.index);
 
   // 提现方式列表（公开）
   router.get('/api/mobile/withdraw-ways', controller.mobile.withdrawWay.index);
 
-  // 以下接口需要登录鉴权
-  const auth = app.middleware.auth();
-
   // 当前用户
   router.get('/api/mobile/users/current', auth, controller.mobile.user.current);
   router.get('/api/mobile/getUserTaskInfo', auth, controller.mobile.task.getUserTaskInfo);
-  router.get('/api/mobile/searchTask', auth, controller.mobile.task.searchTask);
   router.get('/api/mobile/users/invite-code', auth, controller.mobile.user.inviteCode);
   router.put('/api/mobile/users/vip-level', auth, controller.mobile.user.updateVipLevel);
   router.get('/api/mobile/users/balance', auth, controller.mobile.user.balance);
@@ -85,10 +84,10 @@ module.exports = app => {
   router.get('/api/mobile/withdraws', auth, controller.mobile.withdraw.list);
 
   // 购物车
-  router.get('/api/mobile/carts', auth, controller.mobile.cart.index);
-  router.post('/api/mobile/carts', auth, controller.mobile.cart.create);
-  router.put('/api/mobile/carts/:id', auth, controller.mobile.cart.update);
-  router.delete('/api/mobile/carts/:id', auth, controller.mobile.cart.destroy);
+  // router.get('/api/mobile/carts', auth, controller.mobile.cart.index);
+  // router.post('/api/mobile/carts', auth, controller.mobile.cart.create);
+  // router.put('/api/mobile/carts/:id', auth, controller.mobile.cart.update);
+  // router.delete('/api/mobile/carts/:id', auth, controller.mobile.cart.destroy);
 
   // 收货地址
   router.get('/api/mobile/addresses', auth, controller.mobile.address.index);
@@ -114,7 +113,7 @@ module.exports = app => {
   router.post('/api/mobile/upload/image', auth, controller.mobile.upload.image);
 
   // ==================== 管理端 BFF ====================
-  const adminAuth = app.middleware.adminAuth();
+  const adminAuth = app.middleware.adminOuterAuth();
   const adminRole = app.middleware.adminRole;
 
   // ==================== 内部系统 (admin-inner) ====================
@@ -198,7 +197,7 @@ module.exports = app => {
   router.delete('/api/admin-inner/tasks/:id', adminInnerAuth, controller.adminInner.task.destroy);
 
   // admin-inner 文件上传
-  router.post('/api/admin-inner/upload/image', adminInnerAuth, controller.admin.upload.image);
+  router.post('/api/admin-inner/upload/image', adminInnerAuth, controller.adminInner.upload.image);
 
   // admin-inner 操作日志管理
   router.get('/api/admin-inner/operation-logs', adminInnerAuth, controller.adminInner.operationLog.index);

@@ -33,7 +33,6 @@ module.exports = {
   更新成功: 'Updated successfully',
   获取成功: 'Fetched successfully',
   提现请求已提交: 'Withdrawal request submitted',
-  加入购物车成功: 'Added to cart successfully',
   删除成功: 'Deleted successfully',
   订单创建成功: 'Order created successfully',
   订单取消成功: 'Order cancelled successfully',

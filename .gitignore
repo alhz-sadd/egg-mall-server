@@ -27,8 +27,8 @@ node_modules/
 # Optional REPL history
 .node_repl_history
 
-# 不上传gf文档
-.gf/
+# 不上传规范文档
+.规范/
 
 # Output of 'npm pack'
 *.tgz

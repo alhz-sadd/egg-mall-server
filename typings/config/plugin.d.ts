@@ -21,6 +21,7 @@ import 'egg-jwt';
 import 'egg-bcrypt';
 import 'egg-cors';
 import 'egg-swagger-doc';
+import 'egg-validate';
 import { EggPluginItem } from 'egg';
 declare module 'egg' {
   interface EggPlugin {
@@ -42,5 +43,6 @@ declare module 'egg' {
     bcrypt?: EggPluginItem;
     cors?: EggPluginItem;
     swaggerdoc?: EggPluginItem;
+    validate?: EggPluginItem;
   }
 }

@@ -32,4 +32,9 @@ module.exports = {
     enable: true,
     package: 'egg-swagger-doc',
   },
+  // 参数校验插件
+  validate: {
+    enable: true,
+    package: 'egg-validate',
+  },
 };

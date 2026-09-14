@@ -50,13 +50,7 @@ class WithdrawService extends Service {
   async getUserByIdOrCode(identifier) {
     const { ctx } = this;
     if (!identifier) return null;
-    const strVal = String(identifier);
-    // 9+ 位视为 user_id（即 user_code）
-    if (strVal.length >= 9) {
-      const user = await ctx.model.User.findOne({ where: { user_id: strVal } });
-      if (user) return user;
-    }
-    return await ctx.model.User.findByPk(Number(identifier));
+    return await ctx.model.SysUser.findOne({ where: { user_id: identifier, user_type: 4 } });
   }
 
   /**
@@ -115,7 +109,13 @@ class WithdrawService extends Service {
 
     const user = await this.getUserByIdOrCode(userId);
     ctx.assert(user, 422, '用户不存在');
-    ctx.logger.info('[WithdrawService.create] 用户存在校验通过，用户ID: %s，当前余额: %s', userId, user.user_balance);
+
+    // 获取用户钱包
+    const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: user.user_id } });
+    ctx.assert(wallet, 422, '用户钱包不存在');
+    const userBalance = Number(wallet.balance || 0);
+
+    ctx.logger.info('[WithdrawService.create] 用户存在校验通过，用户ID: %s，当前余额: %s', userId, userBalance);
 
     // 解析归属业务员信息（提现创建时即写入，列表/审核时可直接展示）
     const { adminId, adminName } = await this.resolveSalespersonAdmin(user);
@@ -128,8 +128,8 @@ class WithdrawService extends Service {
     ctx.logger.info('[WithdrawService.create] 提现密码校验结果: %s，密码类型: %s', match ? '通过' : '失败', isPlain ? '明文' : 'bcrypt');
     ctx.assert(match, 422, '提现密码错误');
 
-    const balanceEnough = Number(user.user_balance) >= money;
-    ctx.logger.info('[WithdrawService.create] 余额校验，当前余额: %s，提现金额: %s，是否充足: %s', user.user_balance, money, balanceEnough ? '是' : '否');
+    const balanceEnough = userBalance >= money;
+    ctx.logger.info('[WithdrawService.create] 余额校验，当前余额: %s，提现金额: %s，是否充足: %s', userBalance, money, balanceEnough ? '是' : '否');
     ctx.assert(balanceEnough, 422, '余额不足');
 
     // 简单计算：手续费为提现金额的 3%，到账金额 = 提现金额 - 手续费
@@ -154,10 +154,10 @@ class WithdrawService extends Service {
         remark: remark || null,
       }, { transaction });
 
-      // 创建时先扣除余额
-      const beforeBalance = Number(user.user_balance);
+      // 创建时先扣除钱包余额
+      const beforeBalance = userBalance;
       const afterBalance = beforeBalance - money;
-      await user.update({ user_balance: afterBalance }, { transaction });
+      await wallet.update({ balance: afterBalance }, { transaction });
       await transaction.commit();
 
       ctx.logger.info('[WithdrawService.create] 提现请求创建成功，订单号: %s，用户ID: %s，提现金额: %s，扣除前余额: %s，扣除后余额: %s，状态: %s', request.order_num, request.user_id, request.amount, beforeBalance, afterBalance, request.status);
@@ -239,9 +239,9 @@ class WithdrawService extends Service {
       where,
       include: [
         {
-          model: ctx.model.User,
+          model: ctx.model.SysUser,
           as: 'user',
-          attributes: [ 'id', 'user_id', 'user_phone', 'user_name', 'user_referral_id' ],
+          attributes: [ 'user_id', 'phone', 'username', 'nickname', 'inviter_user_id' ],
         },
       ],
       order: [[ 'id', 'DESC' ]],
@@ -260,10 +260,9 @@ class WithdrawService extends Service {
     const uniqueParentUserCodes = [ ...new Set(parentUserCodes) ];
     const parentUserMap = {};
     if (uniqueParentUserCodes.length > 0) {
-      const parentUsers = await ctx.model.User.findAll({
-        attributes: [ 'id', 'user_id', 'user_phone', 'user_name' ],
-        where: { user_id: { [ctx.app.Sequelize.Op.in]: uniqueParentUserCodes } },
-        raw: true,
+      const parentUsers = await ctx.model.SysUser.findAll({
+        attributes: [ 'user_id', 'phone', 'username', 'nickname' ],
+        where: { user_id: { [ctx.app.Sequelize.Op.in]: uniqueParentUserCodes }, user_type: 4 },
       });
       for (const pu of parentUsers) {
         parentUserMap[pu.user_id] = pu;
@@ -416,10 +415,10 @@ class WithdrawService extends Service {
         remark: remark || null,
       }, { transaction });
 
-      // 审核失败，把提现金额退回到用户余额
-      const user = await ctx.model.User.findByPk(request.user_id, { transaction });
-      if (user) {
-        await user.update({ user_balance: Number(user.user_balance) + Number(request.amount) }, { transaction });
+      // 审核失败，把提现金额退回到用户钱包余额
+      const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: request.user_id }, transaction });
+      if (wallet) {
+        await wallet.update({ balance: Number(wallet.balance) + Number(request.amount) }, { transaction });
       }
 
       await transaction.commit();

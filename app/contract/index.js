@@ -59,6 +59,13 @@ module.exports = {
     address: { type: 'string', required: true, example: '北京市朝阳区', description: '详细地址' },
   },
 
+  // 收货信息
+  ReceiptInfoRequest: {
+    receipt_name: { type: 'string', required: true, example: '张三', description: '收货人姓名' },
+    receipt_phone: { type: 'string', required: true, example: '13800138000', description: '收货人手机号' },
+    receipt_address: { type: 'string', required: true, example: '北京市朝阳区', description: '收货人详细地址' },
+  },
+
   // 获取订单详情
   OrderMsgRequest: {
     orderId: { type: 'string', required: true, example: 'O20260812102030ABCDEF', description: '订单号' },
@@ -202,35 +209,6 @@ module.exports = {
     status: { type: 'integer', required: false, example: 0, description: '状态：0启用 1禁用' },
   },
 
-  // 充值方式创建
-  RechargeWayCreateRequest: {
-    way: { type: 'string', required: true, example: '支付宝', description: '充值方式名称' },
-    sort: { type: 'integer', required: false, example: 10, description: '排序' },
-    remark: { type: 'string', required: false, example: '备注', description: '备注' },
-    status: { type: 'integer', required: false, example: 0, description: '状态：0启用 1禁用' },
-  },
-
-  // 充值方式更新
-  RechargeWayUpdateRequest: {
-    way: { type: 'string', required: false, example: '微信', description: '充值方式名称' },
-    sort: { type: 'integer', required: false, example: 10, description: '排序' },
-    remark: { type: 'string', required: false, example: '备注', description: '备注' },
-    status: { type: 'integer', required: false, example: 0, description: '状态：0启用 1禁用' },
-  },
-
-  // 购物车
-  CartRequest: {
-    product_id: { type: 'integer', required: true, example: 1, description: '商品ID' },
-    quantity: { type: 'integer', required: true, example: 1, description: '数量' },
-    selected: { type: 'boolean', required: false, example: true, description: '是否选中' },
-  },
-
-  // 更新购物车
-  CartUpdateRequest: {
-    quantity: { type: 'integer', required: false, example: 2, description: '数量' },
-    selected: { type: 'boolean', required: false, example: true, description: '是否选中' },
-  },
-
   // 收货地址
   AddressRequest: {
     name: { type: 'string', required: true, example: '张三', description: '收货人姓名' },
@@ -332,6 +310,27 @@ module.exports = {
     status: { type: 'integer', required: false, example: 1, description: '状态：1启用 0禁用' },
   },
 
+  // 系统菜单请求
+  SysMenuRequest: {
+    parent_id: { type: 'integer', required: false, example: 0, description: '父菜单ID，0为顶级' },
+    menu_name: { type: 'string', required: true, example: '用户管理', description: '菜单名称' },
+    route_path: { type: 'string', required: false, example: '/system/user', description: '路由路径' },
+    component: { type: 'string', required: false, example: 'system/user/index', description: '组件路径' },
+    api_tag: { type: 'string', required: true, example: 'inner', description: '接口标识：inner/outer' },
+    perms: { type: 'string', required: false, example: 'system:user:list', description: '权限标识' },
+    menu_type: { type: 'integer', required: true, example: 1, description: '类型：1菜单 2按钮' },
+    sort: { type: 'integer', required: false, example: 0, description: '排序' },
+    enable: { type: 'integer', required: false, example: 1, description: '状态：1启用 0禁用' },
+    icon: { type: 'string', required: false, example: 'user', description: '图标' },
+  },
+
+  // 系统菜单查询
+  SysMenuQuery: {
+    menu_name: { type: 'string', required: false, description: '菜单名称模糊查询' },
+    api_tag: { type: 'string', required: false, description: '接口标识：inner/outer' },
+    enable: { type: 'integer', required: false, description: '状态：1启用 0禁用' },
+  },
+
 
   // 管理端创建/更新上分明细
   AdminRechargeRequest: {
@@ -350,7 +349,7 @@ module.exports = {
     business_type: { type: 'integer', required: false, example: 0, description: '操作类型：0新增 1修改 2删除 3授权 4导出 5导入 6强退 7生成代码 8清空数据 9其他' },
     title: { type: 'string', required: false, example: '删除提现方式', description: '操作标题关键词' },
     oper_name: { type: 'string', required: false, example: '管理员', description: '操作人员名称关键词' },
-    oper_url: { type: 'string', required: false, example: '/api/admin/withdraw-ways', description: '请求地址关键词' },
+    oper_url: { type: 'string', required: false, example: '/api/admin-inner/withdraw-ways', description: '请求地址关键词' },
     status: { type: 'integer', required: false, example: 0, description: '操作状态：0成功 1失败' },
     start_time: { type: 'string', required: false, example: '2026-08-01 00:00:00', description: '开始时间' },
     end_time: { type: 'string', required: false, example: '2026-08-05 23:59:59', description: '结束时间' },
@@ -475,4 +474,11 @@ module.exports = {
     config_name: { type: 'string', required: false, example: '实名奖励代金', description: '参数名称' },
     remark: { type: 'string', required: false, example: '备注信息', description: '备注' },
   },
+  // 收货信息更新参数
+  ReceiptRequest: {
+    receipt_name: { type: 'string', required: true, description: '收货人姓名' },
+    receipt_phone: { type: 'string', required: true, description: '收货人手机号' },
+    receipt_address: { type: 'string', required: true, description: '收货地址' },
+  },
+
 };

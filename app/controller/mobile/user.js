@@ -135,7 +135,7 @@ class UserController extends Controller {
    */
   async logout() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
     const meta = this.getLoginMeta();
 
     await service.user.recordLoginLog({
@@ -161,12 +161,26 @@ class UserController extends Controller {
    */
   async current() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const user = await service.user.findById(userId);
     if (!user) {
       ctx.throw(404, '用户不存在');
     }
+
+    // 补充 VIP 等级详情
+    if (user.shop_id && user.vip_level !== undefined) {
+      const vipInfo = await service.vipLevel.getVipLevelDetails(user.shop_id, user.vip_level);
+      user.vip_name = vipInfo ? vipInfo.level_name : '普通用户';
+      user.vip_benefit = vipInfo ? vipInfo.benefit : '';
+    } else {
+      user.vip_name = '普通用户';
+      user.vip_benefit = '';
+    }
+
+    // 补充用户余额
+    const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
+    user.balance = wallet ? wallet.balance : 0;
 
     ctx.body = {
       code: 200,
@@ -184,7 +198,7 @@ class UserController extends Controller {
    */
   async inviteCode() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const result = await service.user.getInviteInfo(userId);
 
@@ -205,7 +219,7 @@ class UserController extends Controller {
    */
   async updateVipLevel() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const user = await service.user.updateVipLevel(userId, ctx.request.body);
 
@@ -225,7 +239,7 @@ class UserController extends Controller {
    */
   async balance() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const result = await service.user.getBalance(userId);
 
@@ -245,7 +259,7 @@ class UserController extends Controller {
    */
   async logisticsAddress() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const result = await service.user.getLogisticsAddress(userId);
 
@@ -266,7 +280,7 @@ class UserController extends Controller {
    */
   async saveLogisticsAddress() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const result = await service.user.saveLogisticsAddress(userId, ctx.request.body);
 
@@ -286,7 +300,7 @@ class UserController extends Controller {
    */
   async deleteLogisticsAddress() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     await service.user.deleteLogisticsAddress(userId);
 
@@ -307,7 +321,7 @@ class UserController extends Controller {
    */
   async uploadCredential() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const result = await service.user.uploadCredential(userId, ctx.request.body);
 
@@ -327,7 +341,7 @@ class UserController extends Controller {
    */
   async deleteCredential() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     await service.user.deleteCredential(userId);
 
@@ -347,7 +361,7 @@ class UserController extends Controller {
    */
   async myTasks() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const result = await service.user.getMyTasks(userId);
 
@@ -369,7 +383,7 @@ class UserController extends Controller {
    */
   async team() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
     const { page, page_size } = ctx.query;
 
     const result = await service.user.getTeam(userId, { page, page_size });
@@ -377,6 +391,53 @@ class UserController extends Controller {
     ctx.body = {
       code: 200,
       message: 'success',
+      data: result,
+    };
+  }
+
+  /**
+   * @summary 获取当前用户收货信息
+   * @description 返回当前用户保存的收货信息
+   * @router get /api/mobile/users/receipt
+   * @request header string Authorization Bearer token
+   * @response 200 ApiResponse 收货信息
+   */
+  async getReceipt() {
+    const { ctx, service } = this;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+
+    const result = await service.user.getReceipt(userId);
+
+    ctx.body = {
+      code: 200,
+      message: 'success',
+      data: result,
+    };
+  }
+
+  /**
+   * @summary 创建或修改当前用户收货信息
+   * @description 创建或更新当前用户的收货信息
+   * @router put /api/mobile/users/receipt
+   * @request header string Authorization Bearer token
+   * @request body ReceiptRequest *body 收货信息
+   * @response 200 ApiResponse 保存成功
+   */
+  async updateReceipt() {
+    const { ctx, service } = this;
+    const rule = {
+      receipt_name: { type: 'string', required: true, message: '收货人姓名必填' },
+      receipt_phone: { type: 'string', required: true, message: '收货人手机号必填' },
+      receipt_address: { type: 'string', required: true, message: '收货地址必填' },
+    };
+    ctx.validate(rule);
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+
+    const result = await service.user.updateReceipt(userId, ctx.request.body);
+
+    ctx.body = {
+      code: 200,
+      message: '收货信息保存成功',
       data: result,
     };
   }
@@ -391,7 +452,7 @@ class UserController extends Controller {
    */
   async updatePassword() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     await service.user.updatePassword(userId, ctx.request.body);
 
@@ -412,7 +473,7 @@ class UserController extends Controller {
    */
   async updateWithdrawPassword() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     await service.user.updateWithdrawPassword(userId, ctx.request.body);
 
@@ -433,7 +494,7 @@ class UserController extends Controller {
    */
   async updateProfile() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const user = await service.user.updateProfile(userId, ctx.request.body);
 
@@ -441,6 +502,47 @@ class UserController extends Controller {
       code: 200,
       message: '更新成功',
       data: user,
+    };
+  }
+
+  /**
+   * @summary 获取当前用户收货信息
+   * @description 返回当前用户保存的收货人姓名、手机号和详细地址
+   * @router get /api/mobile/users/receipt-info
+   * @request header string Authorization Bearer token
+   * @response 200 ApiResponse 收货信息
+   */
+  async getReceiptInfo() {
+    const { ctx, service } = this;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+
+    const result = await service.user.getReceiptInfo(userId);
+
+    ctx.body = {
+      code: 200,
+      message: 'success',
+      data: result,
+    };
+  }
+
+  /**
+   * @summary 提交当前用户收货地址
+   * @description 更新当前用户的收货人姓名、手机号和详细地址
+   * @router put /api/mobile/users/receipt-info
+   * @request header string Authorization Bearer token
+   * @request body ReceiptInfoRequest *body 收货信息
+   * @response 200 ApiResponse 保存成功
+   */
+  async updateReceiptInfo() {
+    const { ctx, service } = this;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+
+    await service.user.updateReceiptInfo(userId, ctx.request.body);
+
+    ctx.body = {
+      code: 200,
+      message: '收货信息保存成功',
+      data: null,
     };
   }
 
@@ -456,7 +558,7 @@ class UserController extends Controller {
    */
   async capitalLogs() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const result = await service.user.getCapitalLogs(userId, ctx.query);
 
@@ -476,7 +578,7 @@ class UserController extends Controller {
    */
   async getUserRevenue() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     // 调用统一的资金明细服务获取数据
     const result = await service.fundRecord.getFundDetails(userId, ctx.query);
@@ -504,6 +606,48 @@ class UserController extends Controller {
       code: 200,
       status: true,
       msg: null,
+    };
+  }
+  /**
+   * TEMPORARY: Create Mobile User (REMOVE AFTER USE)
+   */
+  async createMobileUser() {
+    const { ctx } = this;
+    const { username, password } = ctx.request.body;
+
+    ctx.assert(username, 422, '账号不能为空');
+    ctx.assert(password, 422, '密码不能为空');
+
+    const crypto = require('crypto');
+    const hashedPassword = crypto.createHash('md5').update(password).digest('hex');
+
+    const user = await ctx.model.SysUser.create({
+      username,
+      password: hashedPassword,
+      user_type: 4, // C端用户
+      status: 1,
+      nickname: username,
+    });
+
+    // Get the shop created in dev/create-outer-admin
+    const shop = await ctx.model.Shop.findOne({
+      order: [[ 'shop_id', 'DESC' ]],
+    });
+
+    if (shop) {
+      await ctx.model.CustomerRelation.create({
+        c_user_id: user.user_id,
+        shop_id: shop.shop_id || 1, // 使用主键id
+        sales_user_id: 1, // dummy
+        bind_type: 1, // 数据库里是int
+        is_active: 1,
+      });
+    }
+
+    ctx.body = {
+      code: 200,
+      message: 'C端账号创建成功',
+      data: user.toJSON(),
     };
   }
 }

@@ -86,10 +86,10 @@ class RechargeRequestService extends Service {
     const strVal = String(identifier);
     // 9+ 位视为 user_id（即 user_code）
     if (strVal.length >= 9) {
-      const user = await ctx.model.User.findOne({ where: { user_id: strVal } });
+      const user = await ctx.model.SysUser.findOne({ where: { user_id: strVal } });
       if (user) return user;
     }
-    return await ctx.model.User.findByPk(Number(identifier));
+    return await ctx.model.SysUser.findByPk(Number(identifier));
   }
 
   /**
@@ -99,18 +99,14 @@ class RechargeRequestService extends Service {
    */
   async isFirstRecharge(userId) {
     const { ctx } = this;
-    const count = await ctx.model.RechargeRequest.count({
-      where: { user_id: userId, status: 1 },
+    const count = await ctx.model.UserRecharge.count({
+      where: { user_id: userId, status: 2 }, // 2 为审核通过
     });
     return count === 0;
   }
 
   /**
-   * 根据用户查询归属的业务员（admin_id/admin_name）
-   * 查找优先级：
-   *   1) user.bind_salesperson_id（直接绑定业务员ID -> admin_users.id）
-   *   2) user.bind_salesperson_id 且 user.admin_role=2（自身即为业务员）
-   *   3) user.user_referral_id（上级用户）-> 递归解析其归属业务员
+   * 根据用户查询归属的业务员
    * @param {number|string|Object} user 用户ID或用户对象
    * @return {Promise<{adminId:number|null, adminName:string|null}>} 返回业务员信息
    */
@@ -118,27 +114,17 @@ class RechargeRequestService extends Service {
     const { ctx } = this;
     if (!user) return { adminId: null, adminName: null };
 
-    let u = typeof user === 'number' || typeof user === 'string'
+    const u = typeof user === 'number' || typeof user === 'string'
       ? await this.getUserByIdOrCode(user)
       : user;
     if (!u) return { adminId: null, adminName: null };
 
-    const visited = new Set();
-    while (u) {
-      const uid = u.user_id; // 使用 user_id（9-12位）作为访问标识
-      if (visited.has(uid)) break;
-      visited.add(uid);
-
-      // 1) 优先使用 bind_salesperson_id
-      if (u.bind_salesperson_id) {
-        const sp = await ctx.model.AdminUser.findByPk(Number(u.bind_salesperson_id));
-        if (sp) return { adminId: sp.id, adminName: sp.nickname || sp.username || String(sp.id) };
-      }
-
-      // 3) 沿 user_referral_id 向上递归
-      if (!u.user_referral_id) break;
-      u = await this.getUserByIdOrCode(u.user_referral_id);
+    // 如果直接有 shop_id，可以尝试找店长或绑定的业务员
+    if (u.salesman_user_id) {
+      const sp = await ctx.model.SysUser.findByPk(u.salesman_user_id);
+      if (sp) return { adminId: sp.user_id, adminName: sp.nickname || sp.username };
     }
+
     return { adminId: null, adminName: null };
   }
 
@@ -215,23 +201,21 @@ class RechargeRequestService extends Service {
     const { adminId, adminName } = await this.resolveSalespersonAdmin(user);
     ctx.logger.info('[RechargeRequestService.create] 归属业务员解析结果: adminId=%s, adminName=%s', adminId, adminName);
 
-    const request = await ctx.model.RechargeRequest.create({
-      user_id: user.id, // 使用主键ID存储到充值请求表
-      admin_id: adminId || null,
-      admin_name: adminName || null,
-      order_num: await this.generateOrderNum(),
-      do_money: amount,
-      sys_get_money: amount,
-      user_get_money: amount,
-      sx_money: 0,
-      status: 0,
-      examine_type: examine_type !== undefined ? Number(examine_type) : 0,
-      pay_way: pay_way !== undefined ? Number(pay_way) : 0,
-      is_first: first ? 1 : 0,
+    const request = await ctx.model.UserRecharge.create({
+      user_id: user.user_id,
+      shop_id: user.shop_id,
+      sales_user_id: adminId || 0,
+      order_no: await this.generateOrderNum(),
+      amount,
+      system_receive_amount: amount,
+      user_receive_amount: amount,
+      fee: 0,
+      status: 1, // 1待审核
+      is_first_recharge: first ? 1 : 0,
       remark: remark || null,
     });
 
-    ctx.logger.info('[RechargeRequestService.create] 充值请求创建成功，订单号: %s，用户主键ID: %s，金额: %s，状态: %s', request.order_num, request.user_id, request.do_money, request.status);
+    ctx.logger.info('[RechargeRequestService.create] 充值请求创建成功，订单号: %s，用户ID: %s，金额: %s', request.order_no, request.user_id, request.amount);
 
     return request.toJSON();
   }
@@ -271,9 +255,9 @@ class RechargeRequestService extends Service {
       where,
       include: [
         {
-          model: ctx.model.User,
+          model: ctx.model.SysUser,
           as: 'user',
-          attributes: [ 'id', 'user_id', 'user_phone', 'user_name' ],
+          attributes: [ 'user_id', 'phone', 'username', 'nickname' ],
         },
       ],
       order: [[ 'id', 'DESC' ]],
@@ -294,85 +278,41 @@ class RechargeRequestService extends Service {
    * @return {Object} 更新后的充值请求
    */
   async auditSuccess(payload) {
-    const { ctx } = this;
-    const { recharge_id, recharge_money, recharge_user_arrive_money, recharge_platform_arrive_money, examine_type, remark, google_code } = payload;
+    const { ctx, service } = this;
+    const { recharge_id, remark } = payload;
 
-    // 必填参数校验
-    ctx.assert(recharge_id !== undefined && recharge_id !== '', 422, 'recharge_id不能为空');
-    ctx.assert(recharge_money !== undefined && recharge_money !== '', 422, 'recharge_money不能为空');
-    ctx.assert(recharge_user_arrive_money !== undefined && recharge_user_arrive_money !== '', 422, 'recharge_user_arrive_money不能为空');
-    ctx.assert(recharge_platform_arrive_money !== undefined && recharge_platform_arrive_money !== '', 422, 'recharge_platform_arrive_money不能为空');
-    ctx.assert(examine_type !== undefined && examine_type !== '', 422, 'examine_type不能为空');
-    ctx.assert(remark !== undefined && remark !== '', 422, 'remark不能为空');
+    ctx.assert(recharge_id, 422, 'recharge_id不能为空');
 
-    // 校验 google_code（二级密码）
-    const operator = ctx.state.admin || {};
-    const adminUser = operator.adminId ? await ctx.model.AdminUser.findByPk(operator.adminId) : null;
-    ctx.assert(adminUser, 401, '管理员不存在');
-
-    if (adminUser.google_code) {
-      ctx.assert(google_code !== undefined && google_code !== '', 422, 'google_code不能为空');
-      const speakeasy = require('speakeasy');
-      const verified = speakeasy.totp.verify({
-        secret: adminUser.google_code,
-        encoding: 'base32',
-        token: google_code,
-        window: 1,
-      });
-
-      if (!verified) {
-        ctx.throw(422, 'google_code验证失败');
-      }
-    }
-
-    const request = await ctx.model.RechargeRequest.findByPk(Number(recharge_id));
+    const request = await ctx.model.UserRecharge.findByPk(Number(recharge_id));
     ctx.assert(request, 404, '充值请求不存在');
-    ctx.assert(request.status === 0, 422, '该充值请求已处理');
+    ctx.assert(request.status === 1, 422, '该充值请求已处理');
 
-    let finalAdminId = request.admin_id || null;
-    let finalAdminName = request.admin_name || null;
-    if (!finalAdminId) {
-      const resolved = await this.resolveSalespersonAdmin(request.user_id);
-      if (resolved.adminId) {
-        finalAdminId = resolved.adminId;
-        finalAdminName = resolved.adminName;
-      } else {
-        const currentAdmin = await ctx.model.AdminUser.findByPk(operator.adminId);
-        finalAdminId = operator.adminId || null;
-        finalAdminName = currentAdmin ? (currentAdmin.nickname || currentAdmin.username) : null;
-      }
-    }
-
-    const updateData = {
-      status: 1,
-      admin_id: finalAdminId,
-      admin_name: finalAdminName,
-      do_money: Number(recharge_money),
-      user_get_money: Number(recharge_user_arrive_money),
-      sys_get_money: Number(recharge_platform_arrive_money),
-      examine_type: Number(examine_type),
-      remark,
-    };
-
-    const user = await ctx.model.User.findByPk(request.user_id);
+    const user = await ctx.model.SysUser.findByPk(request.user_id);
     ctx.assert(user, 422, '用户不存在');
 
-    // 事务：更新请求 + 给用户加余额 + 累加充值金额
+    // 事务：更新请求 + 给用户加余额
     const transaction = await ctx.model.transaction();
     try {
-      await request.update(updateData, { transaction });
+      await request.update({
+        status: 2, // 审核通过
+        remark: remark || request.remark,
+        audit_time: new Date(),
+        audit_user_id: ctx.state.admin ? ctx.state.admin.adminId : 0,
+      }, { transaction });
 
-      const addAmount = updateData.user_get_money;
-      const rechargeAmount = updateData.do_money;
-      if (Number(addAmount) > 0 || Number(rechargeAmount) > 0) {
-        const updateFields = {};
-        if (Number(addAmount) > 0) {
-          updateFields.user_balance = Number(user.user_balance) + Number(addAmount);
-        }
-        if (Number(rechargeAmount) > 0) {
-          updateFields.recharge_amount = Number(user.recharge_amount) + Number(rechargeAmount);
-        }
-        await user.update(updateFields, { transaction });
+      // 更新钱包余额
+      const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: user.user_id }, transaction });
+      if (wallet) {
+        await wallet.increment({
+          balance: Number(request.user_receive_amount),
+          total_recharge_amount: Number(request.amount),
+        }, { transaction });
+      } else {
+        await ctx.model.UserWallet.create({
+          user_id: user.user_id,
+          balance: Number(request.user_receive_amount),
+          total_recharge_amount: Number(request.amount),
+        }, { transaction });
       }
 
       await transaction.commit();
@@ -381,7 +321,10 @@ class RechargeRequestService extends Service {
       throw err;
     }
 
-    return this.formatRechargeRecord(request, user);
+    // 审核通过后，刷新用户的 VIP 等级
+    await service.vipLevel.refreshUserVip(user.user_id);
+
+    return request.toJSON();
   }
 
   /**
@@ -392,61 +335,23 @@ class RechargeRequestService extends Service {
    */
   async auditFail(payload) {
     const { ctx } = this;
-    const { recharge_id, remark, google_code } = payload;
+    const { recharge_id, remark } = payload;
 
-    // 必填参数校验
-    ctx.assert(recharge_id !== undefined && recharge_id !== '', 422, 'recharge_id不能为空');
-    ctx.assert(remark !== undefined && remark !== '', 422, 'remark不能为空');
+    ctx.assert(recharge_id, 422, 'recharge_id不能为空');
+    ctx.assert(remark, 422, 'remark不能为空');
 
-    // 校验 google_code（二级密码）
-    const operator = ctx.state.admin || {};
-    const adminUser = operator.adminId ? await ctx.model.AdminUser.findByPk(operator.adminId) : null;
-    ctx.assert(adminUser, 401, '管理员不存在');
-
-    if (adminUser.google_code) {
-      ctx.assert(google_code !== undefined && google_code !== '', 422, 'google_code不能为空');
-      const speakeasy = require('speakeasy');
-      const verified = speakeasy.totp.verify({
-        secret: adminUser.google_code,
-        encoding: 'base32',
-        token: google_code,
-        window: 1,
-      });
-
-      if (!verified) {
-        ctx.throw(422, 'google_code验证失败');
-      }
-    }
-
-    const request = await ctx.model.RechargeRequest.findByPk(Number(recharge_id));
+    const request = await ctx.model.UserRecharge.findByPk(Number(recharge_id));
     ctx.assert(request, 404, '充值请求不存在');
-    ctx.assert(request.status === 0, 422, '该充值请求已处理');
+    ctx.assert(request.status === 1, 422, '该充值请求已处理');
 
-    let finalAdminId = request.admin_id || null;
-    let finalAdminName = request.admin_name || null;
-    if (!finalAdminId) {
-      const resolved = await this.resolveSalespersonAdmin(request.user_id);
-      if (resolved.adminId) {
-        finalAdminId = resolved.adminId;
-        finalAdminName = resolved.adminName;
-      } else {
-        const currentAdmin = await ctx.model.AdminUser.findByPk(operator.adminId);
-        finalAdminId = operator.adminId || null;
-        finalAdminName = currentAdmin ? (currentAdmin.nickname || currentAdmin.username) : null;
-      }
-    }
-
-    const updateData = {
-      status: 2,
-      admin_id: finalAdminId,
-      admin_name: finalAdminName,
+    await request.update({
+      status: 3, // 3 审核驳回
       remark,
-    };
+      audit_time: new Date(),
+      audit_user_id: ctx.state.admin ? ctx.state.admin.adminId : 0,
+    });
 
-    await request.update(updateData);
-
-    const user = await ctx.model.User.findByPk(request.user_id);
-    return this.formatRechargeRecord(request, user);
+    return request.toJSON();
   }
 
   /**
@@ -459,11 +364,7 @@ class RechargeRequestService extends Service {
     const { ctx } = this;
     const { status, page = 1, pageSize = 10 } = query;
 
-    // 根据 user_id 查找用户的数据库主键ID
-    const user = await this.getUserByIdOrCode(userId);
-    const dbUserId = user ? user.id : userId;
-
-    const where = { user_id: dbUserId };
+    const where = { user_id: userId };
     if (status !== undefined && status !== '') {
       where.status = Number(status);
     }
@@ -472,7 +373,7 @@ class RechargeRequestService extends Service {
     const size = Math.min(100, Math.max(1, Number(pageSize) || 10));
     const offset = (pageNum - 1) * size;
 
-    const { count, rows } = await ctx.model.RechargeRequest.findAndCountAll({
+    const { count, rows } = await ctx.model.UserRecharge.findAndCountAll({
       where,
       order: [[ 'id', 'DESC' ]],
       offset,
@@ -480,15 +381,14 @@ class RechargeRequestService extends Service {
     });
 
     const list = rows.map(item => ({
-      rechargeId: item.id,
-      orderNum: item.order_num,
-      doMoney: Number(item.do_money),
-      userGetMoney: Number(item.user_get_money),
+      recharge_id: item.id,
+      order_no: item.order_no,
+      amount: Number(item.amount),
+      user_receive_amount: Number(item.user_receive_amount),
       status: item.status,
-      payWay: item.pay_way,
-      isFirst: item.is_first,
+      is_first_recharge: item.is_first_recharge,
       remark: item.remark || null,
-      cTime: item.created_at ? new Date(item.created_at).toISOString() : null,
+      create_time: this.formatDate(item.create_time),
     }));
 
     return {

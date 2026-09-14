@@ -9,21 +9,20 @@ const DEFAULT_BANNER_IMAGE = 'https://shbaikal.com/data/upload/20240812/0ac77301
  */
 class BannerService extends Service {
   /**
-   * 获取轮播图列表
+   * 获取轮播图列表 (C端)
    * @return {Array} 轮播图数组
    */
   async list() {
     const { ctx } = this;
-    const rows = await ctx.model.Banner.findAll({
-      where: { status: 1 },
-      order: [[ 'sort', 'DESC' ], [ 'id', 'DESC' ]],
+    const rows = await ctx.model.SysH5Config.findAll({
+      where: { config_type: 1, status: 1, is_deleted: 0 },
+      order: [[ 'sort', 'ASC' ], [ 'id', 'DESC' ]],
     });
-    return rows;
+    return rows.map(item => this.formatBanner(item));
   }
 
   /**
    * 管理端轮播图列表
-   * 返回全部状态，支持状态筛选
    * @param {Object} query 查询参数
    * @return {Array} 轮播图数组
    */
@@ -31,16 +30,16 @@ class BannerService extends Service {
     const { ctx } = this;
     const { status } = query;
 
-    const where = {};
+    const where = { config_type: 1, is_deleted: 0 };
     if (status !== undefined && status !== null && status !== '') {
       where.status = Number(status);
     }
 
-    const rows = await ctx.model.Banner.findAll({
+    const rows = await ctx.model.SysH5Config.findAll({
       where,
-      order: [[ 'sort', 'DESC' ], [ 'id', 'DESC' ]],
+      order: [[ 'sort', 'ASC' ], [ 'id', 'DESC' ]],
     });
-    return rows;
+    return rows.map(item => this.formatBanner(item));
   }
 
   /**
@@ -50,11 +49,13 @@ class BannerService extends Service {
    */
   async detail(id) {
     const { ctx } = this;
-    const banner = await ctx.model.Banner.findByPk(id);
+    const banner = await ctx.model.SysH5Config.findOne({
+      where: { id, config_type: 1, is_deleted: 0 },
+    });
     if (!banner || banner.status !== 1) {
       ctx.throw(404, '轮播图不存在或已禁用');
     }
-    return banner;
+    return this.formatBanner(banner);
   }
 
   /**
@@ -66,8 +67,16 @@ class BannerService extends Service {
     const { ctx } = this;
     this.validatePayload(payload);
 
-    const banner = await ctx.model.Banner.create(payload);
-    return banner.toJSON();
+    const banner = await ctx.model.SysH5Config.create({
+      config_type: 1,
+      title: payload.title || 'Banner',
+      cover_image: payload.image || payload.cover_image,
+      extra: { linkUrl: payload.linkUrl || payload.link_url },
+      sort: payload.sort || 0,
+      status: payload.status !== undefined ? payload.status : 1,
+      remark: payload.remark,
+    });
+    return this.formatBanner(banner);
   }
 
   /**
@@ -78,27 +87,60 @@ class BannerService extends Service {
    */
   async update(id, payload) {
     const { ctx } = this;
-    const banner = await ctx.model.Banner.findByPk(id);
+    const banner = await ctx.model.SysH5Config.findOne({
+      where: { id, config_type: 1, is_deleted: 0 },
+    });
     if (!banner) {
       ctx.throw(404, '轮播图不存在');
     }
 
-    await banner.update(payload);
-    return banner.toJSON();
+    const updateData = {};
+    if (payload.title) updateData.title = payload.title;
+    if (payload.image || payload.cover_image) updateData.cover_image = payload.image || payload.cover_image;
+    if (payload.linkUrl !== undefined || payload.link_url !== undefined) {
+      updateData.extra = { ...banner.extra, linkUrl: payload.linkUrl || payload.link_url };
+    }
+    if (payload.sort !== undefined) updateData.sort = payload.sort;
+    if (payload.status !== undefined) updateData.status = payload.status;
+    if (payload.remark !== undefined) updateData.remark = payload.remark;
+
+    await banner.update(updateData);
+    return this.formatBanner(banner);
   }
 
   /**
-   * 删除轮播图（物理删除）
+   * 删除轮播图
    * @param {number} id 轮播ID
    */
   async destroy(id) {
     const { ctx } = this;
-    const banner = await ctx.model.Banner.findByPk(id);
+    const banner = await ctx.model.SysH5Config.findOne({
+      where: { id, config_type: 1, is_deleted: 0 },
+    });
     if (!banner) {
       ctx.throw(404, '轮播图不存在');
     }
 
-    await banner.destroy();
+    await banner.update({ is_deleted: 1 });
+  }
+
+  /**
+   * 格式化输出
+   * @param item
+   */
+  formatBanner(item) {
+    const data = item.toJSON ? item.toJSON() : item;
+    return {
+      id: data.id,
+      title: data.title,
+      image: data.cover_image,
+      imageUrl: data.cover_image,
+      linkUrl: data.extra ? data.extra.linkUrl : '',
+      sort: data.sort,
+      status: data.status,
+      remark: data.remark,
+      create_time: data.create_time,
+    };
   }
 
   /**
@@ -107,7 +149,7 @@ class BannerService extends Service {
    */
   validatePayload(payload) {
     const { ctx } = this;
-    ctx.assert(payload.image, 422, '图片地址不能为空');
+    ctx.assert(payload.image || payload.cover_image, 422, '图片地址不能为空');
   }
 }
 

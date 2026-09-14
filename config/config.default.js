@@ -56,7 +56,7 @@ module.exports = appInfo => {
     username: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     define: {
-      underscored: true,
+      underscored: false,
       freezeTableName: true,
       timestamps: true,
       createdAt: 'created_at',
@@ -116,7 +116,7 @@ module.exports = appInfo => {
       },
     },
     enableSecurity: true,
-    enableValidate: true,
+    enableValidate: false,
     routerMap: false,
     enable: true,
   };

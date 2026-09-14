@@ -19,11 +19,22 @@ class ProductController extends Controller {
    */
   async index() {
     const { ctx, service } = this;
-    const { type, keyword, page, page_size } = ctx.query;
-    const locale = ctx.locale || 'zh-CN';
+    // 同时兼容 type 和 category_id，兼容 pageSize 和 page_size，以及 order_by
+    const { type, category_id, keyword, page, page_size, pageSize, is_home, order_by } = ctx.query;
 
-    // 移动端商品列表与管理端共用查询逻辑，但只返回上架（status=1）商品
-    const result = await service.product.adminList({ type, keyword, status: 1, page, page_size, locale });
+    const queryCategoryId = category_id || type;
+    const queryPageSize = pageSize || page_size;
+
+    // 移动端商品列表，只返回上架（status=1）商品
+    const result = await service.goods.list({
+      category_id: queryCategoryId,
+      goods_name: keyword,
+      status: 1,
+      is_home,
+      page,
+      page_size: queryPageSize,
+      order_by,
+    });
 
     ctx.body = {
       code: 200,
@@ -42,9 +53,8 @@ class ProductController extends Controller {
   async show() {
     const { ctx, service } = this;
     const { id } = ctx.params;
-    const locale = ctx.locale || 'zh-CN';
 
-    const product = await service.product.detail(id, locale);
+    const product = await service.goods.detail(id);
 
     ctx.body = {
       code: 200,

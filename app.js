@@ -3,15 +3,26 @@
 /* eslint-disable no-unused-vars, no-inner-declarations */
 
 const DEFAULT_BANNER_IMAGE = 'https://shbaikal.com/data/upload/20240812/0ac77301590c926eb4c9ecfa38936caa.jpg';
+const TableNames = require('./app/constant/table_names');
 
 /**
  * 应用启动入口
  * @param {Egg.Application} app 应用实例
  */
-module.exports = app => {
-  // 应用启动后自动同步数据库模型（仅开发环境使用）
-  // 生产环境建议使用 Sequelize CLI 迁移脚本管理数据库变更
-  app.beforeStart(async () => {
+class AppBootHook {
+  constructor(app) {
+    this.app = app;
+  }
+
+  configWillLoad() {
+    // 在配置文件加载完成后，模型加载前，挂载常量到全局 app 对象
+    this.app.TableNames = TableNames;
+  }
+
+  async beforeStart() {
+    const app = this.app;
+    // 应用启动后自动同步数据库模型（仅开发环境使用）
+    // 生产环境建议使用 Sequelize CLI 迁移脚本管理数据库变更
     if (app.config.env === 'local') {
       app.logger.info('[app] 本地开发环境，准备同步数据库模型...');
       try {
@@ -20,22 +31,7 @@ module.exports = app => {
         app.logger.info('[app] 数据库模型同步完成');
 
         // 同步 admin_users 表新增字段（兼容已存在的数据库）
-        await syncAdminUserColumns(app);
-        await syncUserColumns(app);
-        await syncUserTaskStartedColumn(app);
-        await syncRechargeWayAddressColumn(app);
-        await syncAdminUserToMobile(app);
-        await syncStrategyRuleColumns(app);
-        await syncTaskColumns(app);
-        await syncUserCredentialColumns(app);
-        await syncWithdrawColumns(app);
-        await syncRechargeRecordColumns(app);
-        await syncAdminOperationLogColumns(app);
-        await syncAdminLoginLogColumns(app);
-        await syncUserLoginLogColumns(app);
-        await syncMenuColumns(app);
-        await syncRoleColumns(app);
-        await syncRoleMenuTable(app);
+
 
         // 初始化默认数据 (已注释，不再自动生成)
         // await initDefaultUser(app);
@@ -54,14 +50,16 @@ module.exports = app => {
         // await initDefaultOrder(app);
         // await initDefaultRecharge(app);
         // await initDefaultMenu(app);
-        // await initDefaultRoles(app);
+        //
       } catch (err) {
         app.logger.error('[app] 数据库模型同步失败：', err.message);
         app.logger.error('[app] 请确认 MySQL 服务已启动且连接配置正确');
       }
     }
-  });
-};
+  }
+}
+
+module.exports = AppBootHook;
 
 /**
  * 初始化默认测试用户
@@ -74,12 +72,12 @@ async function initDefaultUser(app) {
   const defaultPassword = '123456';
 
   try {
-    const existUser = await ctx.model.User.findOne({ where: { user_phone: defaultPhone } });
+    const existUser = await ctx.model.SysUser.findOne({ where: { phone: defaultPhone, user_type: 4 } });
     if (existUser) {
       // 如果已存在但没有邀请码，补充生成
-      if (!existUser.user_invite_code) {
+      if (!existUser.invite_code) {
         const inviteCode = await ctx.service.user.generateInviteCode();
-        await existUser.update({ user_invite_code: inviteCode });
+        await existUser.update({ invite_code: inviteCode });
         app.logger.info('[app] 默认测试用户已补充邀请码：%s', inviteCode);
       } else {
         app.logger.info('[app] 默认测试用户已存在，跳过初始化');
@@ -88,14 +86,14 @@ async function initDefaultUser(app) {
     }
 
     const hashedPassword = await ctx.genHash(defaultPassword);
-    const user = await ctx.model.User.create({
-      user_id: Date.now(),
-      user_name: defaultPhone,
-      user_phone: defaultPhone,
-      user_password: hashedPassword,
-      user_nickname: '默认用户',
-      user_status: 1,
-      user_invite_code: await ctx.service.user.generateInviteCode(),
+    const user = await ctx.model.SysUser.create({
+      username: defaultPhone,
+      phone: defaultPhone,
+      password: hashedPassword,
+      nickname: '默认用户',
+      status: 1,
+      user_type: 4,
+      invite_code: await ctx.service.user.generateInviteCode(),
     });
 
     app.logger.info('[app] 默认测试用户创建成功，手机号：%s', defaultPhone);
@@ -321,7 +319,7 @@ async function initDefaultOrder(app) {
   const ctx = app.createAnonymousContext();
 
   try {
-    const user = await ctx.model.User.findOne({ where: { user_phone: '123456' } });
+    const user = await ctx.model.SysUser.findOne({ where: { phone: '123456', user_type: 4 } });
     if (!user) {
       app.logger.info('[app] 默认用户不存在，跳过默认订单初始化');
       return;
@@ -396,7 +394,7 @@ async function initDefaultRecharge(app) {
   const ctx = app.createAnonymousContext();
 
   try {
-    const user = await ctx.model.User.findOne({ where: { user_phone: '123456' } });
+    const user = await ctx.model.SysUser.findOne({ where: { phone: '123456', user_type: 4 } });
     if (!user) {
       app.logger.info('[app] 默认用户不存在，跳过默认充值明细初始化');
       return;
@@ -445,14 +443,14 @@ async function initDefaultTeamMembers(app) {
   ];
 
   try {
-    const parent = await ctx.model.User.findOne({ where: { user_phone: '123456' } });
+    const parent = await ctx.model.SysUser.findOne({ where: { phone: '123456', user_type: 4 } });
     if (!parent) {
       app.logger.info('[app] 默认用户不存在，跳过团队测试数据初始化');
       return;
     }
 
-    const existCount = await ctx.model.User.count({
-      where: { user_referral_id: parent.user_id, user_status: 1 },
+    const existCount = await ctx.model.SysUser.count({
+      where: { inviter_user_id: parent.user_id, status: 1, user_type: 4 },
     });
     if (existCount > 0) {
       app.logger.info('[app] 团队测试数据已存在，跳过初始化');
@@ -464,20 +462,18 @@ async function initDefaultTeamMembers(app) {
 
     for (let i = 0; i < members.length; i++) {
       const item = members[i];
-      const user = await ctx.model.User.create({
-        user_id: Date.now() + i,
-        user_name: item.phone,
-        user_password: defaultPassword,
-        user_withdraw_password: defaultWithdrawPassword,
-        user_phone: item.phone,
-        user_nickname: item.nickname,
-        user_referral_id: parent.user_id,
-        user_vip: 1,
-        total_recharge_amount: item.recharge_amount,
-        user_invite_income: 10,
-        user_status: 1,
-        user_invite_code: await ctx.service.user.generateInviteCode(),
+      const user = await ctx.model.SysUser.create({
+        username: item.phone,
+        password: defaultPassword,
+        phone: item.phone,
+        nickname: item.nickname,
+        inviter_user_id: parent.user_id,
+        vip_level: 1,
+        status: 1,
+        user_type: 4,
+        invite_code: await ctx.service.user.generateInviteCode(),
       });
+      // 注意：withdraw_password，total_recharge_amount 等现在应存入 user_wallet 或通过统计获取
     }
 
     app.logger.info('[app] 团队测试数据创建成功，共 %s 条', members.length);
@@ -678,7 +674,7 @@ async function initDefaultDashboardData(app) {
   const today = new Date().toISOString().slice(0, 10);
 
   try {
-    const user = await ctx.model.User.findOne({ where: { user_phone: '123456' } });
+    const user = await ctx.model.SysUser.findOne({ where: { phone: '123456', user_type: 4 } });
     if (!user) {
       app.logger.info('[app] 默认用户不存在，跳过首页测试数据初始化');
       return;
@@ -1280,35 +1276,33 @@ async function syncAdminLoginLogColumns(app) {
 }
 
 /**
- * 同步 user_login_logs 表新增字段
+ * 同步 user_login_log 表新增字段
  * 兼容已存在旧表结构的数据库
  * @param {Egg.Application} app 应用实例
  */
 async function syncUserLoginLogColumns(app) {
   const queryInterface = app.model.queryInterface;
   const { Sequelize } = app;
-  const tableName = 'user_login_logs';
+  const tableName = 'user_login_log';
 
   try {
     const columns = await queryInterface.describeTable(tableName);
 
     const columnDefs = {
-      location: { type: Sequelize.STRING(255), comment: '登录地点' },
-      remark: { type: Sequelize.STRING(500), comment: '备注' },
-      created_at: { type: Sequelize.DATE, comment: '创建时间' },
-      updated_at: { type: Sequelize.DATE, comment: '更新时间' },
+      login_location: { type: Sequelize.STRING(128), comment: '登录地点' },
+      remark: { type: Sequelize.STRING(256), comment: '备注' },
     };
 
     for (const [ columnName, columnDef ] of Object.entries(columnDefs)) {
       if (!columns[columnName]) {
         await queryInterface.addColumn(tableName, columnName, columnDef);
-        app.logger.info('[app] user_login_logs 表新增字段：%s', columnName);
+        app.logger.info('[app] user_login_log 表新增字段：%s', columnName);
       }
     }
 
-    app.logger.info('[app] user_login_logs 表字段同步完成');
+    app.logger.info('[app] user_login_log 表字段同步完成');
   } catch (err) {
-    app.logger.error('[app] 同步 user_login_logs 字段失败：', err.message);
+    app.logger.error('[app] 同步 user_login_log 字段失败：', err.message);
   }
 }
 
@@ -1316,82 +1310,8 @@ async function syncUserLoginLogColumns(app) {
  * 初始化默认角色
  * @param app
  */
-async function initDefaultRoles(app) {
-  const ctx = app.createAnonymousContext();
-  try {
-    const count = await ctx.model.Role.count();
-    if (count > 0) return;
-
-    await ctx.model.Role.bulkCreate([
-      { roleId: 1, roleName: '超级管理员', roleKey: 'admin', roleSort: 1, remark: '超级管理员' },
-      { roleId: 100, roleName: '管理员', roleKey: 'root', roleSort: 2, remark: '管理员' },
-      { roleId: 2, roleName: '业务员', roleKey: 'user', roleSort: 3, dataScope: '2', remark: '业务员' },
-    ]);
-    app.logger.info('[app] 默认角色创建成功');
-  } catch (err) {
-    app.logger.error('[app] 默认角色创建失败：', err.message);
-  }
-}
-
-async function syncRoleMenuTable(app) {
-  const queryInterface = app.model.queryInterface;
-  const tableName = 'role_menus';
-  try {
-    await queryInterface.describeTable(tableName);
-  } catch (err) {
-    app.logger.info('[app] role_menus 表不存在，将自动创建');
-    await app.model.RoleMenu.sync();
-  }
-}
-
-/**
- * 同步 role 表结构
- * @param app
- */
-async function syncRoleColumns(app) {
-  const queryInterface = app.model.queryInterface;
-  const { Sequelize } = app;
-  const tableName = 'roles';
-  try {
-    await queryInterface.describeTable(tableName);
-  } catch (err) {
-    app.logger.info('[app] roles 表不存在，将自动创建');
-  }
-}
-
-/**
- * 同步 menus 表新增字段
-
- * @param {Egg.Application} app 应用实例
- */
-async function syncMenuColumns(app) {
-  const queryInterface = app.model.queryInterface;
-  const { Sequelize } = app;
-  const tableName = 'menus';
-
-  try {
-    const columns = await queryInterface.describeTable(tableName);
-
-    const columnDefs = {
-      sort: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 0, comment: '排序' },
-      type: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 1, comment: '类型（0=目录，1=菜单，2=按钮）' },
-      is_ext: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: false, comment: '是否外链' },
-      keep_alive: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true, comment: '是否缓存' },
-      status: { type: Sequelize.BOOLEAN, allowNull: false, defaultValue: true, comment: '状态' },
-      permission: { type: Sequelize.STRING(64), allowNull: true, comment: '权限字符' },
-    };
-
-    for (const [ name, def ] of Object.entries(columnDefs)) {
-      if (!columns[name]) {
-        await queryInterface.addColumn(tableName, name, def);
-        app.logger.info(`[app] menus 表新增字段：${name}`);
-      }
-    }
-  } catch (err) {
-    app.logger.error('[app] 同步 menus 字段失败：', err.message);
-  }
-}
-
+async function initDefaultRoles(app) {}
+async function syncRoleMenuTable(app) {}
 async function syncUserColumns(app) {
   const queryInterface = app.model.queryInterface;
   const { Sequelize } = app;
@@ -1431,35 +1351,11 @@ async function syncAdminUserToMobile(app) {
       raw: true,
     });
 
-    let syncedCount = 0;
+    const syncedCount = 0;
     for (const admin of admins) {
-      const exist = await ctx.model.User.findOne({ where: { admin_id: admin.id } });
-      if (exist) continue;
-
-      // 检查账号是否已被普通用户占用
-      const phoneOccupied = await ctx.model.User.findOne({ where: { user_phone: admin.username } });
-      if (phoneOccupied) {
-        app.logger.warn('[app] 管理员账号 %s 已被普通用户占用，跳过同步', admin.username);
-        continue;
-      }
-
-      const linkedUser = await ctx.model.User.create({
-        user_id: Date.now() + admin.id,
-        user_name: admin.username,
-        user_password: admin.password,
-        user_withdraw_password: '123456',
-        user_phone: admin.username,
-        user_nickname: admin.nickname || admin.username,
-        user_status: admin.status,
-        admin_id: admin.id,
-        admin_role: admin.role,
-        user_referral_id: admin.bind_salesperson_id || null,
-        user_ip: '127.0.0.1',
-        user_country: '本地',
-        user_invite_code: await ctx.service.user.generateInviteCode(),
-      });
-
-      syncedCount++;
+      // 在 sys_user 表中，admin 的记录直接就存在了，因此不再需要同步到独立的移动端用户表。
+      // 下面的逻辑已作废。
+      continue;
     }
 
     if (syncedCount > 0) {

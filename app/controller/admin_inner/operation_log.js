@@ -14,7 +14,7 @@ class OperationLogController extends Controller {
    */
   async index() {
     const { ctx, service } = this;
-    const result = await service.operationLog.adminList(ctx.query);
+    const result = await service.sysLog.operationLogs(ctx.query);
 
     ctx.body = {
       code: 200,
@@ -30,7 +30,7 @@ class OperationLogController extends Controller {
    */
   async batchDestroy() {
     const { ctx, service } = this;
-    await service.operationLog.batchDestroy(ctx.request.body.ids);
+    await service.sysLog.batchDestroyOperationLogs(ctx.request.body.ids);
 
     ctx.body = {
       code: 200,
@@ -46,7 +46,7 @@ class OperationLogController extends Controller {
    */
   async clear() {
     const { ctx, service } = this;
-    await service.operationLog.clearAll();
+    await service.sysLog.clearOperationLogs();
 
     ctx.body = {
       code: 200,

@@ -9,7 +9,7 @@ const Controller = require('egg').Controller;
 class OrderController extends Controller {
   /**
    * @summary 创建订单
-   * @description 从购物车创建订单
+   * @description 创建商品订单
    * @router post /api/mobile/orders
    * @request header string Authorization Bearer token
    * @request body OrderCreateRequest *body 订单信息
@@ -18,12 +18,13 @@ class OrderController extends Controller {
   async create() {
     const { ctx, service } = this;
     const { userId } = ctx.state.user;
-    const { address_id, cart_item_ids, remark } = ctx.request.body;
+    const { address_id, product_id, quantity, remark } = ctx.request.body;
 
     ctx.assert(address_id, 422, '请选择收货地址');
-    ctx.assert(Array.isArray(cart_item_ids) && cart_item_ids.length > 0, 422, '请选择要购买的商品');
+    ctx.assert(product_id, 422, '请选择要购买的商品');
+    ctx.assert(quantity > 0, 422, '购买数量必须大于0');
 
-    const order = await service.order.create(userId, { address_id, cart_item_ids, remark });
+    const order = await service.order.create(userId, { address_id, product_id, quantity, remark });
 
     ctx.body = {
       code: 200,

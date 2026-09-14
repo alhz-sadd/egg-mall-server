@@ -5,7 +5,14 @@ const Controller = require('egg').Controller;
 class AuthController extends Controller {
   async login() {
     const { ctx, service } = this;
-    const result = await service.adminInnerUser.login(ctx.request.body);
+    const meta = {
+      ip: ctx.ip,
+      userAgent: ctx.get('user-agent'),
+      device: 1, // 默认PC
+      browser: '未知',
+      os: '未知',
+    };
+    const result = await service.adminInnerUser.login(ctx.request.body, meta);
     ctx.body = {
       code: 200,
       message: '登录成功',
@@ -24,7 +31,7 @@ class AuthController extends Controller {
 
   async current() {
     const { ctx } = this;
-    const adminInner = await ctx.model.AdminInnerUser.findByPk(ctx.state.adminInner.adminInnerId, {
+    const adminInner = await ctx.model.SysUser.findByPk(ctx.state.adminInner.adminInnerId, {
       attributes: { exclude: [ 'password' ] },
     });
     ctx.body = {
@@ -32,12 +39,10 @@ class AuthController extends Controller {
       message: '获取成功',
       data: {
         ...ctx.state.adminInner,
-        isBindGoogle: !!adminInner.google_code,
+        isBindGoogle: !!adminInner.totp_secret,
         nickname: adminInner.nickname,
         phone: adminInner.phone,
         email: adminInner.email,
-        gender: adminInner.gender,
-        remark: adminInner.remark,
       },
     };
   }
@@ -48,17 +53,15 @@ class AuthController extends Controller {
   async updateProfile() {
     const { ctx } = this;
     const adminInnerId = ctx.state.adminInner.adminInnerId;
-    const { nickname, phone, email, gender, remark } = ctx.request.body;
+    const { nickname, phone, email } = ctx.request.body;
 
-    const adminInner = await ctx.model.AdminInnerUser.findByPk(adminInnerId);
+    const adminInner = await ctx.model.SysUser.findByPk(adminInnerId);
     ctx.assert(adminInner, 401, '账号不存在');
 
     const updateData = {};
     if (nickname !== undefined) updateData.nickname = nickname;
     if (phone !== undefined) updateData.phone = phone;
     if (email !== undefined) updateData.email = email;
-    if (gender !== undefined) updateData.gender = Number(gender);
-    if (remark !== undefined) updateData.remark = remark;
 
     await adminInner.update(updateData);
 
@@ -85,7 +88,7 @@ class AuthController extends Controller {
       ctx.throw(422, '两次输入的新密码不一致');
     }
 
-    const adminInner = await ctx.model.AdminInnerUser.findByPk(adminInnerId);
+    const adminInner = await ctx.model.SysUser.findByPk(adminInnerId);
     ctx.assert(adminInner, 401, '账号不存在');
 
     const match = await ctx.compare(oldPassword, adminInner.password);
@@ -110,10 +113,10 @@ class AuthController extends Controller {
     const { ctx } = this;
     const adminInnerId = ctx.state.adminInner.adminInnerId;
 
-    const adminInner = await ctx.model.AdminInnerUser.findByPk(adminInnerId);
+    const adminInner = await ctx.model.SysUser.findByPk(adminInnerId);
     ctx.assert(adminInner, 401, '账号不存在');
 
-    await adminInner.update({ google_code: null });
+    await adminInner.update({ totp_secret: null });
 
     ctx.body = {
       code: 200,
@@ -132,7 +135,7 @@ class AuthController extends Controller {
     ctx.assert(username, 422, '为了您的账号安全，操作谷歌验证码需要验证账号');
     ctx.assert(password, 422, '为了您的账号安全，操作谷歌验证码需要验证登录密码');
 
-    const adminInner = await ctx.model.AdminInnerUser.findOne({ where: { username } });
+    const adminInner = await ctx.model.SysUser.findOne({ where: { username, user_type: 1 } });
     ctx.assert(adminInner, 401, '内部管理员账号不存在');
 
     // 验证当前登录密码
@@ -141,7 +144,7 @@ class AuthController extends Controller {
       ctx.throw(422, '登录密码错误，无法生成');
     }
 
-    if (adminInner.google_code) {
+    if (adminInner.totp_secret) {
       ctx.throw(422, '该账号已绑定谷歌验证码');
     }
 
@@ -176,10 +179,10 @@ class AuthController extends Controller {
     ctx.assert(userName, 422, '请提供要绑定的用户账号(userName)');
     ctx.assert(code, 422, '请提供谷歌验证器上的6位验证码(code)');
 
-    const adminInner = await ctx.model.AdminInnerUser.findOne({ where: { username: userName } });
+    const adminInner = await ctx.model.SysUser.findOne({ where: { username: userName, user_type: 1 } });
     ctx.assert(adminInner, 401, '内部管理员账号不存在');
 
-    if (adminInner.google_code) {
+    if (adminInner.totp_secret) {
       ctx.throw(422, '该账号已绑定谷歌验证码，无需重复绑定');
     }
 
@@ -206,7 +209,7 @@ class AuthController extends Controller {
     }
 
     // 验证通过，将密钥正式存入数据库，完成绑定
-    await adminInner.update({ google_code: secret });
+    await adminInner.update({ totp_secret: secret });
 
     // 绑定成功后清除缓存
     await app.redis.del(`admin_inner_google_auth_secret_${userName}`);
@@ -229,14 +232,14 @@ class AuthController extends Controller {
     ctx.assert(username, 422, '请提供当前管理员的登录账号(username)');
     ctx.assert(password, 422, '为了您的账号安全，解绑需要验证登录密码');
 
-    const adminInner = await ctx.model.AdminInnerUser.findByPk(adminInnerId);
+    const adminInner = await ctx.model.SysUser.findByPk(adminInnerId);
     ctx.assert(adminInner, 401, '内部管理员账号不存在');
 
     if (adminInner.username !== username) {
       ctx.throw(422, '提供的账号与当前登录账号不一致');
     }
 
-    if (!adminInner.google_code) {
+    if (!adminInner.totp_secret) {
       ctx.throw(422, '您当前未绑定谷歌验证码，无需解绑');
     }
 
@@ -246,13 +249,24 @@ class AuthController extends Controller {
       ctx.throw(422, '登录密码错误，无法解绑');
     }
 
-    // 2. 验证通过，清空 google_code
-    await adminInner.update({ google_code: null });
+    // 2. 验证通过，清空 totp_secret
+    await adminInner.update({ totp_secret: null });
 
     ctx.body = {
       code: 200,
       message: '解绑成功，下次登录将不再需要验证码',
       data: null,
+    };
+  }
+  /**
+   * TEMPORARY: Get JWT Secret (REMOVE AFTER USE)
+   */
+  async getJwtSecret() {
+    const { ctx } = this;
+    ctx.body = {
+      code: 200,
+      message: '获取成功',
+      data: ctx.app.config.jwt.secret,
     };
   }
 }

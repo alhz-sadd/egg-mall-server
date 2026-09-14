@@ -36,9 +36,9 @@ class UserCredentialService extends Service {
 
     if (operatorRole === 2) {
       // 业务员：查看自己绑定的用户 + 通过 parent_id 关联的下级用户
-      const linkedUsers = await ctx.model.User.findAll({
-        attributes: [ 'user_id', 'id' ],
-        where: { admin_id: operatorId },
+      const linkedUsers = await ctx.model.SysUser.findAll({
+        attributes: [ 'user_id' ],
+        where: { admin_id: operatorId, user_type: 4 },
         raw: true,
       });
       const linkedUserIds = linkedUsers.map(u => u.user_id);
@@ -50,12 +50,12 @@ class UserCredentialService extends Service {
         orConditions.push({ user_referral_id: { [Op.in]: linkedUserIds } });
       }
 
-      const users = await ctx.model.User.findAll({
-        attributes: [ 'id' ],
-        where: { [Op.or]: orConditions },
+      const users = await ctx.model.SysUser.findAll({
+        attributes: [ 'user_id' ],
+        where: { [Op.or]: orConditions, user_type: 4 },
         raw: true,
       });
-      return users.map(u => u.id);
+      return users.map(u => u.user_id);
     }
 
     return [];
@@ -110,9 +110,9 @@ class UserCredentialService extends Service {
       where,
       include: [
         {
-          model: ctx.model.User,
+          model: ctx.model.SysUser,
           as: 'user',
-          attributes: [ 'id', 'user_id', 'user_phone', 'user_name', 'admin_id' ],
+          attributes: [ 'user_id', 'username', 'nickname' ],
           where: Object.keys(userWhere).length > 0 ? userWhere : undefined,
           required: Object.keys(userWhere).length > 0, // 如果有 user 的查询条件，设为 INNER JOIN
         },
@@ -131,8 +131,8 @@ class UserCredentialService extends Service {
         return {
           id: item.id,
           userId: user.user_id || item.user_id,
-          userName: user.user_name || user.user_phone || '',
-          userPhone: user.user_phone || '',
+          userName: user.nickname || user.username || '',
+          userPhone: user.username || '',
           real_name: item.real_name,
           id_number: item.id_number,
           front_image: item.front_image,

@@ -48,31 +48,31 @@ class AuthController extends Controller {
         );
       } else if (decoded.type === 'admin_inner') {
         // 内部系统刷新
-        const adminInner = await ctx.model.AdminInnerUser.findByPk(decoded.adminInnerId);
-        if (!adminInner || adminInner.status !== 1) {
+        const adminInner = await ctx.model.SysUser.findByPk(decoded.adminInnerId);
+        if (!adminInner || adminInner.status !== 1 || adminInner.user_type !== 1) {
           ctx.throw(401, '内部管理员账号不存在或已禁用');
         }
 
         accessToken = app.jwt.sign(
-          { adminInnerId: adminInner.id, username: adminInner.username, type: 'admin_inner' },
+          { adminInnerId: adminInner.user_id, username: adminInner.username, type: 'admin_inner' },
           app.config.jwt.secret,
           { expiresIn: app.config.jwt.expiresIn },
         );
 
         newRefreshToken = app.jwt.sign(
-          { adminInnerId: adminInner.id, type: 'admin_inner', isRefresh: true },
+          { adminInnerId: adminInner.user_id, type: 'admin_inner', isRefresh: true },
           app.config.jwt.secret,
           { expiresIn: app.config.jwt.refreshExpiresIn },
         );
       } else {
         // 移动端用户刷新
-        const user = await ctx.model.User.findOne({ where: { user_id: decoded.userId } });
-        if (!user || user.user_status !== 0) {
+        const user = await ctx.model.SysUser.findByPk(decoded.userId);
+        if (!user || user.status !== 1) {
           ctx.throw(401, '用户账号不存在或已禁用');
         }
 
         accessToken = app.jwt.sign(
-          { userId: user.user_id, user_phone: user.user_phone, type: 'user' },
+          { userId: user.user_id, user_phone: user.username, type: 'user' },
           app.config.jwt.secret,
           { expiresIn: app.config.jwt.expiresIn },
         );

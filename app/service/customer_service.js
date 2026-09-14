@@ -8,7 +8,7 @@ const { Op } = require('sequelize');
  */
 class CustomerServiceService extends Service {
   /**
-   * 获取客服列表
+   * 获取客服列表 (C端)
    * @param {Object} query 查询参数
    * @return {Object} 分页列表
    */
@@ -16,17 +16,17 @@ class CustomerServiceService extends Service {
     const { ctx } = this;
     const { keyword, page = 1, page_size = 10 } = query;
 
-    const where = { status: 1 };
+    const where = { status: 1, is_deleted: 0 };
     if (keyword) {
-      where.name = { [Op.like]: `%${keyword}%` };
+      where.service_name = { [Op.like]: `%${keyword}%` };
     }
 
     const offset = (Number(page) - 1) * Number(page_size);
     const limit = Number(page_size);
 
-    const { count, rows } = await ctx.model.CustomerService.findAndCountAll({
+    const { count, rows } = await ctx.model.SysH5Service.findAndCountAll({
       where,
-      order: [[ 'sort', 'DESC' ], [ 'id', 'DESC' ]],
+      order: [[ 'sort', 'ASC' ], [ 'id', 'DESC' ]],
       offset,
       limit,
     });
@@ -44,7 +44,6 @@ class CustomerServiceService extends Service {
 
   /**
    * 管理端客服列表
-   * 返回全部状态，支持状态筛选
    * @param {Object} query 查询参数
    * @return {Object} 分页列表
    */
@@ -52,9 +51,9 @@ class CustomerServiceService extends Service {
     const { ctx } = this;
     const { keyword, status, page = 1, page_size = 10 } = query;
 
-    const where = {};
+    const where = { is_deleted: 0 };
     if (keyword) {
-      where.name = { [Op.like]: `%${keyword}%` };
+      where.service_name = { [Op.like]: `%${keyword}%` };
     }
     if (status !== undefined && status !== null && status !== '') {
       where.status = Number(status);
@@ -63,9 +62,9 @@ class CustomerServiceService extends Service {
     const offset = (Number(page) - 1) * Number(page_size);
     const limit = Number(page_size);
 
-    const { count, rows } = await ctx.model.CustomerService.findAndCountAll({
+    const { count, rows } = await ctx.model.SysH5Service.findAndCountAll({
       where,
-      order: [[ 'sort', 'DESC' ], [ 'id', 'DESC' ]],
+      order: [[ 'sort', 'ASC' ], [ 'id', 'DESC' ]],
       offset,
       limit,
     });
@@ -88,7 +87,9 @@ class CustomerServiceService extends Service {
    */
   async detail(id) {
     const { ctx } = this;
-    const customerService = await ctx.model.CustomerService.findByPk(id);
+    const customerService = await ctx.model.SysH5Service.findOne({
+      where: { id, is_deleted: 0 },
+    });
     if (!customerService || customerService.status !== 1) {
       ctx.throw(404, '客服不存在或已禁用');
     }
@@ -103,9 +104,18 @@ class CustomerServiceService extends Service {
   async create(payload) {
     const { ctx } = this;
 
-    ctx.assert(payload.name, 422, '客服名称不能为空');
+    ctx.assert(payload.service_name || payload.name, 422, '客服名称不能为空');
 
-    const customerService = await ctx.model.CustomerService.create(payload);
+    const customerService = await ctx.model.SysH5Service.create({
+      service_name: payload.service_name || payload.name,
+      avatar: payload.avatar || payload.image,
+      contact_type: payload.contact_type || 1,
+      contact_value: payload.contact_value || payload.contact,
+      jump_url: payload.jump_url || payload.link,
+      sort: payload.sort || 0,
+      status: payload.status !== undefined ? payload.status : 1,
+      remark: payload.remark,
+    });
     return customerService.toJSON();
   }
 
@@ -117,27 +127,41 @@ class CustomerServiceService extends Service {
    */
   async update(id, payload) {
     const { ctx } = this;
-    const customerService = await ctx.model.CustomerService.findByPk(id);
-    if (!customerService || customerService.status !== 1) {
-      ctx.throw(404, '客服不存在或已禁用');
-    }
-
-    await customerService.update(payload);
-    return customerService;
-  }
-
-  /**
-   * 删除客服（物理删除）
-   * @param {number} id 客服ID
-   */
-  async destroy(id) {
-    const { ctx } = this;
-    const customerService = await ctx.model.CustomerService.findByPk(id);
+    const customerService = await ctx.model.SysH5Service.findOne({
+      where: { id, is_deleted: 0 },
+    });
     if (!customerService) {
       ctx.throw(404, '客服不存在');
     }
 
-    await customerService.destroy();
+    const updateData = {};
+    if (payload.service_name || payload.name) updateData.service_name = payload.service_name || payload.name;
+    if (payload.avatar || payload.image) updateData.avatar = payload.avatar || payload.image;
+    if (payload.contact_type) updateData.contact_type = payload.contact_type;
+    if (payload.contact_value || payload.contact) updateData.contact_value = payload.contact_value || payload.contact;
+    if (payload.jump_url || payload.link) updateData.jump_url = payload.jump_url || payload.link;
+    if (payload.sort !== undefined) updateData.sort = payload.sort;
+    if (payload.status !== undefined) updateData.status = payload.status;
+    if (payload.remark !== undefined) updateData.remark = payload.remark;
+
+    await customerService.update(updateData);
+    return customerService;
+  }
+
+  /**
+   * 删除客服
+   * @param {number} id 客服ID
+   */
+  async destroy(id) {
+    const { ctx } = this;
+    const customerService = await ctx.model.SysH5Service.findOne({
+      where: { id, is_deleted: 0 },
+    });
+    if (!customerService) {
+      ctx.throw(404, '客服不存在');
+    }
+
+    await customerService.update({ is_deleted: 1 });
   }
 }
 

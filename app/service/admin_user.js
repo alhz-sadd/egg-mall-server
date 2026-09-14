@@ -23,38 +23,38 @@ class AdminUserService extends Service {
     ctx.assert(username, 422, '账号不能为空');
     ctx.assert(password, 422, '密码不能为空');
 
-    const admin = await ctx.model.AdminUser.findOne({ where: { username } });
+    const admin = await ctx.model.SysUser.findOne({ where: { username, user_type: { [Op.in]: [ 2, 3 ] } } });
 
     // 用户不存在
     if (!admin) {
-      await this.recordLoginLog({
-        admin_id: null,
+      await ctx.service.sysLog.recordLoginLog({
+        user_id: null,
         username,
         ip,
         location,
-        device,
+        device_type: device,
         browser,
         os,
-        operation: '登录失败：用户不存在',
-        status: 1,
-        duration: Date.now() - startTime,
+        login_type: 1, // A端
+        login_result: 0,
+        remark: '登录失败：用户不存在',
       });
       ctx.throw(422, '账号或密码错误');
     }
 
     // 账号已禁用
     if (admin.status !== 1) {
-      await this.recordLoginLog({
-        admin_id: admin.id,
+      await ctx.service.sysLog.recordLoginLog({
+        user_id: admin.user_id,
         username,
         ip,
         location,
-        device,
+        device_type: device,
         browser,
         os,
-        operation: '登录失败：账号已禁用',
-        status: 1,
-        duration: Date.now() - startTime,
+        login_type: 1,
+        login_result: 0,
+        remark: '登录失败：账号已禁用',
       });
       ctx.throw(422, '账号已被禁用');
     }
@@ -62,45 +62,45 @@ class AdminUserService extends Service {
     // 密码校验
     const match = await ctx.compare(password, admin.password);
     if (!match) {
-      await this.recordLoginLog({
-        admin_id: admin.id,
+      await ctx.service.sysLog.recordLoginLog({
+        user_id: admin.user_id,
         username,
         ip,
         location,
-        device,
+        device_type: device,
         browser,
         os,
-        operation: '登录失败：密码错误',
-        status: 1,
-        duration: Date.now() - startTime,
+        login_type: 1,
+        login_result: 0,
+        remark: '登录失败：密码错误',
       });
       ctx.throw(422, '账号或密码错误');
     }
 
     // 谷歌验证码校验
-    if (admin.google_code) {
+    if (admin.totp_secret) {
       ctx.assert(googleCode, 422, '谷歌验证码不能为空');
 
       const speakeasy = require('speakeasy');
       const verified = speakeasy.totp.verify({
-        secret: admin.google_code,
+        secret: admin.totp_secret,
         encoding: 'base32',
         token: googleCode,
         window: 1,
       });
 
       if (!verified) {
-        await this.recordLoginLog({
-          admin_id: admin.id,
+        await ctx.service.sysLog.recordLoginLog({
+          user_id: admin.user_id,
           username,
           ip,
           location,
-          device,
+          device_type: device,
           browser,
           os,
-          operation: '登录失败：谷歌验证码错误',
-          status: 1,
-          duration: Date.now() - startTime,
+          login_type: 1,
+          login_result: 0,
+          remark: '登录失败：谷歌验证码错误',
         });
         ctx.throw(422, '谷歌验证码错误');
       }
@@ -112,28 +112,28 @@ class AdminUserService extends Service {
       last_login_time: new Date(),
     });
 
-    await this.recordLoginLog({
-      admin_id: admin.id,
+    await ctx.service.sysLog.recordLoginLog({
+      user_id: admin.user_id,
       username,
       ip,
       location,
-      device,
+      device_type: device,
       browser,
       os,
-      operation: '登录成功',
-      status: 0,
-      duration: Date.now() - startTime,
+      login_type: 1,
+      login_result: 1,
+      remark: '登录成功',
     });
 
     // 生成双 Token
     const accessToken = ctx.app.jwt.sign(
-      { adminId: admin.id, role: admin.role, username: admin.username, type: 'admin' },
+      { adminId: admin.user_id, role: admin.role_id, username: admin.username, type: 'admin' },
       ctx.app.config.jwt.secret,
       { expiresIn: ctx.app.config.jwt.expiresIn },
     );
 
     const refreshToken = ctx.app.jwt.sign(
-      { adminId: admin.id, type: 'admin', isRefresh: true },
+      { adminId: admin.user_id, type: 'admin', isRefresh: true },
       ctx.app.config.jwt.secret,
       { expiresIn: payload.remember ? '30d' : ctx.app.config.jwt.refreshExpiresIn },
     );
@@ -146,15 +146,38 @@ class AdminUserService extends Service {
 
   /**
    * 根据角色获取菜单权限
-   * 优先从 role_menus 表查询对应的按钮权限 (type=2)
+   * 优先从 role_menus 表查询对应的按钮权限 (type=2 / menu_type='F')
    * @param {number} role 角色
+   * @param {number} userType 用户类型 (1: 系统平台, 2: 商家/店长)
    * @return {Array<string>} 权限标识列表
    */
-  async getMenusByRole(role) {
+  async getMenusByRole(role, userType = null) {
     const { ctx } = this;
 
-    // 1. 从 role_menus 表查出该角色勾选的所有菜单 ID
-    const roleMenus = await ctx.model.RoleMenu.findAll({
+    // 1. 如果是 B端店长（userType=2），返回新表中所有的可用外端菜单权限（包含菜单和按钮）
+    // 注意：优先判断 userType === 2，避免被下方的 role === 1 拦截并返回 '*:*:*'
+    if (userType === 2) {
+      const allMenus = await ctx.model.SysMenu.findAll({
+        where: {
+          api_tag: 'outer', // 仅限外端菜单
+          perms: { [Op.ne]: null },
+          enable: 1, // 1=启用, 0=禁用
+        },
+        attributes: [ 'perms' ],
+      });
+      if (allMenus.length > 0) {
+        return [ ...new Set(allMenus.map(m => m.perms).filter(p => !!p)) ];
+      }
+      return [];
+    }
+
+    // 2. 如果是超级管理员（role=1 且非B端店长），直接返回通配符代表全部权限
+    if (role === 1) {
+      return [ '*:*:*' ];
+    }
+
+    // 3. 否则，从 role_menus 表查出该角色勾选的所有菜单 ID
+    const roleMenus = await ctx.model.SysRoleMenu.findAll({
       where: { role_id: role },
       attributes: [ 'menu_id' ],
     });
@@ -162,27 +185,22 @@ class AdminUserService extends Service {
     if (roleMenus.length > 0) {
       const menuIds = roleMenus.map(rm => rm.menu_id);
 
-      // 2. 查询这些菜单中类型为按钮 (type=2) 且有权限标识的记录
-      const menus = await ctx.model.Menu.findAll({
+      // 查询这些菜单中启用且有权限标识的记录（包含菜单和按钮）
+      const menus = await ctx.model.SysMenu.findAll({
         where: {
-          id: { [Op.in]: menuIds },
-          type: 2,
-          permission: { [Op.ne]: null },
+          menu_id: { [Op.in]: menuIds },
+          perms: { [Op.ne]: null },
+          enable: 1, // 仅返回启用状态的权限
         },
-        attributes: [ 'permission' ],
+        attributes: [ 'perms' ],
       });
 
       if (menus.length > 0) {
-        return [ ...new Set(menus.map(m => m.permission).filter(p => !!p)) ];
+        return [ ...new Set(menus.map(m => m.perms).filter(p => !!p)) ];
       }
     }
 
-    // 3. 如果 role_menus 为空，尝试从 role_permissions 表查询（向后兼容）
-    const permissionNames = await ctx.service.permission.getRolePermissionNames(role);
-    if (permissionNames.length > 0) {
-      return permissionNames;
-    }
-
+    // 4. 如果 role_menus 为空，返回默认权限
     // 默认权限
     const defaultMenus = {
       // 超级管理员：全部管理权限
@@ -592,7 +610,7 @@ class AdminUserService extends Service {
     }
 
     // 检查手机号/用户名是否已被普通用户占用
-    const existPhone = await ctx.model.User.findOne({ where: { user_phone: username } });
+    const existPhone = await ctx.model.SysUser.findOne({ where: { phone: username, user_type: 4 } });
     if (existPhone) {
       ctx.throw(422, '该账号已被用户注册，无法创建');
     }
@@ -603,16 +621,12 @@ class AdminUserService extends Service {
     let userCode = null;
     let adminCode = null;
 
-    // 如果角色不为1(商家)，同步创建前端普通用户
-    if (role !== 1) {
-      [ inviteCode, userCode, adminCode ] = await Promise.all([
-        ctx.service.user.generateInviteCode(),
-        ctx.service.user.generateUserCode(),
-        this.generateAdminCode(),
-      ]);
-    } else {
-      adminCode = await this.generateAdminCode();
-    }
+    // A端管理员创建(role=1) 或 B端业务员/主管(role!=1) 统一生成 invite_code
+    [ inviteCode, userCode, adminCode ] = await Promise.all([
+      ctx.service.user.generateInviteCode(),
+      ctx.service.user.generateUserCode(),
+      this.generateAdminCode(),
+    ]);
 
     const transaction = await ctx.model.transaction();
     try {
@@ -628,6 +642,7 @@ class AdminUserService extends Service {
         remark,
         role,
         bindRechargeaddress,
+        invite_code: inviteCode, // adminUser表如果也存这个的话
       }, { transaction });
 
       // 如果创建的是商家(role=1)，则初始化默认设置
@@ -659,21 +674,16 @@ class AdminUserService extends Service {
 
       // 同步到移动端用户表
       if (role !== 1) {
-        await ctx.model.User.create({
-          user_id: userCode,
-          user_name: username,
-          user_nickname: nickname || username,
-          user_password: hashedPassword,
-          user_withdraw_password: '123456',
-          user_phone: username,
-          user_status: 0, // 0表示正常，1表示禁用
-          bind_admin_id: finalBindAdminId || null,
-          bind_salesperson_id: admin.id,
-          user_referral_id: finalBindAdminId || null,
-          user_ip: ctx.ip || '127.0.0.1',
-          user_country: await ctx.service.user.resolveIpLocation(ctx.ip || '127.0.0.1'),
-          user_invite_code: inviteCode,
-          admin_role: role,
+        await ctx.model.SysUser.create({
+          user_type: 4,
+          username,
+          nickname: nickname || username,
+          password: hashedPassword,
+          phone: username,
+          status: 1, // 1表示正常，0表示禁用
+          inviter_user_id: finalBindAdminId || null,
+          last_login_ip: ctx.ip || '127.0.0.1',
+          invite_code: inviteCode,
         }, { transaction });
       }
 
@@ -731,15 +741,15 @@ class AdminUserService extends Service {
     await admin.update(updateData);
 
     // 同步更新移动端用户表
-    const linkedUser = await ctx.model.User.findOne({ where: { bind_salesperson_id: admin.id, admin_role: admin.role } });
+    // 这里因为没有 bind_salesperson_id，如果是同步更新可能需要别的关联，这里保持原逻辑的大致意思，通过 username 关联
+    const linkedUser = await ctx.model.SysUser.findOne({ where: { username: admin.username, user_type: 4 } });
     if (linkedUser) {
       const userUpdateData = {};
-      if (payload.nickname !== undefined) userUpdateData.user_nickname = payload.nickname;
-      if (payload.status !== undefined) userUpdateData.user_status = payload.status === 1 ? 0 : 1; // admin状态1(启用)->user状态0(正常)
-      if (payload.password) userUpdateData.user_password = updateData.password;
+      if (payload.nickname !== undefined) userUpdateData.nickname = payload.nickname;
+      if (payload.status !== undefined) userUpdateData.status = payload.status === 1 ? 1 : 0; // admin状态1(启用)->user状态1(正常)
+      if (payload.password) userUpdateData.password = updateData.password;
       if (payload.bind_admin_id !== undefined) {
-        userUpdateData.bind_admin_id = updateData.bind_admin_id;
-        userUpdateData.user_referral_id = updateData.bind_admin_id;
+        userUpdateData.inviter_user_id = updateData.bind_admin_id;
       }
       await linkedUser.update(userUpdateData);
     }
@@ -791,7 +801,7 @@ class AdminUserService extends Service {
     await admin.update({ password: hashedPassword });
 
     // 同步更新移动端用户表
-    const linkedUser = await ctx.model.User.findOne({ where: { admin_id: admin.id } });
+    const linkedUser = await ctx.model.SysUser.findOne({ where: { admin_id: admin.id, user_type: 4 } });
     if (linkedUser) {
       await linkedUser.update({ user_password: hashedPassword });
     }
@@ -827,8 +837,9 @@ class AdminUserService extends Service {
       );
 
       // 同步删除移动端互通账号
-      await ctx.model.User.destroy({
-        where: { admin_id: id },
+      // 注意: admin_id已不存在于SysUser，这里根据username和user_type来同步删除
+      await ctx.model.SysUser.destroy({
+        where: { username: admin.username, user_type: 4 },
         transaction,
       });
 
@@ -858,18 +869,18 @@ class AdminUserService extends Service {
 
     const transaction = await ctx.model.transaction();
     try {
-      await ctx.model.AdminLoginLog.update(
-        { admin_id: null },
-        { where: { admin_id: { [Op.in]: ids } }, transaction },
+      await ctx.model.UserLoginLog.update(
+        { user_id: 0 }, // 或者设置一个系统占位ID
+        { where: { user_id: { [Op.in]: ids } }, transaction },
       );
-      await ctx.model.AdminOperationLog.update(
-        { admin_id: null },
-        { where: { admin_id: { [Op.in]: ids } }, transaction },
+      await ctx.model.SysOperLog.update(
+        { user_id: 0 },
+        { where: { user_id: { [Op.in]: ids } }, transaction },
       );
 
       // 同步删除移动端互通账号
-      await ctx.model.User.destroy({
-        where: { admin_id: { [Op.in]: ids } },
+      await ctx.model.SysUser.destroy({
+        where: { username: { [Op.in]: admins.map(a => a.username) }, user_type: 4 },
         transaction,
       });
 
@@ -882,216 +893,6 @@ class AdminUserService extends Service {
       await transaction.rollback();
       throw err;
     }
-  }
-
-  /**
-   * 记录登录日志
-   * @param {Object} data 日志数据
-   */
-  async recordLoginLog(data) {
-    const { ctx } = this;
-    try {
-      await ctx.model.AdminLoginLog.create(data);
-    } catch (err) {
-      ctx.logger.error('[AdminUserService] 记录登录日志失败：', err.message);
-    }
-  }
-
-  /**
-   * 记录操作日志
-   * @param {Object} data 日志数据
-   */
-  async recordOperationLog(data) {
-    const { ctx } = this;
-    try {
-      await ctx.model.AdminOperationLog.create(data);
-    } catch (err) {
-      ctx.logger.error('[AdminUserService] 记录操作日志失败：', err.message);
-    }
-  }
-
-  /**
-   * 格式化登录日志时间
-   * @param {Date|string} date 日期
-   * @return {string} 北京时间字符串
-   */
-  formatLoginLogDate(date) {
-    if (!date) return '';
-    const d = new Date(date);
-    const pad = n => (n < 10 ? '0' + n : n);
-    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
-  }
-
-  /**
-   * 查询登录日志列表
-   * @param {Object} query 查询参数
-   * @param {number|null} adminId 可选的管理员ID，用于隔离查询
-   * @return {Object} 分页列表
-   */
-  async loginLogs(query = {}, adminId) {
-    const { ctx } = this;
-    const {
-      username, userName,
-      status,
-      ipaddr, ip,
-      start_time, startTime,
-      end_time, endTime,
-      page = 1, page_size = 10, pageSize,
-    } = query;
-
-    const where = {};
-
-    if (adminId !== undefined) {
-      where.admin_id = adminId;
-    }
-
-    const name = userName !== undefined ? userName : username;
-    if (name !== undefined && name !== null && name !== '') {
-      where.username = { [Op.like]: `%${name}%` };
-    }
-
-    if (status !== undefined && status !== null && status !== '') {
-      where.status = Number(status);
-    }
-
-    const ipAddr = ipaddr !== undefined ? ipaddr : ip;
-    if (ipAddr !== undefined && ipAddr !== null && ipAddr !== '') {
-      where.ip = { [Op.like]: `%${ipAddr}%` };
-    }
-
-    const start = start_time !== undefined ? start_time : startTime;
-    const end = end_time !== undefined ? end_time : endTime;
-    if ((start !== undefined && start !== '') || (end !== undefined && end !== '')) {
-      where.created_at = {};
-      if (start !== undefined && start !== '') {
-        where.created_at[Op.gte] = new Date(start);
-      }
-      if (end !== undefined && end !== '') {
-        where.created_at[Op.lte] = new Date(end);
-      }
-    }
-
-    const size = Number(pageSize || page_size);
-    const pageNum = Math.max(1, Number(page) || 1);
-    const offset = (pageNum - 1) * size;
-    const limit = size;
-
-    const { count, rows } = await ctx.model.AdminLoginLog.findAndCountAll({
-      where,
-      order: [[ 'id', 'DESC' ]],
-      offset,
-      limit,
-    });
-
-    const list = rows.map(log => {
-      const createdAt = log.createdAt || log.created_at;
-      return {
-        infoId: log.id,
-        userName: log.username || null,
-        ipaddr: log.ip || null,
-        loginLocation: log.location || null,
-        browser: log.browser || null,
-        os: log.os || null,
-        status: log.status,
-        msg: log.operation || null,
-        loginTime: createdAt ? this.formatLoginLogDate(createdAt) : '',
-        remark: log.remark || null,
-      };
-    });
-
-    return {
-      total: count,
-      list,
-      pagination: {
-        total: count,
-        page: pageNum,
-        page_size: size,
-        total_pages: Math.ceil(count / limit),
-      },
-    };
-  }
-
-  /**
-   * 批量删除登录日志
-   * @param {Array<number>} ids 日志ID数组
-   */
-  async batchDestroyLoginLogs(ids) {
-    const { ctx } = this;
-    ctx.assert(Array.isArray(ids) && ids.length > 0, 422, '请选择要删除的日志');
-
-    await ctx.model.AdminLoginLog.destroy({
-      where: {
-        id: { [Op.in]: ids },
-      },
-    });
-  }
-
-  /**
-   * 清空登录日志
-   */
-  async clearLoginLogs() {
-    const { ctx } = this;
-    await ctx.model.AdminLoginLog.destroy({ where: {} });
-  }
-
-  /**
-   * 查询操作日志列表
-   * @param {Object} query 查询参数
-   * @return {Object} 分页列表
-   */
-  async operationLogs(query = {}) {
-    const { ctx } = this;
-    const { username, module, status, page = 1, page_size = 10 } = query;
-
-    const where = {};
-    if (username) {
-      where.username = { [Op.like]: `%${username}%` };
-    }
-    if (module) {
-      where.module = module;
-    }
-    if (status !== undefined && status !== null && status !== '') {
-      where.status = Number(status);
-    }
-
-    const offset = (Number(page) - 1) * Number(page_size);
-    const limit = Number(page_size);
-
-    const { count, rows } = await ctx.model.AdminOperationLog.findAndCountAll({
-      where,
-      order: [[ 'id', 'DESC' ]],
-      offset,
-      limit,
-    });
-
-    const list = rows.map(log => {
-      const createdAt = log.createdAt || log.created_at;
-      const duration = log.duration || 0;
-      const durationText = duration < 1000 ? `${duration}毫秒` : `${(duration / 1000).toFixed(2)}秒`;
-      return {
-        log_number: log.id,
-        module: log.module,
-        action: log.action,
-        username: log.username,
-        ip: log.ip,
-        location: log.location,
-        status: log.status,
-        status_text: log.status === 1 ? '成功' : '失败',
-        operation_date: createdAt ? new Date(createdAt).toLocaleString('zh-CN', { hour12: false }) : '',
-        duration,
-        duration_text: durationText,
-      };
-    });
-
-    return {
-      list,
-      pagination: {
-        total: count,
-        page: Number(page),
-        page_size: Number(page_size),
-        total_pages: Math.ceil(count / limit),
-      },
-    };
   }
 }
 

@@ -39,6 +39,7 @@ class FundRecordService extends Service {
    */
   async getFundDetails(userId, query = {}, operator = {}) {
     const { ctx, service } = this;
+    const { Op } = ctx.app.Sequelize;
 
     // 1. 获取用户并校验权限
     let user;
@@ -46,127 +47,107 @@ class FundRecordService extends Service {
       user = await service.user.checkMemberAccess(userId, {
         role: operator.role,
         id: operator.adminId,
+        shop_id: operator.shop_id, // 补充 shop_id 用于 B 端权限校验
       });
     } else {
       // 移动端自己查询
-      user = await service.user.findUserByCodeOrId(userId);
+      user = await service.user.findUserByIdentifier(userId);
     }
 
     if (!user) {
       ctx.throw(404, '用户不存在');
     }
-    const dbUserId = user.id; // 使用主键ID查询关联表
-    const displayUserId = user.user_id; // 获取用于显示的9-12位业务ID
+    const dbUserId = user.user_id; // 使用主键ID查询关联表
 
-    // 判断如果传入了 operator.adminId（后台查询），增加表记录过滤
-    const whereBase = { user_id: dbUserId, status: 1 };
-    if (operator && operator.adminId !== undefined) {
-      whereBase.admin_id = operator.adminId;
+    // 判断如果传入了 operator.adminId（后台查询），增加表记录过滤 (新表不支持 admin_id 过滤，由外部保证权限)
+    const where = { user_id: dbUserId };
+
+    // 根据前端查询参数筛选类型
+    // frontend filter mapping:
+    // 0任务收益 -> biz_type 4
+    // 1充值 -> biz_type 1
+    // 2团队收益 -> biz_type 5
+    // 3系统增加 -> biz_type 7
+    // 4系统减少 -> biz_type 6
+    // 5提现 -> biz_type 2, 3
+    if (query.type !== undefined && query.type !== '' && query.type !== null) {
+      const qType = String(query.type);
+      if (qType === '0') where.biz_type = 4;
+      else if (qType === '1') where.biz_type = 1;
+      else if (qType === '2') where.biz_type = 5;
+      else if (qType === '3') where.biz_type = 7;
+      else if (qType === '4') where.biz_type = 6;
+      else if (qType === '5') where.biz_type = { [Op.in]: [ 2, 3 ] };
     }
 
-    // 2. 数据查询
-    const [ commissionRecords, rechargeRecords, withdrawRecords ] = await Promise.all([
-      ctx.model.CommissionRecord.findAll({ where: whereBase, raw: true }),
-      ctx.model.RechargeRecord.findAll({ where: whereBase, raw: true }),
-      ctx.model.WithdrawRecord.findAll({ where: whereBase, raw: true }),
-    ]);
+    // 分页
+    const { page = 1, page_size = 10, pageSize = 10 } = query;
+    const limit = Number(pageSize || page_size);
+    const offset = (Number(page) - 1) * limit;
 
-    // 3. 数据转换与聚合
-    let allRecords = [];
+    const { count, rows } = await ctx.model.UserWalletLog.findAndCountAll({
+      where,
+      order: [[ 'id', 'DESC' ]],
+      limit,
+      offset,
+      raw: true,
+    });
 
-    // 任务收益(0) / 团队收益(2)
-    for (const item of commissionRecords) {
-      const isTeam = item.source_user_id && Number(item.source_user_id) !== Number(dbUserId);
-      allRecords.push({
-        rawTime: new Date(item.commission_date).getTime(),
-        create_time: this.formatDateTime(item.commission_date),
-        revenue_id: this.generateRevenueId(3, item.id),
-        user_id: displayUserId,
-        order_no: this.generateTempOrderNo('91'),
-        type: isTeam ? 2 : 0, // 2:团队收益, 0:任务收益
-        doMoney: Number(item.amount),
-        remark: isTeam ? '团队收益' : '任务收益',
-      });
-    }
+    const list = rows.map(log => {
+      let mappedType = -1;
+      let remark = log.remark || '';
 
-    // 充值(1) / 系统增加(3) / 系统减少(4)
-    for (const item of rechargeRecords) {
-      let type,
-        remark;
-      if (item.operation_type === 3 || item.recharge_type === 3) { // 后台扣款
-        type = 4; // 系统减少
-        remark = '系统减少';
-      } else if ([ 0, 1 ].includes(item.operation_type)) { // 后台加款
-        type = 3; // 系统增加
-        remark = item.operation_type === 0 ? '系统赠送' : '员工添加';
-      } else { // 用户充值
-        type = 1; // 充值
-        remark = '用户充值';
+      switch (log.biz_type) {
+        case 4:
+          mappedType = 0;
+          if (!remark) remark = '静态收益';
+          break;
+        case 5:
+          mappedType = 2;
+          if (!remark) remark = '动态收益';
+          break;
+        case 1:
+          mappedType = 1;
+          if (!remark) remark = '用户充值';
+          break;
+        case 7:
+          mappedType = 3;
+          if (!remark) remark = '系统人工增加';
+          break;
+        case 6:
+          mappedType = 4;
+          if (!remark) remark = '系统人工扣除';
+          break;
+        case 2:
+        case 3:
+          mappedType = 5;
+          if (!remark) remark = log.biz_type === 2 ? '用户提现' : '提现驳回退回';
+          break;
+        default:
+          mappedType = 7;
+          break;
       }
-      allRecords.push({
-        rawTime: new Date(item.created_at).getTime(),
-        create_time: this.formatDateTime(item.created_at),
-        revenue_id: this.generateRevenueId(1, item.id),
-        user_id: displayUserId,
-        order_no: this.generateTempOrderNo('92'),
-        type,
-        doMoney: Number(item.amount),
-        remark: item.remark || remark,
-      });
-    }
 
-    // 提现(5)
-    for (const item of withdrawRecords) {
-      allRecords.push({
-        rawTime: new Date(item.created_at).getTime(),
-        create_time: this.formatDateTime(item.created_at),
-        revenue_id: this.generateRevenueId(2, item.id),
-        user_id: displayUserId,
-        order_no: this.generateTempOrderNo('93'),
-        type: 5, // 提现
-        doMoney: -Math.abs(Number(item.amount)), // 提现金额记为负数
-        remark: item.remark || '用户提现',
-      });
-    }
-
-    // 4. 按时间正序排列，用于计算前后余额
-    allRecords.sort((a, b) => a.rawTime - b.rawTime);
-
-    // 5. 计算操作前后金额
-    let runningBalance = Number(user.user_balance);
-    for (let i = allRecords.length - 1; i >= 0; i--) {
-      const record = allRecords[i];
-      record.afterMoney = runningBalance;
-      record.beforeMoney = runningBalance - record.doMoney;
-      runningBalance = record.beforeMoney;
-    }
-
-    // 6. 按时间倒序排列用于最终展示
-    allRecords.sort((a, b) => b.rawTime - a.rawTime);
-
-    // 7. 根据前端查询参数筛选类型
-    const typeFilter = query.type;
-    if (typeFilter !== undefined && typeFilter !== '' && typeFilter !== null) {
-      allRecords = allRecords.filter(r => String(r.type) === String(typeFilter));
-    }
-
-    // 8. 分页
-    const { page = 1, page_size = 10 } = query;
-    const total = allRecords.length;
-    const offset = (Number(page) - 1) * Number(page_size);
-    const list = allRecords.slice(offset, offset + Number(page_size)).map(item => {
-      const cloned = { ...item };
-      delete cloned.rawTime;
-      return cloned;
+      return {
+        revenue_id: log.id,
+        user_id: log.user_id,
+        order_no: log.log_no || log.related_order_id || this.generateTempOrderNo('90'),
+        type: mappedType,
+        doMoney: Number(log.amount),
+        beforeMoney: Number(log.before_balance),
+        afterMoney: Number(log.after_balance),
+        remark,
+        create_time: this.formatDateTime(log.create_time),
+      };
     });
 
     return {
       list,
       pagination: {
-        total,
+        total: count,
         page: Number(page),
-        page_size: Number(page_size),
-        total_pages: Math.ceil(total / Number(page_size)),
+        page_size: limit,
+        total_pages: Math.ceil(count / limit),
       },
     };
   }

@@ -1,0 +1,2798 @@
+[
+  {
+    "table": "SequelizeMeta",
+    "columns": [
+      {
+        "field": "name",
+        "type": "varchar(255)",
+        "key": "PRI",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "customer_relation",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键"
+      },
+      {
+        "field": "c_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "C端用户id(sys_user.user_id type=4)"
+      },
+      {
+        "field": "parent_customer_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "直接上级C用户ID"
+      },
+      {
+        "field": "salesman_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "业务员账号id(sys_user.user_id type=3)"
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "店铺id shop.shop_id"
+      },
+      {
+        "field": "root_salesman_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "源头业务员ID，仅用于页面展示、业绩统计，不参与返佣"
+      },
+      {
+        "field": "root_shop_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "源头业务员所属店铺ID，冗余"
+      },
+      {
+        "field": "bind_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "绑定来源1业务员开拓 2平台分配 3扫码 4后台分配"
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "1有效，0解绑"
+      },
+      {
+        "field": "bind_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "绑定时间"
+      },
+      {
+        "field": "unbind_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "解绑时间"
+      },
+      {
+        "field": "operator_user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "操作人账号id"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "备注"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除：0正常, 1删除"
+      }
+    ]
+  },
+  {
+    "table": "goods",
+    "columns": [
+      {
+        "field": "goods_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键自增"
+      },
+      {
+        "field": "goods_name",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "商品名称"
+      },
+      {
+        "field": "goods_no",
+        "type": "varchar(64)",
+        "key": "MUL",
+        "comment": "商品编码，业务唯一编码"
+      },
+      {
+        "field": "goods_type",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "商品类型：1普通商品，2任务商品"
+      },
+      {
+        "field": "category_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "关联 goods_category.category_id"
+      },
+      {
+        "field": "cover_image",
+        "type": "varchar(512)",
+        "key": "",
+        "comment": "商品主图"
+      },
+      {
+        "field": "images",
+        "type": "text",
+        "key": "",
+        "comment": "多张图JSON数组"
+      },
+      {
+        "field": "price",
+        "type": "decimal(12,2)",
+        "key": "",
+        "comment": "商品价格"
+      },
+      {
+        "field": "stock",
+        "type": "int(11)",
+        "key": "",
+        "comment": "库存数量"
+      },
+      {
+        "field": "sales",
+        "type": "int(11)",
+        "key": "",
+        "comment": "销量"
+      },
+      {
+        "field": "content",
+        "type": "text",
+        "key": "",
+        "comment": "商品详情富文本"
+      },
+      {
+        "field": "sort",
+        "type": "int(11)",
+        "key": "",
+        "comment": "后台排序"
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "0下架，1上架"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "后台备注"
+      },
+      {
+        "field": "create_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "创建人ID"
+      },
+      {
+        "field": "update_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "修改人ID"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除 0正常 1删除"
+      }
+    ]
+  },
+  {
+    "table": "recharge_order",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键ID"
+      },
+      {
+        "field": "order_no",
+        "type": "varchar(64)",
+        "key": "UNI",
+        "comment": "充值订单号，唯一"
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "所属店铺ID"
+      },
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "C端用户ID，关联sys_user.user_id"
+      },
+      {
+        "field": "sales_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "归属业务员ID，关联sys_user.user_id"
+      },
+      {
+        "field": "channel_code",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "充值渠道编码 usdt_trc20 / usdt_erc20"
+      },
+      {
+        "field": "channel_name",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "渠道展示名称"
+      },
+      {
+        "field": "amount",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "用户填写转账原始金额"
+      },
+      {
+        "field": "fee",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "充值手续费"
+      },
+      {
+        "field": "system_receive_amount",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "系统实收金额 amount-fee"
+      },
+      {
+        "field": "user_receive_amount",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "用户钱包实际到账金额"
+      },
+      {
+        "field": "is_first_recharge",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "是否首充 0否 1是"
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "订单状态：1待审核，2审核通过，3审核驳回，4已取消"
+      },
+      {
+        "field": "voucher_img",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "用户转账凭证图片地址"
+      },
+      {
+        "field": "audit_user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "审核人ID"
+      },
+      {
+        "field": "audit_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "审核时间"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "备注/审核驳回原因"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除标记"
+      }
+    ]
+  },
+  {
+    "table": "recharge_ways",
+    "columns": [
+      {
+        "field": "id",
+        "type": "int(10) unsigned",
+        "key": "PRI",
+        "comment": "ID"
+      },
+      {
+        "field": "admin_id",
+        "type": "int(10) unsigned",
+        "key": "",
+        "comment": "店铺管理员ID"
+      },
+      {
+        "field": "way",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "充值方式名称"
+      },
+      {
+        "field": "address",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "充值地址/收款账号"
+      },
+      {
+        "field": "sort",
+        "type": "int(10) unsigned",
+        "key": "",
+        "comment": "排序，数字越小越靠前"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "备注"
+      },
+      {
+        "field": "status",
+        "type": "int(11)",
+        "key": "",
+        "comment": "状态：0启用 1禁用"
+      },
+      {
+        "field": "created_by",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "添加人"
+      },
+      {
+        "field": "created_at",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "updated_at",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "sales_recharge_address",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": ""
+      },
+      {
+        "field": "sales_user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "channel_code",
+        "type": "varchar(50)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "channel_name",
+        "type": "varchar(100)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "address",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "qr_code",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "remark",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "is_enable",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "sort",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除 0正常 1删除"
+      }
+    ]
+  },
+  {
+    "table": "shop",
+    "columns": [
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键 自增"
+      },
+      {
+        "field": "shop_name",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "店铺名称，必填"
+      },
+      {
+        "field": "shop_no",
+        "type": "varchar(64)",
+        "key": "MUL",
+        "comment": "店铺业务编号，唯一编码，如 SH20260905001"
+      },
+      {
+        "field": "contact_person",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "店铺联系人"
+      },
+      {
+        "field": "contact_phone",
+        "type": "varchar(20)",
+        "key": "MUL",
+        "comment": "店铺联系电话"
+      },
+      {
+        "field": "province",
+        "type": "varchar(32)",
+        "key": "",
+        "comment": "省份"
+      },
+      {
+        "field": "city",
+        "type": "varchar(32)",
+        "key": "",
+        "comment": "城市"
+      },
+      {
+        "field": "district",
+        "type": "varchar(32)",
+        "key": "",
+        "comment": "区县"
+      },
+      {
+        "field": "address",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "详细地址"
+      },
+      {
+        "field": "logo",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "店铺logo地址，可为null"
+      },
+      {
+        "field": "business_scope",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "经营范围，可为null"
+      },
+      {
+        "field": "expire_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "服务到期时间；null=永久有效"
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "店铺状态：0禁用，1启用"
+      },
+      {
+        "field": "settlement_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "结算类型，业务用，可为null"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "备注"
+      },
+      {
+        "field": "create_user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "创建人user_id（平台管理员sys_user.user_id）"
+      },
+      {
+        "field": "update_user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "修改人user_id"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除：0正常，1删除"
+      }
+    ]
+  },
+  {
+    "table": "shop_config",
+    "columns": [
+      {
+        "field": "config_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键ID"
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "UNI",
+        "comment": "关联 shop.shop_id"
+      },
+      {
+        "field": "real_name_reward",
+        "type": "decimal(16,2)",
+        "key": "",
+        "comment": "实名奖励金额，发放虚拟金额"
+      },
+      {
+        "field": "order_pay_timeout_switch",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "0=关闭支付超时，1=开启支付超时开关"
+      },
+      {
+        "field": "order_pay_timeout",
+        "type": "int(11)",
+        "key": "",
+        "comment": "支付超时时间，单位秒"
+      },
+      {
+        "field": "withdraw_min_amount",
+        "type": "decimal(16,2)",
+        "key": "",
+        "comment": "提现最小金额"
+      },
+      {
+        "field": "withdraw_fee_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "1=固定金额手续费，2=百分比手续费"
+      },
+      {
+        "field": "withdraw_fee_value",
+        "type": "decimal(16,2)",
+        "key": "",
+        "comment": "提现佣金；固定填金额；百分比填数字"
+      },
+      {
+        "field": "withdraw_first_need_task",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "0=首次提现不需要完成任务，1=首次提现需要完成任务"
+      },
+      {
+        "field": "withdraw_first_need_identity",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "0=首次提现不需要身份认证，1=首次提现必须身份认证审核通过"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      }
+    ]
+  },
+  {
+    "table": "shop_goods",
+    "columns": [
+      {
+        "field": "goods_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": ""
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "goods_name",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "goods_type",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "1普通商品 2任务商品"
+      },
+      {
+        "field": "price",
+        "type": "decimal(16,2)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "cover_image",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "redirect_url",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": ""
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "category_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "关联 goods_category.category_id"
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除：0正常，1删除"
+      },
+      {
+        "field": "goods_no",
+        "type": "varchar(64)",
+        "key": "MUL",
+        "comment": "商品编码"
+      }
+    ]
+  },
+  {
+    "table": "shop_pay_channel",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键"
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "归属店铺ID。0代表A端设置的全局模板"
+      },
+      {
+        "field": "channel_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "渠道类型：1充值 2提现"
+      },
+      {
+        "field": "channel_code",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "渠道编码"
+      },
+      {
+        "field": "channel_name",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "渠道展示名称"
+      },
+      {
+        "field": "is_platform_default",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "是否是平台默认模板复制来的 (1是 0否)。B端不可删除=1的记录"
+      },
+      {
+        "field": "is_enable",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "是否启用 (1启用 0禁用)"
+      },
+      {
+        "field": "sort",
+        "type": "int(11)",
+        "key": "",
+        "comment": "排序，越小越靠前"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "备注"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      }
+    ]
+  },
+  {
+    "table": "shop_task",
+    "columns": [
+      {
+        "field": "task_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键"
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "归属店铺ID"
+      },
+      {
+        "field": "task_name",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "任务名称"
+      },
+      {
+        "field": "min_amount",
+        "type": "decimal(16,2)",
+        "key": "",
+        "comment": "最低金额"
+      },
+      {
+        "field": "yield_rate",
+        "type": "decimal(10,4)",
+        "key": "",
+        "comment": "收益率"
+      },
+      {
+        "field": "parent_yield_rate",
+        "type": "decimal(10,4)",
+        "key": "",
+        "comment": "上级收益率"
+      },
+      {
+        "field": "task_count",
+        "type": "int(11)",
+        "key": "",
+        "comment": "任务单数"
+      },
+      {
+        "field": "balance_min_rate",
+        "type": "decimal(10,4)",
+        "key": "",
+        "comment": "余额最小使用率"
+      },
+      {
+        "field": "balance_max_rate",
+        "type": "decimal(10,4)",
+        "key": "",
+        "comment": "余额最大使用率"
+      },
+      {
+        "field": "task_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "类型 0:默认, 1:自定义"
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "状态 0:停用, 1:启用"
+      },
+      {
+        "field": "check_parent",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "是否校验上级 0:不校验, 1:校验"
+      },
+      {
+        "field": "daily_update_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "每日任务更新 0:手动, 1:自动"
+      },
+      {
+        "field": "lucky_team_assign",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "幸运单团队分配 0:不分配, 1:分配"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "shop_task_item",
+    "columns": [
+      {
+        "field": "item_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键"
+      },
+      {
+        "field": "task_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "关联shop_task.task_id"
+      },
+      {
+        "field": "item_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "任务类型 1:普通订单任务, 2:幸运订单任务"
+      },
+      {
+        "field": "sort",
+        "type": "int(11)",
+        "key": "",
+        "comment": "任务执行顺序"
+      },
+      {
+        "field": "require_count",
+        "type": "int(11)",
+        "key": "",
+        "comment": "需要完成的笔数"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "yield_rate",
+        "type": "decimal(10,2)",
+        "key": "",
+        "comment": "子项独立收益率"
+      },
+      {
+        "field": "is_lucky_order",
+        "type": "tinyint(1)",
+        "key": "",
+        "comment": "是否幸运订单 0否 1是"
+      },
+      {
+        "field": "append_amount",
+        "type": "decimal(10,2)",
+        "key": "",
+        "comment": "追加金额"
+      },
+      {
+        "field": "goods_price",
+        "type": "decimal(10,2)",
+        "key": "",
+        "comment": "商品价格"
+      }
+    ]
+  },
+  {
+    "table": "shop_task_order_rel",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": ""
+      },
+      {
+        "field": "task_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "order_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "order_type",
+        "type": "varchar(20)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "shop_task_reward",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": ""
+      },
+      {
+        "field": "task_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "reward_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "reward_amount",
+        "type": "decimal(16,2)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "shop_task_user",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": ""
+      },
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "task_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "shop_vip_level",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键ID"
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "所属店铺ID，关联shop.id"
+      },
+      {
+        "field": "level",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "VIP等级数字，例如1、2、3，数字越大等级越高"
+      },
+      {
+        "field": "level_name",
+        "type": "varchar(100)",
+        "key": "",
+        "comment": "VIP等级名称，如VIP1、黄金会员"
+      },
+      {
+        "field": "need_total_recharge",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "升级所需累计充值金额"
+      },
+      {
+        "field": "benefit",
+        "type": "text",
+        "key": "",
+        "comment": "权益描述，文本存储，后台填写展示"
+      },
+      {
+        "field": "sort",
+        "type": "int(11)",
+        "key": "",
+        "comment": "排序号"
+      },
+      {
+        "field": "is_enable",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "是否启用：0禁用，1启用"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      }
+    ]
+  },
+  {
+    "table": "sys_dict",
+    "columns": [
+      {
+        "field": "dict_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": ""
+      },
+      {
+        "field": "dict_name",
+        "type": "varchar(100)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "dict_type",
+        "type": "varchar(100)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "sys_file",
+    "columns": [
+      {
+        "field": "file_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": ""
+      },
+      {
+        "field": "file_name",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "file_url",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "file_size",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "file_type",
+        "type": "varchar(50)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "sys_h5_config",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键自增"
+      },
+      {
+        "field": "config_type",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "类型：1-Banner, 2-公告, 3-规则管理, 4-首页商品, 5-任务商品"
+      },
+      {
+        "field": "title",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "标题：banner标题、公告标题、规则名称、商品显示名称"
+      },
+      {
+        "field": "cover_image",
+        "type": "varchar(512)",
+        "key": "",
+        "comment": "封面图；banner图、商品封面图；可为null"
+      },
+      {
+        "field": "content",
+        "type": "text",
+        "key": "",
+        "comment": "内容：公告正文、规则富文本内容"
+      },
+      {
+        "field": "extra",
+        "type": "text",
+        "key": "",
+        "comment": "扩展JSON字段"
+      },
+      {
+        "field": "sort",
+        "type": "int(11)",
+        "key": "",
+        "comment": "排序，数字越小越靠前"
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "0禁用，1启用"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "后台备注"
+      },
+      {
+        "field": "create_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "创建人ID"
+      },
+      {
+        "field": "update_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "修改人ID"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除：0正常 1删除"
+      }
+    ]
+  },
+  {
+    "table": "sys_h5_service",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键自增"
+      },
+      {
+        "field": "service_name",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "客服昵称/名称"
+      },
+      {
+        "field": "avatar",
+        "type": "varchar(512)",
+        "key": "",
+        "comment": "客服头像图片地址"
+      },
+      {
+        "field": "contact_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "1-微信，2-QQ，3-手机号"
+      },
+      {
+        "field": "contact_value",
+        "type": "varchar(512)",
+        "key": "",
+        "comment": "对应联系方式字符串"
+      },
+      {
+        "field": "jump_url",
+        "type": "varchar(512)",
+        "key": "",
+        "comment": "跳转地址"
+      },
+      {
+        "field": "sort",
+        "type": "int(11)",
+        "key": "",
+        "comment": "排序，数值越小越靠前"
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "0禁用，1启用"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "后台备注"
+      },
+      {
+        "field": "create_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "创建人ID"
+      },
+      {
+        "field": "update_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "修改人ID"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除：0正常 1删除"
+      }
+    ]
+  },
+  {
+    "table": "sys_menu",
+    "columns": [
+      {
+        "field": "menu_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键"
+      },
+      {
+        "field": "parent_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "父ID；0代表一级目录"
+      },
+      {
+        "field": "menu_name",
+        "type": "varchar(100)",
+        "key": "",
+        "comment": "菜单/按钮名称"
+      },
+      {
+        "field": "route_path",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "前端路由；outer端要用；inner端填空"
+      },
+      {
+        "field": "component",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "前端组件；outer端要用；inner端填空"
+      },
+      {
+        "field": "api_tag",
+        "type": "varchar(20)",
+        "key": "MUL",
+        "comment": "inner=内部后台；outer=店铺外部后台"
+      },
+      {
+        "field": "perms",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "权限标识字符串，例如：withdraw:audit、user:list；接口鉴权核心"
+      },
+      {
+        "field": "menu_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "1目录，2菜单页面，3按钮"
+      },
+      {
+        "field": "sort",
+        "type": "int(11)",
+        "key": "",
+        "comment": "排序号"
+      },
+      {
+        "field": "enable",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "0禁用 1启用"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "icon",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "菜单图标"
+      }
+    ]
+  },
+  {
+    "table": "sys_oper_log",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": ""
+      },
+      {
+        "field": "title",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "business_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "method",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "request_method",
+        "type": "varchar(16)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "username",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "oper_url",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "oper_ip",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "oper_location",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "oper_param",
+        "type": "text",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "json_result",
+        "type": "text",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "error_msg",
+        "type": "text",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "oper_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "sys_role",
+    "columns": [
+      {
+        "field": "role_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键"
+      },
+      {
+        "field": "role_name",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "角色中文名称"
+      },
+      {
+        "field": "role_code",
+        "type": "varchar(64)",
+        "key": "UNI",
+        "comment": "角色编码，唯一：platform_admin / shop_owner / shop_salesman"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "备注"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除：0正常，1删除"
+      }
+    ]
+  },
+  {
+    "table": "sys_role_menu",
+    "columns": [
+      {
+        "field": "role_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": ""
+      },
+      {
+        "field": "menu_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "菜单ID"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      }
+    ]
+  },
+  {
+    "table": "sys_user",
+    "columns": [
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键，自增"
+      },
+      {
+        "field": "username",
+        "type": "varchar(64)",
+        "key": "MUL",
+        "comment": "登录账号，后台账号用账号登录，C端可以手机号当username"
+      },
+      {
+        "field": "password",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "加密后的密码（bcrypt）；C端第三方登录可允许为空"
+      },
+      {
+        "field": "nickname",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "昵称，展示名称"
+      },
+      {
+        "field": "phone",
+        "type": "varchar(20)",
+        "key": "MUL",
+        "comment": "手机号，可以为空"
+      },
+      {
+        "field": "invite_code",
+        "type": "varchar(20)",
+        "key": "UNI",
+        "comment": "个人专属邀请码，全局唯一，用于C端或业务员拉新"
+      },
+      {
+        "field": "inviter_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "直接邀请我的C用户ID，快捷冗余字段"
+      },
+      {
+        "field": "avatar",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "头像地址"
+      },
+      {
+        "field": "user_type",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "账号类型：1=A平台管理员，2=B店家，3=B业务员，4=C普通用户"
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "所属店铺ID，关联shop.shop_id"
+      },
+      {
+        "field": "role_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "角色ID，关联sys_role.role_id"
+      },
+      {
+        "field": "email",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "邮箱，可选"
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "账号状态：0禁用，1启用"
+      },
+      {
+        "field": "last_login_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "最后登录时间"
+      },
+      {
+        "field": "last_login_ip",
+        "type": "varchar(50)",
+        "key": "",
+        "comment": "最后登录IP"
+      },
+      {
+        "field": "create_user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "创建人user_id，哪个账号创建的这条记录"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "账号备注"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除：0正常，1已删除"
+      },
+      {
+        "field": "totp_secret",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "TOTP底层密钥，生成二维码、校验验证码靠它，只存后端"
+      },
+      {
+        "field": "totp_enable",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "开关：0未开启；1已成功绑定启用"
+      },
+      {
+        "field": "totp_recovery_codes",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "恢复码集合，逗号分隔"
+      },
+      {
+        "field": "has_withdraw",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "0=首次提现, 1=已提现过"
+      },
+      {
+        "field": "is_recharged",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "0未充值 1已充值；冗余展示，权威数据以充值订单为准"
+      },
+      {
+        "field": "is_real_user",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "真实/虚拟用户（0虚拟/机器人，1真实注册用户）"
+      },
+      {
+        "field": "withdraw_pwd",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "提现密码，加密哈希，C端专用；B端账号为NULL"
+      },
+      {
+        "field": "withdraw_pwd_salt",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "提现密码盐值"
+      },
+      {
+        "field": "vip_level",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "C端用户VIP等级数字"
+      },
+      {
+        "field": "withdraw_password",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "提现密码"
+      },
+      {
+        "field": "recharge_address",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "业务员专用的收款地址（C端充值时获取绑定业务员的该地址）"
+      }
+    ]
+  },
+  {
+    "table": "sys_user_role",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键"
+      },
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "sys_user.user_id"
+      },
+      {
+        "field": "role_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "sys_role.role_id"
+      }
+    ]
+  },
+  {
+    "table": "user_identity",
+    "columns": [
+      {
+        "field": "identity_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键自增"
+      },
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "关联 sys_user.user_id，一个用户最多一条有效认证记录"
+      },
+      {
+        "field": "real_name",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "真实姓名"
+      },
+      {
+        "field": "id_card_no",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "身份证号码；加密存储"
+      },
+      {
+        "field": "id_card_front",
+        "type": "varchar(512)",
+        "key": "",
+        "comment": "身份证正面图片地址"
+      },
+      {
+        "field": "id_card_back",
+        "type": "varchar(512)",
+        "key": "",
+        "comment": "身份证反面图片地址"
+      },
+      {
+        "field": "hand_id_card",
+        "type": "varchar(512)",
+        "key": "",
+        "comment": "手持身份证照片，可为null"
+      },
+      {
+        "field": "audit_status",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "0未提交，1待审核，2审核通过，3审核驳回"
+      },
+      {
+        "field": "audit_user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "平台审核管理员ID"
+      },
+      {
+        "field": "audit_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "审核时间"
+      },
+      {
+        "field": "reject_reason",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "驳回原因"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "提交时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除 0正常，1删除"
+      }
+    ]
+  },
+  {
+    "table": "user_login_log",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "自增主键"
+      },
+      {
+        "field": "log_no",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "登录日志业务编号，对外溯源展示"
+      },
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "关联sys_user.id"
+      },
+      {
+        "field": "username",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "账号冗余保存"
+      },
+      {
+        "field": "login_ip",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "登录原始IP地址"
+      },
+      {
+        "field": "login_location",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "IP解析地理位置，程序解析后存入，解析失败为NULL"
+      },
+      {
+        "field": "user_agent",
+        "type": "text",
+        "key": "",
+        "comment": "原始UA完整字符串"
+      },
+      {
+        "field": "device_type",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "设备类型：1 PC电脑 2安卓 3 iOS苹果 4其他设备"
+      },
+      {
+        "field": "browser",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "浏览器名称：Chrome / Edge / Safari / 微信内置浏览器等"
+      },
+      {
+        "field": "os",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "操作系统：Windows11、MacOS、Android14、iOS18"
+      },
+      {
+        "field": "login_type",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "1:A平台端 2:B店铺后台 3:C端H5"
+      },
+      {
+        "field": "login_result",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "0登录失败 1登录成功"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(256)",
+        "key": "",
+        "comment": "操作备注信息"
+      },
+      {
+        "field": "login_time",
+        "type": "datetime",
+        "key": "MUL",
+        "comment": "登录发生时间"
+      }
+    ]
+  },
+  {
+    "table": "user_login_logs",
+    "columns": [
+      {
+        "field": "id",
+        "type": "int(10) unsigned",
+        "key": "PRI",
+        "comment": "ID"
+      },
+      {
+        "field": "admin_id",
+        "type": "int(10) unsigned",
+        "key": "",
+        "comment": "店铺管理员ID"
+      },
+      {
+        "field": "user_id",
+        "type": "int(10) unsigned",
+        "key": "MUL",
+        "comment": "用户ID"
+      },
+      {
+        "field": "username",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "登录账号"
+      },
+      {
+        "field": "ip",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "IP地址"
+      },
+      {
+        "field": "location",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "登录地点"
+      },
+      {
+        "field": "device",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "设备信息"
+      },
+      {
+        "field": "browser",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "浏览器信息"
+      },
+      {
+        "field": "os",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "操作系统"
+      },
+      {
+        "field": "operation",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "操作信息：登录成功/退出成功/登录失败：密码错误/登录失败：用户不存在/账号已禁用"
+      },
+      {
+        "field": "duration",
+        "type": "int(11)",
+        "key": "",
+        "comment": "消耗时间（毫秒）"
+      },
+      {
+        "field": "status",
+        "type": "int(11)",
+        "key": "",
+        "comment": "状态：0登录成功 1登录失败"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "备注"
+      },
+      {
+        "field": "created_at",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "updated_at",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "user_operate_log",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键ID"
+      },
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "C端用户ID，关联sys_user"
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "所属店铺ID"
+      },
+      {
+        "field": "operate_type",
+        "type": "varchar(50)",
+        "key": "MUL",
+        "comment": "操作类型：login 登录、submit_recharge 提交充值、submit_withdraw 提交提现、modify_withdraw_pwd 修改提现密码"
+      },
+      {
+        "field": "operate_content",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "操作描述"
+      },
+      {
+        "field": "ip",
+        "type": "varchar(100)",
+        "key": "",
+        "comment": "用户IP地址"
+      },
+      {
+        "field": "user_agent",
+        "type": "varchar(1000)",
+        "key": "",
+        "comment": "浏览器/设备UA信息"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "操作时间"
+      }
+    ]
+  },
+  {
+    "table": "user_recharge",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键ID"
+      },
+      {
+        "field": "order_no",
+        "type": "varchar(64)",
+        "key": "UNI",
+        "comment": "充值订单号，唯一"
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "所属店铺ID"
+      },
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "C端用户ID，关联sys_user.id"
+      },
+      {
+        "field": "sales_user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "归属业务员ID，关联sys_user.id"
+      },
+      {
+        "field": "channel_code",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "充值渠道编码"
+      },
+      {
+        "field": "channel_name",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "渠道展示名称"
+      },
+      {
+        "field": "amount",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "用户填写转账原始金额"
+      },
+      {
+        "field": "fee",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "充值手续费"
+      },
+      {
+        "field": "system_receive_amount",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "系统实际到账金额 (amount - fee)"
+      },
+      {
+        "field": "user_receive_amount",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "用户钱包实际增加金额"
+      },
+      {
+        "field": "is_first_recharge",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "是否为首充：1是，0否"
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "订单状态：1待审核，2审核通过，3审核驳回，4已取消"
+      },
+      {
+        "field": "audit_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "审核类型：1真实充值，2虚拟充值 (通过审核时由业务员选择)"
+      },
+      {
+        "field": "voucher_img",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "用户转账凭证图片地址"
+      },
+      {
+        "field": "audit_user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "审核人ID（B端操作人sys_user.id）"
+      },
+      {
+        "field": "audit_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "审核时间"
+      },
+      {
+        "field": "reject_reason",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "驳回原因"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "备注"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      }
+    ]
+  },
+  {
+    "table": "user_tasks",
+    "columns": [
+      {
+        "field": "id",
+        "type": "int(10) unsigned",
+        "key": "PRI",
+        "comment": "ID"
+      },
+      {
+        "field": "admin_id",
+        "type": "int(10) unsigned",
+        "key": "",
+        "comment": "店铺管理员ID"
+      },
+      {
+        "field": "user_id",
+        "type": "int(10) unsigned",
+        "key": "MUL",
+        "comment": "用户ID"
+      },
+      {
+        "field": "task_id",
+        "type": "int(10) unsigned",
+        "key": "MUL",
+        "comment": "任务ID"
+      },
+      {
+        "field": "reward",
+        "type": "decimal(10,2)",
+        "key": "",
+        "comment": "任务收益"
+      },
+      {
+        "field": "task_date",
+        "type": "date",
+        "key": "",
+        "comment": "任务完成日期"
+      },
+      {
+        "field": "status",
+        "type": "int(11)",
+        "key": "",
+        "comment": "状态：1完成 0取消"
+      },
+      {
+        "field": "created_at",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "updated_at",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "user_wallet",
+    "columns": [
+      {
+        "field": "wallet_id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键"
+      },
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "UNI",
+        "comment": "关联 sys_user.user_id，唯一索引，一个用户1条钱包"
+      },
+      {
+        "field": "voucher_balance",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "代金资产"
+      },
+      {
+        "field": "static_income",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "静态收益"
+      },
+      {
+        "field": "dynamic_income",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "动态收益"
+      },
+      {
+        "field": "freeze_voucher_balance",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "冻结-代金资产"
+      },
+      {
+        "field": "freeze_static_income",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "冻结-静态收益"
+      },
+      {
+        "field": "freeze_dynamic_income",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "冻结-动态收益"
+      },
+      {
+        "field": "total_recharge_amount",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "累计充值金额"
+      },
+      {
+        "field": "total_withdraw_amount",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "累计提现金额"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "total_invite_commission",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "邀请累计总收益（仅用于C端页面展示，无明细）"
+      }
+    ]
+  },
+  {
+    "table": "user_wallet_log",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": ""
+      },
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "C用户ID"
+      },
+      {
+        "field": "log_no",
+        "type": "varchar(64)",
+        "key": "UNI",
+        "comment": "流水编号"
+      },
+      {
+        "field": "biz_type",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "业务类型：1充值 2提现申请 3提现驳回退回 4静态收益发放 5动态收益发放 6资产扣减 7其他"
+      },
+      {
+        "field": "amount",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "变动金额；正数增加，负数扣减"
+      },
+      {
+        "field": "balance_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "1代金资产 2静态收益 3动态收益"
+      },
+      {
+        "field": "before_balance",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "变动前余额"
+      },
+      {
+        "field": "after_balance",
+        "type": "decimal(18,2)",
+        "key": "",
+        "comment": "变动后余额"
+      },
+      {
+        "field": "related_order_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "关联订单ID，充值/提现订单id"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(512)",
+        "key": "",
+        "comment": "备注说明"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "MUL",
+        "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "user_withdraw",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键ID"
+      },
+      {
+        "field": "order_no",
+        "type": "varchar(64)",
+        "key": "UNI",
+        "comment": "提现订单号，唯一"
+      },
+      {
+        "field": "shop_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "所属店铺ID"
+      },
+      {
+        "field": "user_id",
+        "type": "bigint(20)",
+        "key": "MUL",
+        "comment": "C端用户ID，关联sys_user.id"
+      },
+      {
+        "field": "channel_code",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "提现渠道编码 usdt_trc20 / usdt_erc20"
+      },
+      {
+        "field": "channel_name",
+        "type": "varchar(128)",
+        "key": "",
+        "comment": "提现渠道名称"
+      },
+      {
+        "field": "withdraw_address",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "用户填写的提现钱包地址"
+      },
+      {
+        "field": "amount",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "用户申请提现金额（钱包扣减金额）"
+      },
+      {
+        "field": "fee",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "提现手续费"
+      },
+      {
+        "field": "actual_receive_amount",
+        "type": "decimal(18,6)",
+        "key": "",
+        "comment": "用户链上实际收到金额 = amount - fee"
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "订单状态：1待审核，2审核通过，3审核驳回，4已取消"
+      },
+      {
+        "field": "audit_type",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "审核类型：1真实提现，2虚拟提现"
+      },
+      {
+        "field": "audit_user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "审核人ID（B端操作人sys_user.id）"
+      },
+      {
+        "field": "sales_user_id",
+        "type": "bigint(20)",
+        "key": "",
+        "comment": "归属业务员ID"
+      },
+      {
+        "field": "audit_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "审核时间"
+      },
+      {
+        "field": "reject_reason",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "驳回原因"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(500)",
+        "key": "",
+        "comment": "备注"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      }
+    ]
+  },
+  {
+    "table": "withdraw_ways",
+    "columns": [
+      {
+        "field": "id",
+        "type": "int(10) unsigned",
+        "key": "PRI",
+        "comment": "ID"
+      },
+      {
+        "field": "admin_id",
+        "type": "int(10) unsigned",
+        "key": "",
+        "comment": "店铺管理员ID"
+      },
+      {
+        "field": "way",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "提现方式名称"
+      },
+      {
+        "field": "sort",
+        "type": "int(10) unsigned",
+        "key": "",
+        "comment": "排序，数字越小越靠前"
+      },
+      {
+        "field": "remark",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "备注"
+      },
+      {
+        "field": "status",
+        "type": "int(11)",
+        "key": "",
+        "comment": "状态：0启用 1禁用"
+      },
+      {
+        "field": "created_by",
+        "type": "varchar(64)",
+        "key": "",
+        "comment": "添加人"
+      },
+      {
+        "field": "created_at",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      },
+      {
+        "field": "updated_at",
+        "type": "datetime",
+        "key": "",
+        "comment": ""
+      }
+    ]
+  }
+]

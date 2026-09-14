@@ -24,10 +24,11 @@ class AdminDashboardService extends Service {
     const today = this.getTodayStr();
 
     // 今日注册人数
-    const todayRegisterCount = await ctx.model.User.count({
+    const todayRegisterCount = await ctx.model.SysUser.count({
       where: {
+        user_type: 4,
         status: 1,
-        created_at: {
+        create_time: {
           [Op.gte]: `${today} 00:00:00`,
           [Op.lte]: `${today} 23:59:59`,
         },

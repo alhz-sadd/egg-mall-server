@@ -56,17 +56,14 @@ class TaskController extends Controller {
    */
   async getUserTaskInfo() {
     const { ctx, service } = this;
-    const userCode = ctx.state.user.userId;
+    const userId = ctx.state.user.userId;
 
-    const user = await ctx.model.User.findOne({ where: { user_id: userCode } });
-    if (!user) {
+    const user = await ctx.model.SysUser.findByPk(userId);
+    if (!user || user.user_type !== 4) {
       ctx.throw(404, '用户不存在');
     }
 
-    const userId = user.id;
-    const userVip = user.user_vip || 1;
-
-    const result = await service.task.getUserTaskInfo(userId, userVip);
+    const result = await service.task.getUserTaskInfo(userId, user.user_vip || 1);
 
     ctx.body = {
       code: 200,
@@ -78,36 +75,27 @@ class TaskController extends Controller {
   /**
    * @summary 搜索任务
    * @description h5 用户 搜索任务
-   * @router get /api/mobile/searchTask
+   * @router get /api/mobile/tasks/search
    * @response 200 ApiResponse 搜索任务结果
    */
-  async searchTask() {
+  async search() {
     const { ctx, service } = this;
     try {
-      const userCode = ctx.state.user.userId;
+      // 这里的 userId 是从 token 解析出的 SysUser 表主键
+      const userId = ctx.state.user.userId;
 
-      const user = await ctx.model.User.findOne({ where: { user_id: userCode } });
-      if (!user) {
-        // 根据之前的约定，用户不存在也返回500和明确信息
-        ctx.body = { msg: '用户不存在', code: 500, status: false };
-        return;
-      }
-
-      const result = await service.task.searchTask(user.id, user.user_vip || 1);
+      const result = await service.task.search(userId);
 
       ctx.body = {
-        msg: '操作成功',
+        message: 'success',
         code: 200,
         data: result,
-        status: true,
       };
     } catch (err) {
-      // 将服务层抛出的原始错误信息直接用于返回，以便诊断
-      ctx.logger.error('Error in /api/mobile/searchTask', err);
+      ctx.logger.error('Error in /api/mobile/tasks/search', err);
       ctx.body = {
-        msg: err.message,
-        code: 500,
-        status: false,
+        message: err.message,
+        code: err.status || 500,
       };
     }
   }

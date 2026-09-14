@@ -8,19 +8,15 @@ const { Op } = require('sequelize');
  */
 class NoticeService extends Service {
   /**
-   * 获取公告列表
+   * 获取公告列表 (C端)
    * @param {Object} query 查询参数
-   * @param {number|null} adminId 可选的店铺ID，null 表示全局公告
    * @return {Object} 分页列表
    */
-  async list(query = {}, adminId) {
+  async list(query = {}) {
     const { ctx } = this;
     const { keyword, page = 1, page_size = 10 } = query;
 
-    const where = { status: 1 };
-    if (adminId !== undefined) {
-      where.admin_id = adminId;
-    }
+    const where = { config_type: 2, status: 1, is_deleted: 0 };
     if (keyword) {
       where.title = { [Op.like]: `%${keyword}%` };
     }
@@ -28,9 +24,9 @@ class NoticeService extends Service {
     const offset = (Number(page) - 1) * Number(page_size);
     const limit = Number(page_size);
 
-    const { count, rows } = await ctx.model.Notice.findAndCountAll({
+    const { count, rows } = await ctx.model.SysH5Config.findAndCountAll({
       where,
-      order: [[ 'sort', 'DESC' ], [ 'id', 'DESC' ]],
+      order: [[ 'sort', 'ASC' ], [ 'id', 'DESC' ]],
       offset,
       limit,
     });
@@ -48,19 +44,14 @@ class NoticeService extends Service {
 
   /**
    * 管理端公告列表
-   * 返回全部状态，支持状态筛选
    * @param {Object} query 查询参数
-   * @param adminId
    * @return {Object} 分页列表
    */
-  async adminList(query = {}, adminId) {
+  async adminList(query = {}) {
     const { ctx } = this;
     const { keyword, status, page = 1, page_size = 10 } = query;
 
-    const where = {};
-    if (adminId !== undefined) {
-      where.admin_id = adminId;
-    }
+    const where = { config_type: 2, is_deleted: 0 };
     if (keyword) {
       where.title = { [Op.like]: `%${keyword}%` };
     }
@@ -71,9 +62,9 @@ class NoticeService extends Service {
     const offset = (Number(page) - 1) * Number(page_size);
     const limit = Number(page_size);
 
-    const { count, rows } = await ctx.model.Notice.findAndCountAll({
+    const { count, rows } = await ctx.model.SysH5Config.findAndCountAll({
       where,
-      order: [[ 'sort', 'DESC' ], [ 'id', 'DESC' ]],
+      order: [[ 'sort', 'ASC' ], [ 'id', 'DESC' ]],
       offset,
       limit,
     });
@@ -96,7 +87,9 @@ class NoticeService extends Service {
    */
   async detail(id) {
     const { ctx } = this;
-    const notice = await ctx.model.Notice.findByPk(id);
+    const notice = await ctx.model.SysH5Config.findOne({
+      where: { id, config_type: 2, is_deleted: 0 },
+    });
     if (!notice || notice.status !== 1) {
       ctx.throw(404, '公告不存在或已禁用');
     }
@@ -106,18 +99,20 @@ class NoticeService extends Service {
   /**
    * 创建公告
    * @param {Object} payload 公告数据
-   * @param adminId
    * @return {Object} 创建后的公告
    */
-  async create(payload, adminId) {
+  async create(payload) {
     const { ctx } = this;
     this.validatePayload(payload);
 
-    if (adminId !== undefined) {
-      payload.admin_id = adminId;
-    }
-
-    const notice = await ctx.model.Notice.create(payload);
+    const notice = await ctx.model.SysH5Config.create({
+      config_type: 2,
+      title: payload.title,
+      content: payload.content,
+      sort: payload.sort || 0,
+      status: payload.status !== undefined ? payload.status : 1,
+      remark: payload.remark,
+    });
     return notice.toJSON();
   }
 
@@ -129,31 +124,31 @@ class NoticeService extends Service {
    */
   async update(id, payload) {
     const { ctx } = this;
-    const notice = await ctx.model.Notice.findByPk(id);
-    if (!notice || notice.status !== 1) {
-      ctx.throw(404, '公告不存在或已禁用');
-    }
-
-    await notice.update(payload);
-    return notice;
-  }
-
-  /**
-   * 删除公告（物理删除）
-   * @param {number} id 公告ID
-   * @param adminId
-   */
-  async destroy(id, adminId) {
-    const { ctx } = this;
-    const notice = await ctx.model.Notice.findByPk(id);
+    const notice = await ctx.model.SysH5Config.findOne({
+      where: { id, config_type: 2, is_deleted: 0 },
+    });
     if (!notice) {
       ctx.throw(404, '公告不存在');
     }
-    if (adminId !== undefined && notice.admin_id !== adminId) {
-      ctx.throw(403, '无权操作该店铺公告');
+
+    await notice.update(payload);
+    return notice.toJSON();
+  }
+
+  /**
+   * 删除公告
+   * @param {number} id 公告ID
+   */
+  async destroy(id) {
+    const { ctx } = this;
+    const notice = await ctx.model.SysH5Config.findOne({
+      where: { id, config_type: 2, is_deleted: 0 },
+    });
+    if (!notice) {
+      ctx.throw(404, '公告不存在');
     }
 
-    await notice.destroy();
+    await notice.update({ is_deleted: 1 });
   }
 
   /**

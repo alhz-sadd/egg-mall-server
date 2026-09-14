@@ -3,9 +3,8 @@
 /* eslint-disable */
 
 import 'egg';
-import ExportAdminAuth = require('../../../app/middleware/admin_auth');
 import ExportAdminInnerAuth = require('../../../app/middleware/admin_inner_auth');
-import ExportAdminRole = require('../../../app/middleware/admin_role');
+import ExportAdminOuterAuth = require('../../../app/middleware/admin_outer_auth');
 import ExportAuth = require('../../../app/middleware/auth');
 import ExportErrorHandler = require('../../../app/middleware/error_handler');
 import ExportI18nResponse = require('../../../app/middleware/i18n_response');
@@ -14,9 +13,8 @@ import ExportRequestLog = require('../../../app/middleware/request_log');
 
 declare module 'egg' {
   interface IMiddleware {
-    adminAuth: typeof ExportAdminAuth;
     adminInnerAuth: typeof ExportAdminInnerAuth;
-    adminRole: typeof ExportAdminRole;
+    adminOuterAuth: typeof ExportAdminOuterAuth;
     auth: typeof ExportAuth;
     errorHandler: typeof ExportErrorHandler;
     i18nResponse: typeof ExportI18nResponse;

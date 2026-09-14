@@ -7,15 +7,19 @@ function getUniquePhone() {
 }
 
 async function createTestUser(ctx, phone, balance = 0) {
-  return await ctx.model.User.create({
+  const sysUser = await ctx.model.SysUser.create({
     username: phone,
     phone,
     password: await ctx.genHash('123456'),
-    withdraw_password: '123456',
     nickname: '测试用户',
-    balance,
     status: 1,
+    user_type: 4,
   });
+  await ctx.model.UserWallet.create({
+    user_id: sysUser.user_id,
+    voucher_balance: balance,
+  });
+  return sysUser;
 }
 
 describe('test/app/service/withdraw.test.js', () => {
@@ -28,8 +32,9 @@ describe('test/app/service/withdraw.test.js', () => {
 
   afterEach(async () => {
     if (testUser) {
-      await ctx.model.WithdrawRecord.destroy({ where: { user_id: testUser.id } });
-      await ctx.model.User.destroy({ where: { id: testUser.id } });
+      await ctx.model.WithdrawRecord.destroy({ where: { user_id: testUser.user_id } });
+      await ctx.model.UserWallet.destroy({ where: { user_id: testUser.user_id } });
+      await ctx.model.SysUser.destroy({ where: { user_id: testUser.user_id } });
       testUser = null;
     }
   });
@@ -37,29 +42,29 @@ describe('test/app/service/withdraw.test.js', () => {
   describe('create()', () => {
     it('应成功创建提现请求并扣除余额', async () => {
       testUser = await createTestUser(ctx, getUniquePhone(), 1000);
-      const result = await ctx.service.withdraw.create(testUser.id, {
+      const result = await ctx.service.withdraw.create(testUser.user_id, {
         amount: 100,
         address: '测试地址',
         way: 9,
         user_withdraw_password: '123456',
       });
 
-      assert(result.user_id === testUser.id);
+      assert(result.user_id === testUser.user_id);
       assert(Number(result.amount) === 100);
       assert(Number(result.sx_money) === 3);
       assert(Number(result.take_money) === 97);
       assert(result.status === 0);
       assert(result.order_num);
 
-      const updated = await ctx.model.User.findByPk(testUser.id);
-      assert(Number(updated.balance) === 900);
+      const updated = await ctx.model.UserWallet.findOne({ where: { user_id: testUser.user_id } });
+      assert(Number(updated.voucher_balance) === 900);
     });
 
     it('提现金额大于余额时应抛出余额不足错误', async () => {
       testUser = await createTestUser(ctx, getUniquePhone(), 100);
       let err;
       try {
-        await ctx.service.withdraw.create(testUser.id, {
+        await ctx.service.withdraw.create(testUser.user_id, {
           amount: 9999,
           address: '测试地址',
           way: 9,
@@ -72,15 +77,15 @@ describe('test/app/service/withdraw.test.js', () => {
       assert(err.status === 422);
       assert(err.message === '余额不足');
 
-      const updated = await ctx.model.User.findByPk(testUser.id);
-      assert(Number(updated.balance) === 100);
+      const updated = await ctx.model.UserWallet.findOne({ where: { user_id: testUser.user_id } });
+      assert(Number(updated.voucher_balance) === 100);
     });
 
     it('提现密码错误时应抛出错误', async () => {
       testUser = await createTestUser(ctx, getUniquePhone(), 1000);
       let err;
       try {
-        await ctx.service.withdraw.create(testUser.id, {
+        await ctx.service.withdraw.create(testUser.user_id, {
           amount: 100,
           address: '测试地址',
           way: 9,
@@ -98,7 +103,7 @@ describe('test/app/service/withdraw.test.js', () => {
       testUser = await createTestUser(ctx, getUniquePhone(), 1000);
       let err;
       try {
-        await ctx.service.withdraw.create(testUser.id, {
+        await ctx.service.withdraw.create(testUser.user_id, {
           amount: 0,
           address: '测试地址',
           way: 9,
@@ -116,7 +121,7 @@ describe('test/app/service/withdraw.test.js', () => {
       testUser = await createTestUser(ctx, getUniquePhone(), 1000);
       let err;
       try {
-        await ctx.service.withdraw.create(testUser.id, {
+        await ctx.service.withdraw.create(testUser.user_id, {
           address: '测试地址',
           way: 9,
           user_withdraw_password: '123456',
@@ -133,7 +138,7 @@ describe('test/app/service/withdraw.test.js', () => {
       testUser = await createTestUser(ctx, getUniquePhone(), 1000);
       let err;
       try {
-        await ctx.service.withdraw.create(testUser.id, {
+        await ctx.service.withdraw.create(testUser.user_id, {
           amount: 100,
           address: '测试地址',
           way: 9,

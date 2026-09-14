@@ -52,12 +52,10 @@ class RechargeService extends Service {
     const { ctx } = this;
     if (!identifier) return null;
     const strVal = String(identifier);
-    // 9+ 位视为 user_id（即 user_code）
-    if (strVal.length >= 9) {
-      const user = await ctx.model.User.findOne({ where: { user_id: strVal } });
-      if (user) return user;
-    }
-    return await ctx.model.User.findByPk(Number(identifier));
+    // SysUser的主键就是 user_id，不论传的是字符串还是数字，我们直接按主键和user_type=4查询
+    return await ctx.model.SysUser.findOne({
+      where: { user_id: identifier, user_type: 4 },
+    });
   }
 
   /**
@@ -85,7 +83,7 @@ class RechargeService extends Service {
       // 根据 user_id（9-12位）查找用户的数据库主键ID
       const user = await this.getUserByIdOrCode(user_id);
       if (user) {
-        where.user_id = user.id; // 使用主键ID查询充值记录表
+        where.user_id = user.user_id; // 使用主键ID查询充值记录表
       }
     }
     const typeQuery = type !== undefined ? type : operation_type;
@@ -102,9 +100,9 @@ class RechargeService extends Service {
       where,
       include: [
         {
-          model: ctx.model.User,
+          model: ctx.model.SysUser,
           as: 'user',
-          attributes: [ 'user_id', 'user_code', 'user_phone', 'user_name' ],
+          attributes: [ 'user_id', 'phone', 'username', 'nickname' ],
         },
       ],
       order: [[ 'id', 'DESC' ]],
@@ -189,7 +187,7 @@ class RechargeService extends Service {
     }
 
     const recordData = {
-      user_id: user.id, // 使用主键ID存储到充值记录表
+      user_id: user.user_id, // 使用主键ID存储到充值记录表
       operator_id: operatorId,
       operation_type: Number(typeValue),
       amount: Number(amount),
@@ -263,7 +261,7 @@ class RechargeService extends Service {
     await record.update(updateData);
 
     // 查询关联用户的信息
-    const user = await ctx.model.User.findByPk(record.user_id);
+    const user = await ctx.model.SysUser.findOne({ where: { id: record.user_id, user_type: 4 } });
 
     return {
       id: record.id,

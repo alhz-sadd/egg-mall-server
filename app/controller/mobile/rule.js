@@ -10,7 +10,7 @@ class RuleController extends Controller {
   /**
    * @summary 获取规则图片列表
    * @description 获取启用状态的规则图片数组
-   * @router get /api/mobile/rules
+   * @router get /api/mobile/public/rules
    * @response 200 ApiResponse 规则图片数组
    */
   async index() {

@@ -7,15 +7,19 @@ function getUniquePhone() {
 }
 
 async function createTestUser(ctx, phone, balance = 0) {
-  return await ctx.model.User.create({
+  const sysUser = await ctx.model.SysUser.create({
     username: phone,
     phone,
     password: await ctx.genHash('123456'),
-    withdraw_password: '123456',
     nickname: '测试用户',
-    balance,
     status: 1,
+    user_type: 4,
   });
+  await ctx.model.UserWallet.create({
+    user_id: sysUser.user_id,
+    voucher_balance: balance,
+  });
+  return sysUser;
 }
 
 describe('test/app/service/recharge_request.test.js', () => {
@@ -28,8 +32,9 @@ describe('test/app/service/recharge_request.test.js', () => {
 
   afterEach(async () => {
     if (testUser) {
-      await ctx.model.RechargeRequest.destroy({ where: { user_id: testUser.id } });
-      await ctx.model.User.destroy({ where: { id: testUser.id } });
+      await ctx.model.RechargeRequest.destroy({ where: { user_id: testUser.user_id } });
+      await ctx.model.UserWallet.destroy({ where: { user_id: testUser.user_id } });
+      await ctx.model.SysUser.destroy({ where: { user_id: testUser.user_id } });
       testUser = null;
     }
   });
@@ -37,13 +42,13 @@ describe('test/app/service/recharge_request.test.js', () => {
   describe('create()', () => {
     it('应成功创建充值请求', async () => {
       testUser = await createTestUser(ctx, getUniquePhone());
-      const result = await ctx.service.rechargeRequest.create(testUser.id, {
+      const result = await ctx.service.rechargeRequest.create(testUser.user_id, {
         do_money: 500,
         pay_way: 9,
         remark: '单元测试充值',
       });
 
-      assert(result.user_id === testUser.id);
+      assert(result.user_id === testUser.user_id);
       assert(Number(result.do_money) === 500);
       assert(Number(result.pay_way) === 9);
       assert(result.status === 0);
@@ -55,7 +60,7 @@ describe('test/app/service/recharge_request.test.js', () => {
       testUser = await createTestUser(ctx, getUniquePhone());
       let err;
       try {
-        await ctx.service.rechargeRequest.create(testUser.id, { do_money: 0, pay_way: 9 });
+        await ctx.service.rechargeRequest.create(testUser.user_id, { do_money: 0, pay_way: 9 });
       } catch (e) {
         err = e;
       }
@@ -68,7 +73,7 @@ describe('test/app/service/recharge_request.test.js', () => {
       testUser = await createTestUser(ctx, getUniquePhone());
       let err;
       try {
-        await ctx.service.rechargeRequest.create(testUser.id, { pay_way: 9 });
+        await ctx.service.rechargeRequest.create(testUser.user_id, { pay_way: 9 });
       } catch (e) {
         err = e;
       }
@@ -91,9 +96,9 @@ describe('test/app/service/recharge_request.test.js', () => {
 
     it('已存在审核通过的充值请求后 is_first 应为 0', async () => {
       testUser = await createTestUser(ctx, getUniquePhone());
-      const first = await ctx.service.rechargeRequest.create(testUser.id, { do_money: 100, pay_way: 9 });
+      const first = await ctx.service.rechargeRequest.create(testUser.user_id, { do_money: 100, pay_way: 9 });
       await ctx.model.RechargeRequest.update({ status: 1 }, { where: { id: first.id } });
-      const second = await ctx.service.rechargeRequest.create(testUser.id, { do_money: 200, pay_way: 9 });
+      const second = await ctx.service.rechargeRequest.create(testUser.user_id, { do_money: 200, pay_way: 9 });
       assert(second.is_first === 0);
     });
   });

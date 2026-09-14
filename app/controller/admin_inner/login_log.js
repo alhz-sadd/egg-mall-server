@@ -14,7 +14,7 @@ class LoginLogController extends Controller {
    */
   async index() {
     const { ctx, service } = this;
-    const result = await service.adminUser.loginLogs(ctx.query);
+    const result = await service.sysLog.loginLogs(ctx.query);
 
     ctx.body = {
       code: 200,
@@ -30,7 +30,7 @@ class LoginLogController extends Controller {
    */
   async batchDestroy() {
     const { ctx, service } = this;
-    await service.adminUser.batchDestroyLoginLogs(ctx.request.body.ids);
+    await service.sysLog.batchDestroyLoginLogs(ctx.request.body.ids);
 
     ctx.body = {
       code: 200,
@@ -46,7 +46,7 @@ class LoginLogController extends Controller {
    */
   async clear() {
     const { ctx, service } = this;
-    await service.adminUser.clearLoginLogs();
+    await service.sysLog.clearLoginLogs();
 
     ctx.body = {
       code: 200,

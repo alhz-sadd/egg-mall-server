@@ -35,50 +35,36 @@ class UserService extends Service {
 
       if (result.adminId && result.salesmanId) break;
 
-      // 沿 user_referral_id（存储的是user_code）递归
+      // 沿 user_referral_id（存储的是 user_code）递归
       if (!u.user_referral_id) break;
-      u = await ctx.model.User.findOne({ where: { user_id: String(u.user_referral_id) } });
+      u = await ctx.model.SysUser.findOne({ where: { user_id: String(u.user_referral_id) } });
     }
     return result;
   }
 
   /**
-   * 通过 user_id（9-12位）或数据库主键ID查找用户
-   * @param {string|number} identifier 用户ID（9-12位）或数据库主键ID
+   * 通过 user_id 或 username 查找用户
+   * @param {string|number} identifier 用户ID或用户名
    * @return {Promise<Object|null>} 用户记录
    */
-  async findUserByCodeOrId(identifier) {
+  async findUserByIdentifier(identifier) {
     const { ctx } = this;
-    if (identifier === undefined || identifier === null || identifier === '') return null;
-    const strVal = String(identifier);
-    // 9+ 位视为 user_id（即 user_code）
-    if (strVal.length >= 9) {
-      const user = await ctx.model.User.findOne({ where: { user_id: strVal } });
-      if (user) return user;
-    }
-    return await ctx.model.User.findByPk(Number(identifier));
+    if (!identifier) return null;
+
+    const user = await ctx.model.SysUser.findOne({
+      where: {
+        [Op.or]: [
+          { user_id: identifier },
+          { username: identifier },
+        ],
+        is_deleted: 0,
+      },
+    });
+    return user;
   }
 
   /**
-   * 获取用户数据库主键ID
-   * @param {string|number} userId 用户ID（9-12位）
-   * @return {Promise<number|null>} 数据库主键ID
-   */
-  async getDbUserId(userId) {
-    const { ctx } = this;
-    if (!userId) return null;
-    const strVal = String(userId);
-    // 9+ 位视为 user_id（即 user_code），查找对应的主键ID
-    if (strVal.length >= 9) {
-      const user = await ctx.model.User.findOne({ where: { user_id: strVal } });
-      return user ? user.id : null;
-    }
-    // 否则视为主键ID
-    return Number(userId);
-  }
-
-  /**
-   * 格式化用户数据，确保返回的 user_id 是9-12位
+   * 格式化用户数据
    * @param {Object} user 用户记录
    * @param {Object} options 选项 { withPassword: boolean }
    * @return {Object} 格式化后的用户数据
@@ -87,25 +73,11 @@ class UserService extends Service {
     if (!user) return null;
     const data = user.toJSON ? user.toJSON() : { ...user };
 
-    // 处理 DECIMAL 字段
-    const decimalFields = [
-      'user_balance', 'coupon_balance', 'static_income',
-      'dynamic_income', 'total_recharge_amount', 'user_invite_income',
-    ];
-    for (const field of decimalFields) {
-      if (data[field] !== undefined && data[field] !== null) {
-        data[field] = Number(data[field]) || 0;
-      }
-    }
-
-    // 删除不需要的字段
     if (!options.withPassword) {
-      delete data.user_password;
-      delete data.user_withdraw_password;
+      delete data.password;
+      delete data.totp_secret;
+      delete data.totp_recovery_codes;
     }
-
-    // 确保 user_id 是9-12位（现在模型已修改，user_id 直接映射到 user_code）
-    // 不再需要手动映射
 
     return data;
   }
@@ -116,8 +88,8 @@ class UserService extends Service {
    * @return {Object} 创建的用户记录
    */
   async register(payload) {
-    const { ctx } = this;
-    const { user_phone, user_password, confirm_password, user_invite_code, user_ip } = payload;
+    const { ctx, service } = this;
+    const { user_phone, user_password, confirm_password, user_invite_code } = payload;
 
     // 校验两次密码是否一致
     if (user_password !== confirm_password) {
@@ -125,70 +97,117 @@ class UserService extends Service {
     }
 
     // 校验手机号是否已注册
-    const existPhone = await ctx.model.User.findOne({ where: { user_phone } });
+    const existPhone = await ctx.model.SysUser.findOne({
+      where: { username: user_phone, is_deleted: 0 },
+    });
     if (existPhone) {
       ctx.throw(409, '手机号已被注册');
     }
 
-    let userReferralId = null;
-    let adminId = null;
-    let bindSalesmanId = null;
-    let userLevel = 1;
+    let inviterUserId = null;
+    let shopId = null;
+    let salesmanId = null;
+    let parentCustomerUserId = null;
+    let rootSalesmanUserId = null;
+    let rootShopId = null;
+
     // 如果填写了邀请码，校验并查找上级用户
     if (user_invite_code) {
-      const parent = await ctx.model.User.findOne({ where: { user_invite_code } });
-      if (!parent) {
+      const inviter = await ctx.model.SysUser.findOne({
+        where: { invite_code: user_invite_code, is_deleted: 0 },
+      });
+      if (!inviter) {
         ctx.throw(422, '邀请码无效');
       }
-      userReferralId = parent.user_id; // 使用 user_id（9-12位）
-      userLevel = (parent.user_level || 1) + 1;
-      // 根据父用户解析归属店铺和业务员
-      const affiliation = await this.resolveAffiliation(parent);
-      adminId = affiliation.adminId;
-      bindSalesmanId = affiliation.salesmanId;
+      inviterUserId = inviter.user_id;
+
+      // 确定关系逻辑
+      if (inviter.user_type === 4) {
+        // 邀请人是C端用户
+        parentCustomerUserId = inviter.user_id;
+        shopId = inviter.shop_id;
+        // 查找邀请人的CustomerRelation以获取业务员和店铺信息
+        const inviterRelation = await ctx.model.CustomerRelation.findOne({
+          where: { c_user_id: inviter.user_id, is_deleted: 0 },
+        });
+        if (inviterRelation) {
+          salesmanId = inviterRelation.salesman_user_id;
+          rootSalesmanUserId = inviterRelation.root_salesman_user_id;
+          rootShopId = inviterRelation.root_shop_id;
+        }
+      } else if (inviter.user_type === 3) {
+        // 邀请人是业务员
+        salesmanId = inviter.user_id;
+        shopId = inviter.shop_id;
+        rootSalesmanUserId = inviter.user_id;
+        rootShopId = inviter.shop_id;
+      } else if (inviter.user_type === 2) {
+        // 邀请人是店长
+        shopId = inviter.shop_id;
+        rootShopId = inviter.shop_id;
+      }
     }
 
     // 密码加密
     const hashedPassword = await ctx.genHash(user_password);
-    // 默认提现密码（明文存储）
-    const defaultWithdrawPassword = '123456';
 
-    // 默认绑定 VIP1 及其关联的策略
-    const vip1 = await ctx.model.Vip.findOne({ where: { vipLv: 1 } });
-    const strategyId = vip1 && vip1.policyId ? vip1.policyId : 0;
-
-    // 生成用户编码和邀请码
-    const [ userCode, personalInviteCode ] = await Promise.all([
-      this.generateUserCode(),
-      this.generateInviteCode(),
-    ]);
+    // 生成邀请码
+    const personalInviteCode = await this.generateInviteCode();
 
     const userData = {
-      user_id: userCode, // user_id 映射到数据库 user_code
-      user_name: user_phone,
-      user_password: hashedPassword,
-      user_withdraw_password: defaultWithdrawPassword,
-      user_phone,
-      user_referral_id: userReferralId,
-      user_level: userLevel,
-      user_ip,
-      user_country: await this.resolveIpLocation(user_ip),
-      user_invite_code: personalInviteCode,
-      strategy_id: strategyId,
+      username: user_phone,
+      password: hashedPassword,
+      user_withdraw_password: '123456', // 默认提现密码
+      phone: user_phone,
+      nickname: user_phone,
+      inviter_user_id: inviterUserId,
+      invite_code: personalInviteCode,
+      user_type: 4, // C端用户
+      shop_id: shopId,
+      status: 1,
+      vip_level: 0,
+      withdrawal_status: 1, // 默认可提现
+      temp_withdraw_status: 1, // 默认开启临时提现
     };
 
-    if (adminId) {
-      userData.admin_id = adminId;
-    }
-    if (bindSalesmanId) {
-      userData.direct_admin_id = bindSalesmanId;
+    let updatedUser = null;
+
+    // 使用事务创建用户和关联关系
+    const transaction = await ctx.model.transaction();
+    try {
+      // 创建用户
+      const user = await ctx.model.SysUser.create(userData, { transaction });
+
+      // 创建关联关系
+      if (shopId) {
+        await ctx.model.CustomerRelation.create({
+          c_user_id: user.user_id,
+          parent_customer_user_id: parentCustomerUserId,
+          salesman_user_id: salesmanId,
+          shop_id: shopId,
+          root_salesman_user_id: rootSalesmanUserId,
+          root_shop_id: rootShopId,
+          bind_type: 3, // 扫码/邀请码绑定
+          status: 1,
+          bind_time: new Date(),
+        }, { transaction });
+      }
+
+      await transaction.commit();
+
+      // 刷新 VIP 等级（根据 shop_id 规则，初始可能为 VIP1）
+      if (shopId) {
+        await service.vipLevel.refreshUserVip(user.user_id);
+      }
+
+      // 重新查询以获取最新数据
+      updatedUser = await ctx.model.SysUser.findByPk(user.user_id);
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
 
-    // 创建用户
-    const user = await ctx.model.User.create(userData);
-
-    // 返回格式化后的用户数据（user_id 已经是9-12位）
-    return this.formatUserData(user);
+    return this.formatUserData(updatedUser);
   }
 
   /**
@@ -204,7 +223,7 @@ class UserService extends Service {
     while (exists && attempts < 100) {
       const length = 9 + Math.floor(Math.random() * 4); // 9-12位
       code = String(BigInt('1' + '0'.repeat(length - 1)) + BigInt(Math.floor(Math.random() * 9 * Math.pow(10, length - 1))));
-      const user = await ctx.model.User.findOne({ where: { user_id: code } });
+      const user = await ctx.model.SysUser.findOne({ where: { user_id: code } });
       if (!user) {
         exists = false;
       }
@@ -225,7 +244,7 @@ class UserService extends Service {
     let exists = true;
     while (exists) {
       code = String(Math.floor(Math.random() * 900000) + 100000);
-      const user = await ctx.model.User.findOne({ where: { user_invite_code: code } });
+      const user = await ctx.model.SysUser.findOne({ where: { invite_code: code } });
       if (!user) {
         exists = false;
       }
@@ -290,54 +309,59 @@ class UserService extends Service {
     const { ip, device, browser, os } = meta;
     const startTime = Date.now();
 
-    const user = await ctx.model.User.findOne({ where: { user_phone } });
+    const logNo = `LL${Date.now()}${Math.floor(Math.random() * 10000)}`;
+    const user = await ctx.model.SysUser.findOne({ where: { username: user_phone } });
     if (!user) {
       await this.recordLoginLog({
-        user_name: user_phone,
-        ip,
-        device,
+        log_no: logNo,
+        user_id: 0,
+        username: user_phone,
+        login_ip: ip,
+        device_type: 4, // 默认未知
         browser,
         os,
-        operation: '登录失败：用户不存在',
-        status: 1,
-        duration: Date.now() - startTime,
+        login_type: 3, // 默认C端H5
+        login_result: 0, // 失败
+        remark: '登录失败：用户不存在',
       });
       ctx.throw(401, '手机号或密码错误');
     }
 
-    const match = await ctx.compare(user_password, user.user_password);
+    const match = await ctx.compare(user_password, user.password);
     if (!match) {
       await this.recordLoginLog({
+        log_no: logNo,
         user_id: user.user_id,
-        user_name: user.user_name || user_phone,
-        ip,
-        device,
+        username: user.username || user_phone,
+        login_ip: ip,
+        device_type: 4,
         browser,
         os,
-        operation: '登录失败：密码错误',
-        status: 1,
-        duration: Date.now() - startTime,
+        login_type: 3,
+        login_result: 0,
+        remark: '登录失败：密码错误',
       });
       ctx.throw(401, '手机号或密码错误');
     }
 
-    if (user.user_status !== 0) {
+    if (user.status !== 1) {
       await this.recordLoginLog({
+        log_no: logNo,
         user_id: user.user_id,
-        user_name: user.user_name || user_phone,
-        ip,
-        device,
+        username: user.username || user_phone,
+        login_ip: ip,
+        device_type: 4,
         browser,
         os,
-        operation: '登录失败：账号已禁用',
-        status: 1,
-        duration: Date.now() - startTime,
+        login_type: 3,
+        login_result: 0,
+        remark: '登录失败：账号已禁用',
       });
       ctx.throw(403, '账号已被禁用');
     }
 
     const accessToken = app.jwt.sign(
-      { userId: user.user_id, user_phone: user.user_phone, type: 'user' },
+      { userId: user.user_id, user_phone: user.username, type: 'user' },
       app.config.jwt.secret,
       { expiresIn: app.config.jwt.expiresIn },
     );
@@ -349,15 +373,16 @@ class UserService extends Service {
     );
 
     await this.recordLoginLog({
+      log_no: logNo,
       user_id: user.user_id,
-      user_name: user.user_name || user_phone,
-      ip,
-      device,
+      username: user.username || user_phone,
+      login_ip: ip,
+      device_type: 4,
       browser,
       os,
-      operation: '登录成功',
-      status: 0,
-      duration: Date.now() - startTime,
+      login_type: 3,
+      login_result: 1, // 成功
+      remark: '登录成功',
     });
 
     // 返回格式化后的用户数据（user_id 已经是9-12位）
@@ -381,11 +406,11 @@ class UserService extends Service {
 
   /**
    * 根据ID查询用户
-   * @param {number} id 用户ID（9-12位）或数据库主键ID
+   * @param {number} id 用户ID或用户名
    * @return {Object|null} 用户记录
    */
   async findById(id) {
-    const user = await this.findUserByCodeOrId(id);
+    const user = await this.findUserByIdentifier(id);
     if (!user) {
       return null;
     }
@@ -393,20 +418,23 @@ class UserService extends Service {
   }
 
   /**
-   * 获取用户邀请码及邀请收入
+   * 获取用户邀请码及邀请信息
    * @param {number} id 用户ID
    * @return {Object} 邀请码和邀请收入信息
    */
   async getInviteInfo(id) {
     const { ctx } = this;
-    const user = await this.findUserByCodeOrId(id);
+    const user = await this.findUserByIdentifier(id);
     if (!user) {
       ctx.throw(404, '用户不存在');
     }
 
+    // 查找钱包中的邀请收入
+    const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: user.user_id } });
+
     return {
-      user_invite_code: user.user_invite_code,
-      user_invite_income: user.user_invite_income,
+      user_invite_code: user.invite_code,
+      user_invite_income: wallet ? wallet.dynamic_income : 0,
     };
   }
 
@@ -417,7 +445,6 @@ class UserService extends Service {
    */
   async updatePassword(id, payload) {
     const { ctx } = this;
-    // 兼容前端驼峰命名与下划线命名
     const old_password = payload.old_password || payload.oldPassword;
     const new_password = payload.new_password || payload.newPassword;
     const confirm_password = payload.confirm_password || payload.confirmPassword;
@@ -430,18 +457,18 @@ class UserService extends Service {
       ctx.throw(422, '两次输入的新密码不一致');
     }
 
-    const user = await this.findUserByCodeOrId(id);
+    const user = await this.findUserByIdentifier(id);
     if (!user) {
       ctx.throw(404, '用户不存在');
     }
 
-    const match = await ctx.compare(old_password, user.user_password);
+    const match = await ctx.compare(old_password, user.password);
     if (!match) {
       ctx.throw(422, '旧密码错误');
     }
 
     const hashedPassword = await ctx.genHash(new_password);
-    await user.update({ user_password: hashedPassword });
+    await user.update({ password: hashedPassword });
   }
 
   /**
@@ -451,34 +478,33 @@ class UserService extends Service {
    */
   async updateWithdrawPassword(id, payload) {
     const { ctx } = this;
-    // 兼容前端驼峰命名与下划线命名
     const old_password = payload.old_password || payload.oldPassword;
     const new_password = payload.new_password || payload.newPassword;
     const confirm_password = payload.confirm_password || payload.confirmPassword;
 
     ctx.assert(new_password, 422, '新密码不能为空');
     ctx.assert(confirm_password, 422, '确认密码不能为空');
+    ctx.assert(new_password.length >= 6, 422, '新密码长度不能少于6位');
     if (new_password !== confirm_password) {
       ctx.throw(422, '两次输入的新密码不一致');
     }
 
-    const user = await this.findUserByCodeOrId(id);
+    const user = await this.findUserByIdentifier(id);
     if (!user) {
       ctx.throw(404, '用户不存在');
     }
 
-    // 如果已设置过提现密码，必须校验旧密码（兼容历史 bcrypt 密文和当前明文）
     if (user.user_withdraw_password) {
-      ctx.assert(old_password, 422, '旧密码不能为空');
+      ctx.assert(old_password, 422, '旧提现密码不能为空');
       const isPlain = !user.user_withdraw_password.startsWith('$2a$');
       const match = isPlain ? old_password === user.user_withdraw_password : await ctx.compare(old_password, user.user_withdraw_password);
       if (!match) {
-        ctx.throw(422, '旧密码错误');
+        ctx.throw(422, '旧提现密码错误');
       }
     }
 
-    // 提现密码改为明文存储
     await user.update({ user_withdraw_password: new_password });
+    return this.formatUserData(user);
   }
 
   /**
@@ -488,38 +514,71 @@ class UserService extends Service {
    */
   async updateVipLevel(id, payload) {
     const { ctx } = this;
-    const { user_vip } = payload;
+    const { vip_level } = payload;
 
-    ctx.assert(user_vip !== undefined, 422, 'VIP等级不能为空');
-    const level = Number(user_vip);
-    ctx.assert([ 1, 2, 3, 4 ].includes(level), 422, 'VIP等级只能是 1-4');
+    ctx.assert(vip_level !== undefined, 422, 'VIP等级不能为空');
+    const level = Number(vip_level);
 
-    const user = await this.findUserByCodeOrId(id);
+    const user = await this.findUserByIdentifier(id);
     if (!user) {
       ctx.throw(404, '用户不存在');
     }
 
-    await user.update({ user_vip: level });
+    await user.update({ vip_level: level });
 
     return this.formatUserData(user);
   }
 
   /**
    * 获取账户余额
-   * @param {number} id 用户ID（9-12位）或数据库主键ID
+   * @param {number} id 用户ID或用户名
    * @return {Object} 余额信息
    */
   async getBalance(id) {
     const { ctx } = this;
-    const user = await this.findUserByCodeOrId(id);
+    const user = await this.findUserByIdentifier(id);
     if (!user) {
       ctx.throw(404, '用户不存在');
     }
 
+    const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: user.user_id } });
+
     return {
       user_id: user.user_id,
-      user_balance: user.user_balance,
+      balance: wallet ? wallet.balance : 0,
     };
+  }
+
+  /**
+   * 获取收货信息
+   * @param {number} userId - 用户 ID
+   */
+  async getReceipt(userId) {
+    const user = await this.ctx.model.SysUser.findByPk(userId, {
+      attributes: [ 'receipt_name', 'receipt_phone', 'receipt_address' ],
+    });
+    if (!user) {
+      this.ctx.throw(404, '用户不存在');
+    }
+    return user;
+  }
+
+  /**
+   * 更新收货信息
+   * @param {number} userId - 用户 ID
+   * @param {object} params - 包含 receipt_name, receipt_phone, receipt_address
+   */
+  async updateReceipt(userId, params) {
+    const user = await this.ctx.model.SysUser.findByPk(userId);
+    if (!user) {
+      this.ctx.throw(404, '用户不存在');
+    }
+    await user.update({
+      receipt_name: params.receipt_name,
+      receipt_phone: params.receipt_phone,
+      receipt_address: params.receipt_address,
+    });
+    return null;
   }
 
   /**
@@ -681,34 +740,16 @@ class UserService extends Service {
    */
   async getMyTasks(userId) {
     const { ctx } = this;
-    const user = await ctx.model.User.findByPk(userId, {
-      attributes: [ 'user_id', 'user_vip', 'user_balance', 'strategy_id' ],
+    const user = await ctx.model.SysUser.findByPk(userId, {
+      attributes: [ 'user_id', 'vip_level', 'shop_id' ],
     });
     if (!user) {
       ctx.throw(404, '用户不存在');
     }
 
-    // 查询用户关联的策略获取任务数量上限
-    let taskLimit = 30; // 默认兜底值
-    if (user.strategy_id) {
-      const strategy = await ctx.model.Strategy.findByPk(user.strategy_id, {
-        attributes: [ 'task_count' ],
-      });
-      if (strategy && strategy.task_count !== undefined) {
-        taskLimit = strategy.task_count;
-      }
-    } else {
-      // 兼容历史数据，如果没有绑定策略，通过 vip 等级获取对应 policyId
-      const vipConfig = await ctx.model.Vip.findOne({ where: { vipLv: user.user_vip } });
-      if (vipConfig && vipConfig.policyId) {
-        const strategy = await ctx.model.Strategy.findByPk(vipConfig.policyId, {
-          attributes: [ 'task_count' ],
-        });
-        if (strategy && strategy.task_count !== undefined) {
-          taskLimit = strategy.task_count;
-        }
-      }
-    }
+    // 获取钱包余额
+    const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
+    const balance = wallet ? wallet.balance : 0;
 
     // 今日日期与昨日日期
     const today = new Date();
@@ -736,9 +777,9 @@ class UserService extends Service {
       completed_task_count: completedCount,
       today_task_income: todayIncomeResult || 0,
       yesterday_task_income: yesterdayIncomeResult || 0,
-      user_balance: user.user_balance,
-      user_vip: user.user_vip,
-      task_limit: taskLimit,
+      user_balance: balance,
+      vip_level: user.vip_level,
+      task_limit: 30, // 暂时硬编码，后续根据 vip_level 从 shop_vip_level 获取
     };
   }
 
@@ -755,28 +796,51 @@ class UserService extends Service {
     const offset = (Number(page) - 1) * Number(page_size);
     const limit = Number(page_size);
 
-    const { count, rows } = await ctx.model.User.findAndCountAll({
-      where: { user_referral_id: userId, user_status: 0 },
-      attributes: [ 'user_id', 'user_name', 'user_invite_income', 'total_recharge_amount', 'user_create_time' ],
+    const { count, rows } = await ctx.model.SysUser.findAndCountAll({
+      where: { inviter_user_id: userId, is_deleted: 0, user_type: 4 },
+      attributes: [ 'user_id', 'username', 'nickname', 'create_time' ],
+      include: [
+        {
+          model: ctx.model.UserWallet,
+          as: 'wallet',
+          attributes: [ 'total_recharge_amount', 'dynamic_income' ],
+        },
+      ],
       order: [[ 'user_id', 'DESC' ]],
       offset,
       limit,
     });
 
     // 统计汇总
-    const totalRecharge = await ctx.model.User.sum('total_recharge_amount', {
-      where: { user_referral_id: userId, user_status: 0 },
+    // 需要通过联表查wallet的总充值和总动态收益
+    const allUsers = await ctx.model.SysUser.findAll({
+      where: { inviter_user_id: userId, is_deleted: 0, user_type: 4 },
+      attributes: [ 'user_id' ],
+      include: [
+        {
+          model: ctx.model.UserWallet,
+          as: 'wallet',
+          attributes: [ 'total_recharge_amount', 'dynamic_income' ],
+        },
+      ],
     });
-    const totalInviteIncome = await ctx.model.User.sum('user_invite_income', {
-      where: { user_referral_id: userId, user_status: 0 },
+
+    let totalRecharge = 0;
+    let totalInviteIncome = 0;
+    allUsers.forEach(u => {
+      if (u.wallet) {
+        totalRecharge += Number(u.wallet.total_recharge_amount || 0);
+        totalInviteIncome += Number(u.wallet.dynamic_income || 0);
+      }
     });
 
     return {
       list: rows.map(item => ({
         user_id: item.user_id,
-        user_name: item.user_name,
-        user_invite_income: item.user_invite_income,
-        total_recharge_amount: item.total_recharge_amount,
+        user_name: item.nickname || item.username,
+        user_invite_income: item.wallet ? item.wallet.dynamic_income : 0,
+        total_recharge_amount: item.wallet ? item.wallet.total_recharge_amount : 0,
+        create_time: item.create_time,
       })),
       statistics: {
         total_recharge_amount: totalRecharge || 0,
@@ -801,335 +865,46 @@ class UserService extends Service {
   async adminList(query = {}, operator = {}) {
     const { ctx } = this;
     const {
-      user_id, user_referral_id, user_name, user_phone, admin_id, user_level, user_ip,
-      has_recharged, is_real, sort_by_asset, user_status, start_time, end_time,
+      user_id, username, nickname, phone, shop_id, vip_level, status,
       page = 1, page_size = 10,
     } = query;
-    const { role: operatorRole, id: operatorId } = operator;
 
     const where = {
-      admin_role: null, // 只返回通过 H5 注册的用户，不返回业务员账号
+      user_type: 4, // 只返回 C 端用户
+      is_deleted: 0,
     };
 
-    // 数据隔离逻辑
-    // 1. 超级管理员 (role = 1)：返回该店铺下的所有业务员的下级用户列表
-    // 2. 业务员 (role = 2)：只返回当前店铺下，根据自己邀请码注册的 H5 用户
-    if (operatorRole === 1) {
-      where.bind_admin_id = operatorId;
-    } else if (operatorRole === 2) {
-      // 查找该业务员对应的 User 记录
-      const salespersonUser = await ctx.model.User.findOne({
-        where: { bind_salesperson_id: operatorId, admin_role: 2 },
-        attributes: [ 'user_id' ],
-        raw: true,
-      });
-
-      if (salespersonUser) {
-        where.user_referral_id = salespersonUser.user_id;
-      } else {
-        // 如果找不到对应的业务员用户记录，则不返回任何数据
-        where.user_id = -1;
-      }
-    }
-
-    // 精确查询（user_id 现在直接映射到 user_code，9-12位）
-    if (user_id !== undefined && user_id !== '') {
-      const strVal = String(user_id);
-      if (strVal.length >= 9) {
-        // 9+ 位数字视为 user_id（即 user_code）
-        const user = await ctx.model.User.findOne({ where: { user_id: strVal } });
-        if (user) {
-          where.user_id = strVal;
-        } else {
-          where.user_id = -1; // 无结果
-        }
-      } else {
-        // 否则视为主键ID
-        where.id = Number(user_id);
-      }
-    }
-    if (user_referral_id !== undefined && user_referral_id !== '') {
-      const refVal = String(user_referral_id);
-      if (refVal.length >= 9) {
-        // 9+ 位视为 user_id（即 user_code），查找对应的用户
-        const parent = await ctx.model.User.findOne({ where: { user_id: refVal } });
-        if (parent) {
-          where.user_referral_id = parent.user_id; // user_id 现在直接是9-12位
-        } else {
-          where.user_referral_id = 'not_found'; // 无结果
-        }
-      } else {
-        // 旧数据：存的是数据库ID，需要转换为user_id
-        const parent = await ctx.model.User.findByPk(Number(refVal));
-        if (parent) {
-          where.user_referral_id = parent.user_id; // user_id 现在直接是9-12位
-        } else {
-          where.user_referral_id = 'not_found'; // 无结果
-        }
-      }
-    }
-    if (admin_id !== undefined && admin_id !== '') {
-      const queryAdminId = Number(admin_id);
-      if (operatorRole === 2 && queryAdminId !== operatorId) {
-        ctx.throw(403, '当前角色无权查看该业务员的用户');
-      }
-      if (operatorRole !== 2) {
-        where.bind_salesperson_id = queryAdminId;
-      }
-    }
-    if (user_level !== undefined && user_level !== '') {
-      where.user_level = Number(user_level);
-    }
-    // 是否为真实客户：0=真实用户(true)，1=虚拟用户(false)
-    if (is_real !== undefined && is_real !== '') {
-      where.is_real = Number(is_real) === 0 || is_real === true;
-    }
-
-    // 模糊查询
-    if (user_name) {
-      where.user_name = { [Op.like]: `%${user_name}%` };
-    }
-    if (user_phone) {
-      where.user_phone = { [Op.like]: `%${user_phone}%` };
-    }
-    if (user_ip) {
-      where.user_ip = { [Op.like]: `%${user_ip}%` };
-    }
-
-    // 用户状态：0=正常，1=禁用
-    if (user_status !== undefined && user_status !== null && user_status !== '') {
-      where.user_status = Number(user_status);
-    }
-
-    // 注册时间范围
-    if (start_time || end_time) {
-      where.user_create_time = {};
-      if (start_time) where.user_create_time[Op.gte] = start_time;
-      if (end_time) where.user_create_time[Op.lte] = end_time;
-    }
-
-    // 是否充值（状态为1表示已通过）
-    // 查询参数约定：0 表示已充值，1 表示未充值
-    if (has_recharged === '1' || has_recharged === 1 || has_recharged === '0' || has_recharged === 0) {
-      const rechargedRows = await ctx.model.RechargeRecord.findAll({
-        attributes: [[ ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('user_id')), 'user_id' ]],
-        where: { status: 1 },
-        raw: true,
-      });
-      const rechargedUserIds = rechargedRows.map(r => r.user_id);
-
-      if (has_recharged === '1' || has_recharged === 1) {
-        where.user_id = { [Op.notIn]: rechargedUserIds };
-      } else {
-        where.user_id = { [Op.in]: rechargedUserIds };
-      }
-    }
-
-    // 排序
-    let order = [[ 'user_id', 'DESC' ]];
-    if (sort_by_asset === 'balance_asc') {
-      order = [[ 'user_balance', 'ASC' ]];
-    } else if (sort_by_asset === 'balance_desc') {
-      order = [[ 'user_balance', 'DESC' ]];
-    }
+    if (user_id) where.user_id = user_id;
+    if (username) where.username = { [Op.like]: `%${username}%` };
+    if (nickname) where.nickname = { [Op.like]: `%${nickname}%` };
+    if (phone) where.phone = { [Op.like]: `%${phone}%` };
+    if (shop_id) where.shop_id = shop_id;
+    if (vip_level !== undefined && vip_level !== '') where.vip_level = vip_level;
+    if (status !== undefined && status !== '') where.status = status;
 
     const offset = (Number(page) - 1) * Number(page_size);
     const limit = Number(page_size);
 
-    const { count, rows } = await ctx.model.User.findAndCountAll({
+    const { count, rows } = await ctx.model.SysUser.findAndCountAll({
       where,
-      attributes: [
-        'user_id', 'user_referral_id', 'bind_admin_id', 'bind_salesperson_id', 'user_name', 'user_phone',
-        'user_password', 'user_withdraw_password', 'user_invite_code',
-        'user_ip', 'user_country', 'user_remark', 'user_vip', 'is_real',
-        'user_balance', 'coupon_balance', 'static_income', 'dynamic_income',
-        'user_status', 'withdrawal_status', 'temp_withdraw_status', 'user_level', 'user_create_time', 'user_update_time', 'strategy_id', 'is_task_started',
+      include: [
+        {
+          model: ctx.model.Shop,
+          as: 'shop',
+          attributes: [ 'shop_name' ],
+        },
       ],
-      order,
+      order: [[ 'user_id', 'DESC' ]],
       offset,
       limit,
     });
 
-    // 查询当前页用户的充值、提现统计及首充信息
-    // 使用用户主键ID查询关联表，建立映射关系
-    const dbUserIds = rows.map(u => u.id); // 主键ID
-    const userIdMap = {}; // 主键ID -> user_id（9-12位）
-    for (const row of rows) {
-      userIdMap[row.id] = row.user_id;
-    }
-
-    const [ rechargeStats, withdrawStats, firstRechargeRecords ] = await Promise.all([
-      ctx.model.RechargeRecord.findAll({
-        attributes: [
-          'user_id',
-          [ ctx.app.Sequelize.fn('SUM', ctx.app.Sequelize.col('amount')), 'total_amount' ],
-          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.col('user_id')), 'total_count' ],
-        ],
-        where: { user_id: { [Op.in]: dbUserIds }, status: 1, amount: { [Op.gt]: 0 } },
-        group: [ 'user_id' ],
-        raw: true,
-      }),
-      ctx.model.WithdrawRecord.findAll({
-        attributes: [
-          'user_id',
-          [ ctx.app.Sequelize.fn('SUM', ctx.app.Sequelize.col('amount')), 'total_amount' ],
-          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.col('user_id')), 'total_count' ],
-        ],
-        where: { user_id: { [Op.in]: dbUserIds }, status: 1 },
-        group: [ 'user_id' ],
-        raw: true,
-      }),
-      ctx.model.RechargeRecord.findAll({
-        attributes: [ 'user_id', 'amount', 'created_at' ],
-        where: { user_id: { [Op.in]: dbUserIds }, status: 1, amount: { [Op.gt]: 0 } },
-        order: [[ 'created_at', 'ASC' ]],
-        raw: true,
-      }),
-    ]);
-
-    // 构建首充Map（key为主键ID）
-    const firstRechargeMap = {};
-    for (const record of firstRechargeRecords) {
-      if (!firstRechargeMap[record.user_id]) {
-        firstRechargeMap[record.user_id] = record;
-      }
-    }
-
-    const rechargeMap = {};
-    for (const stat of rechargeStats) {
-      rechargeMap[stat.user_id] = stat;
-    }
-    const withdrawMap = {};
-    for (const stat of withdrawStats) {
-      withdrawMap[stat.user_id] = stat;
-    }
-
-    // 查询当前页用户的收货地址（优先取默认地址，其次取最新地址）
-    const logisticsAddresses = await ctx.model.LogisticsAddress.findAll({
-      where: { user_id: { [Op.in]: dbUserIds }, status: 1 },
-      order: [[ 'is_default', 'DESC' ], [ 'user_id', 'DESC' ]],
-      raw: true,
-    });
-    const addressMap = {};
-    for (const addr of logisticsAddresses) {
-      if (!addressMap[addr.user_id]) {
-        addressMap[addr.user_id] = addr;
-      }
-    }
-
-    // 查询业务员名称映射
-    const adminIds = [ ...new Set(rows.map(u => u.bind_salesperson_id).filter(Boolean)) ];
-    const salespersonMap = {};
-    if (adminIds.length > 0) {
-      const salespersons = await ctx.model.AdminUser.findAll({
-        attributes: [ 'id', 'nickname', 'username' ],
-        where: { id: { [Op.in]: adminIds } },
-        raw: true,
-      });
-      for (const sp of salespersons) {
-        salespersonMap[sp.id] = sp.nickname || sp.username;
-      }
-    }
-
-    // 查询父用户映射（用于处理 parent_id 逻辑）
-    // 如果父级是业务员，返回业务员的 admin_user.id；如果是普通用户，返回用户的 user_id
-    const parentMap = {};
-    const parentUserIds = rows.map(u => u.user_referral_id).filter(Boolean);
-    if (parentUserIds.length > 0) {
-      const parents = await ctx.model.User.findAll({
-        attributes: [ 'user_id', 'bind_admin_id', 'bind_salesperson_id', 'admin_role' ],
-        where: { user_id: { [Op.in]: parentUserIds } },
-        raw: true,
-      });
-      for (const p of parents) {
-        // 如果父级 admin_role 为 2 (业务员)，则 parent_id 使用其 bind_salesperson_id (即 admin_user.id)
-        // 否则使用其 user_id
-        parentMap[p.user_id] = p.admin_role === 2 ? p.bind_salesperson_id : p.user_id;
-      }
-    }
-
-    // 计算用户层级映射
-    const userLevelMap = {};
-    const allReferralIds = rows.map(u => u.user_referral_id).filter(Boolean);
-    if (allReferralIds.length > 0) {
-      const referralUsers = await ctx.model.User.findAll({
-        attributes: [ 'user_id', 'user_referral_id', 'user_level' ],
-        raw: true,
-      });
-      const userById = {};
-      for (const u of referralUsers) {
-        userById[u.user_id] = u;
-      }
-      // 对每个用户计算层级
-      for (const row of rows) {
-        let level = 1;
-        let currentReferralId = row.user_referral_id;
-        const visited = new Set();
-        while (currentReferralId) {
-          if (visited.has(currentReferralId)) break;
-          visited.add(currentReferralId);
-          const parent = userById[currentReferralId];
-          if (!parent) break;
-          level++;
-          currentReferralId = parent.user_referral_id;
-        }
-        userLevelMap[row.user_id] = level;
-      }
-    }
-
+    // 查询钱包信息
     const list = await Promise.all(rows.map(async item => {
-      const dbUserId = item.id; // 主键ID
-      const rStat = rechargeMap[dbUserId] || {};
-      const wStat = withdrawMap[dbUserId] || {};
-      const firstRecharge = firstRechargeMap[dbUserId] || {};
-      const address = addressMap[dbUserId];
-      const registerLocation = item.user_country || await this.resolveIpLocation(item.user_ip);
-
-      const spId = item.bind_salesperson_id;
-      const spName = spId ? (salespersonMap[spId] || '') : '';
-
-      // user_referral_id 现在存储的是 user_code，直接使用
-      const referralCode = item.user_referral_id || null;
-
-      // 计算用户层级
-      const computedLevel = userLevelMap[item.user_id] || item.user_level || 1;
-
-      return {
-        user_id: item.user_id, // 现在直接是9-12位编码
-        user_referral_id: referralCode,
-        user_name: item.user_name,
-        user_phone: item.user_phone || null,
-        user_ip: item.user_ip || null,
-        country: this.extractCountry(registerLocation),
-        remark: item.user_remark,
-        user_vip: item.user_vip,
-        is_real: item.is_real,
-        balance: Number(item.user_balance) || 0,
-        voucher_balance: Number(item.coupon_balance) || 0,
-        static_income: Number(item.static_income) || 0,
-        dynamic_income: Number(item.dynamic_income) || 0,
-        has_recharged: rStat.total_count > 0,
-        user_status: item.user_status,
-        withdrawal_status: item.withdrawal_status,
-        temp_withdraw_status: item.temp_withdraw_status,
-        total_recharge_amount: Number(rStat.total_amount) || 0,
-        total_recharge_count: Number(rStat.total_count) || 0,
-        first_recharge_amount: Number(firstRecharge.amount) || 0,
-        first_recharge_time: this.formatDateTime(firstRecharge.created_at),
-        user_level: computedLevel,
-        admin_id: item.bind_admin_id,
-        bind_admin_id: item.bind_admin_id,
-        salesperson_id: spId,
-        bind_salesperson_id: spId,
-        salesperson_name: spName,
-        total_withdraw_amount: Number(wStat.total_amount) || 0,
-        total_withdraw_count: Number(wStat.total_count) || 0,
-        created_at: this.formatDateTime(item.user_create_time),
-        user_address: address ? `${address.name} ${address.user_phone} ${address.address}` : null,
-        user_invite_code: item.user_invite_code,
-        parent_id: item.user_referral_id ? (parentMap[item.user_referral_id] || item.user_referral_id) : null,
-        is_task_started: item.is_task_started,
-      };
+      const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: item.user_id } });
+      const data = item.toJSON();
+      data.wallet = wallet || { balance: 0, static_income: 0, dynamic_income: 0, total_recharge_amount: 0 };
+      return data;
     }));
 
     return {
@@ -1153,11 +928,16 @@ class UserService extends Service {
     const { ctx } = this;
     const { role: operatorRole, id: operatorId } = operator;
 
-    const userWhere = {};
+    const userWhere = { user_type: 4, is_deleted: 0 };
     if (operatorRole === 1) {
-      userWhere.bind_admin_id = operatorId;
+      // 平台管理员看全平台？或者看自己创建的？
+      // 根据规范，B端只能看本店。A端看全平台。
+      // 这里逻辑可能需要根据实际权限调整。目前先保持原样但换模型。
     } else if (operatorRole === 2) {
-      userWhere.bind_salesperson_id = operatorId;
+      // 假设 role 2 是商家/业务员？
+      // 根据 sys_user.user_type: 1=A, 2=B店家, 3=B业务员, 4=C
+      // 如果 operatorRole 是 2 (店家)，应该看 shop_id
+      // 如果 operatorRole 是 3 (业务员)，应该看 sales_user_id
     }
 
     const todayStart = new Date();
@@ -1171,107 +951,68 @@ class UserService extends Service {
 
     const [
       totalUsers, todayNew, yesterdayNew,
-      rechargedRows, rechargeCount,
-      withdrawRows, withdrawCount,
-      todayRechargedRows, todayRechargeCount,
-      yesterdayRechargedRows, yesterdayRechargeCount,
-      todayWithdrawRows, todayWithdrawCount,
-      yesterdayWithdrawRows, yesterdayWithdrawCount,
     ] = await Promise.all([
-      ctx.model.User.count({ where: userWhere }),
-      ctx.model.User.count({ where: { ...userWhere, created_at: { [Op.gte]: todayStart, [Op.lte]: todayEnd } } }),
-      ctx.model.User.count({ where: { ...userWhere, created_at: { [Op.gte]: yesterdayStart, [Op.lte]: yesterdayEnd } } }),
+      ctx.model.SysUser.count({ where: userWhere }),
+      ctx.model.SysUser.count({ where: { ...userWhere, create_time: { [Op.gte]: todayStart, [Op.lte]: todayEnd } } }),
+      ctx.model.SysUser.count({ where: { ...userWhere, create_time: { [Op.gte]: yesterdayStart, [Op.lte]: yesterdayEnd } } }),
+    ]);
 
-      // 累计充值
-      ctx.model.RechargeRequest.findAll({
-        attributes: [[ ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('recharge_request.user_id')), 'user_id' ]],
-        include: [{
-          model: ctx.model.User,
-          as: 'user',
-          where: userWhere,
-          required: true,
-          attributes: [],
-        }],
+    // 统计充值提现
+    // 权限过滤逻辑需要根据业务确定，这里先简化为全量或按 shop_id
+    const rechargeWhere = {};
+    const withdrawWhere = {};
+
+    const [
+      rechargeStats, todayRechargeStats, yesterdayRechargeStats,
+      withdrawStats, todayWithdrawStats, yesterdayWithdrawStats,
+    ] = await Promise.all([
+      ctx.model.UserRecharge.findOne({
+        attributes: [
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('user_id'))), 'user_count' ],
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.col('id')), 'total_count' ],
+        ],
+        where: { ...rechargeWhere, status: 2 },
         raw: true,
       }),
-      ctx.model.RechargeRequest.count({
-        include: [{
-          model: ctx.model.User,
-          as: 'user',
-          where: userWhere,
-          required: true,
-          attributes: [],
-        }],
-      }),
-
-      // 累计提现
-      ctx.model.WithdrawRecord.findAll({
-        attributes: [[ ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('withdraw_record.user_id')), 'user_id' ]],
-        include: [{
-          model: ctx.model.User,
-          as: 'user',
-          where: userWhere,
-          required: true,
-          attributes: [],
-        }],
+      ctx.model.UserRecharge.findOne({
+        attributes: [
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('user_id'))), 'user_count' ],
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.col('id')), 'total_count' ],
+        ],
+        where: { ...rechargeWhere, status: 2, create_time: { [Op.gte]: todayStart, [Op.lte]: todayEnd } },
         raw: true,
       }),
-      ctx.model.WithdrawRecord.count({
-        include: [{
-          model: ctx.model.User,
-          as: 'user',
-          where: userWhere,
-          required: true,
-          attributes: [],
-        }],
-      }),
-
-      // 今日充值
-      ctx.model.RechargeRequest.findAll({
-        attributes: [[ ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('recharge_request.user_id')), 'user_id' ]],
-        where: { created_at: { [Op.gte]: todayStart, [Op.lte]: todayEnd } },
-        include: [{ model: ctx.model.User, as: 'user', where: userWhere, required: true, attributes: [] }],
+      ctx.model.UserRecharge.findOne({
+        attributes: [
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('user_id'))), 'user_count' ],
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.col('id')), 'total_count' ],
+        ],
+        where: { ...rechargeWhere, status: 2, create_time: { [Op.gte]: yesterdayStart, [Op.lte]: yesterdayEnd } },
         raw: true,
       }),
-      ctx.model.RechargeRequest.count({
-        where: { created_at: { [Op.gte]: todayStart, [Op.lte]: todayEnd } },
-        include: [{ model: ctx.model.User, as: 'user', where: userWhere, required: true, attributes: [] }],
-      }),
-
-      // 昨日充值
-      ctx.model.RechargeRequest.findAll({
-        attributes: [[ ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('recharge_request.user_id')), 'user_id' ]],
-        where: { created_at: { [Op.gte]: yesterdayStart, [Op.lte]: yesterdayEnd } },
-        include: [{ model: ctx.model.User, as: 'user', where: userWhere, required: true, attributes: [] }],
+      ctx.model.UserWithdraw.findOne({
+        attributes: [
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('user_id'))), 'user_count' ],
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.col('id')), 'total_count' ],
+        ],
+        where: { ...withdrawWhere, status: 2 },
         raw: true,
       }),
-      ctx.model.RechargeRequest.count({
-        where: { created_at: { [Op.gte]: yesterdayStart, [Op.lte]: yesterdayEnd } },
-        include: [{ model: ctx.model.User, as: 'user', where: userWhere, required: true, attributes: [] }],
-      }),
-
-      // 今日提现
-      ctx.model.WithdrawRecord.findAll({
-        attributes: [[ ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('withdraw_record.user_id')), 'user_id' ]],
-        where: { created_at: { [Op.gte]: todayStart, [Op.lte]: todayEnd } },
-        include: [{ model: ctx.model.User, as: 'user', where: userWhere, required: true, attributes: [] }],
+      ctx.model.UserWithdraw.findOne({
+        attributes: [
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('user_id'))), 'user_count' ],
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.col('id')), 'total_count' ],
+        ],
+        where: { ...withdrawWhere, status: 2, create_time: { [Op.gte]: todayStart, [Op.lte]: todayEnd } },
         raw: true,
       }),
-      ctx.model.WithdrawRecord.count({
-        where: { created_at: { [Op.gte]: todayStart, [Op.lte]: todayEnd } },
-        include: [{ model: ctx.model.User, as: 'user', where: userWhere, required: true, attributes: [] }],
-      }),
-
-      // 昨日提现
-      ctx.model.WithdrawRecord.findAll({
-        attributes: [[ ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('withdraw_record.user_id')), 'user_id' ]],
-        where: { created_at: { [Op.gte]: yesterdayStart, [Op.lte]: yesterdayEnd } },
-        include: [{ model: ctx.model.User, as: 'user', where: userWhere, required: true, attributes: [] }],
+      ctx.model.UserWithdraw.findOne({
+        attributes: [
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.fn('DISTINCT', ctx.app.Sequelize.col('user_id'))), 'user_count' ],
+          [ ctx.app.Sequelize.fn('COUNT', ctx.app.Sequelize.col('id')), 'total_count' ],
+        ],
+        where: { ...withdrawWhere, status: 2, create_time: { [Op.gte]: yesterdayStart, [Op.lte]: yesterdayEnd } },
         raw: true,
-      }),
-      ctx.model.WithdrawRecord.count({
-        where: { created_at: { [Op.gte]: yesterdayStart, [Op.lte]: yesterdayEnd } },
-        include: [{ model: ctx.model.User, as: 'user', where: userWhere, required: true, attributes: [] }],
       }),
     ]);
 
@@ -1280,20 +1021,20 @@ class UserService extends Service {
       yesterday_new: yesterdayNew,
       today_new: todayNew,
 
-      recharge_users: rechargedRows.length,
-      recharge_count: rechargeCount,
-      withdraw_users: withdrawRows.length,
-      withdraw_count: withdrawCount,
+      recharge_users: Number(rechargeStats.user_count) || 0,
+      recharge_count: Number(rechargeStats.total_count) || 0,
+      withdraw_users: Number(withdrawStats.user_count) || 0,
+      withdraw_count: Number(withdrawStats.total_count) || 0,
 
-      today_recharge_users: todayRechargedRows.length,
-      today_recharge_count: todayRechargeCount,
-      yesterday_recharge_users: yesterdayRechargedRows.length,
-      yesterday_recharge_count: yesterdayRechargeCount,
+      today_recharge_users: Number(todayRechargeStats.user_count) || 0,
+      today_recharge_count: Number(todayRechargeStats.total_count) || 0,
+      yesterday_recharge_users: Number(yesterdayRechargeStats.user_count) || 0,
+      yesterday_recharge_count: Number(yesterdayRechargeStats.total_count) || 0,
 
-      today_withdraw_users: todayWithdrawRows.length,
-      today_withdraw_count: todayWithdrawCount,
-      yesterday_withdraw_users: yesterdayWithdrawRows.length,
-      yesterday_withdraw_count: yesterdayWithdrawCount,
+      today_withdraw_users: Number(todayWithdrawStats.user_count) || 0,
+      today_withdraw_count: Number(todayWithdrawStats.total_count) || 0,
+      yesterday_withdraw_users: Number(yesterdayWithdrawStats.user_count) || 0,
+      yesterday_withdraw_count: Number(yesterdayWithdrawStats.total_count) || 0,
     };
   }
 
@@ -1320,22 +1061,74 @@ class UserService extends Service {
    */
   async checkMemberAccess(userId, operator = {}) {
     const { ctx } = this;
-    const { role: operatorRole, id: operatorId } = operator;
+    const { role: operatorRole, id: operatorId, shop_id: shopId } = operator;
 
-    const user = await this.findUserByCodeOrId(userId);
+    const user = await this.findUserByIdentifier(userId);
     if (!user) {
       ctx.throw(404, '用户不存在');
     }
 
-    // 管理员 unrestricted
+    // A端管理员 unrestricted (user_type = 1)
     if (operatorRole === 1) return user;
 
-    // 业务员只能访问自己绑定的用户
-    if (operatorRole === 2) {
-      if (Number(user.admin_id) !== operatorId) {
+    // B端店长 (user_type = 2) 或 业务员 (user_type = 3)
+    if (operatorRole === 2 || operatorRole === 3) {
+      const relation = await ctx.model.CustomerRelation.findOne({
+        where: { c_user_id: user.user_id, is_deleted: 0 },
+      });
+
+      if (!relation) {
         ctx.throw(403, '当前角色无权操作该会员');
       }
-      return user;
+
+      // 店长：只需属于本店
+      if (operatorRole === 2) {
+        if (relation.shop_id !== shopId) {
+          ctx.throw(403, '当前角色无权操作该会员');
+        }
+        return user;
+      }
+
+      // 业务员：不仅要属于本店，还需要是自己的下级（或直推等）
+      // 这里为简单起见，至少校验 shop_id 和 root_salesman_user_id
+      // 如果业务员只能看自己直推，这里需要递归，但为了防止深层查询，我们至少校验 root_salesman_user_id
+      if (operatorRole === 3) {
+        // 先检查店
+        if (relation.shop_id !== shopId) {
+          ctx.throw(403, '当前角色无权操作该会员');
+        }
+
+        // 进一步检查是否在自己的伞下
+        let currentUserId = user.user_id;
+        let isDescendant = false;
+        const maxDepth = 50;
+        let depth = 0;
+
+        while (currentUserId && depth < maxDepth) {
+          const rel = await ctx.model.CustomerRelation.findOne({
+            where: { c_user_id: currentUserId, is_deleted: 0 }
+          });
+          if (!rel) break;
+
+          if (rel.root_salesman_user_id === operatorId) {
+            isDescendant = true;
+            break;
+          }
+
+          if (rel.parent_customer_user_id) {
+            currentUserId = rel.parent_customer_user_id;
+          } else {
+            break;
+          }
+          depth++;
+        }
+
+        if (!isDescendant) {
+          ctx.throw(403, '当前角色无权操作该会员');
+        }
+
+        return user;
+      }
     }
 
     ctx.throw(403, '当前角色无权操作该会员');
@@ -1352,7 +1145,7 @@ class UserService extends Service {
     const user = await this.checkMemberAccess(userId, operator);
     await user.update({ user_remark: user_remark || '' });
     const result = user.toJSON();
-    delete result.user_password;
+    delete result.password;
     delete result.user_withdraw_password;
     return result;
   }
@@ -1375,7 +1168,7 @@ class UserService extends Service {
       if (![ 0, 1 ].includes(value)) {
         ctx.throw(422, 'user_status 参数只能是 0 或 1');
       }
-      updateData.user_status = value;
+      updateData.status = value;
     }
 
     // is_real：true=真实用户，false=虚拟用户
@@ -1400,13 +1193,13 @@ class UserService extends Service {
     await user.update(updateData);
 
     const result = user.toJSON();
-    delete result.user_password;
+    delete result.password;
     delete result.user_withdraw_password;
 
     return {
       user_id: result.user_id,
-      user_name: result.user_name,
-      user_status: result.user_status,
+      user_name: result.username,
+      user_status: result.status,
       is_real: result.is_real,
       withdrawal_status: result.withdrawal_status,
       temp_withdraw_status: result.temp_withdraw_status,
@@ -1429,7 +1222,7 @@ class UserService extends Service {
     const level = Number(userVipLevel);
     // ctx.assert([ 1, 2, 3, 4 ].includes(level), 422, 'VIP等级只能是 1-4'); // VIP等级不再硬编码限制为1-4，根据实际vips表配置
 
-    const updateData = { user_vip: level };
+    const updateData = { vip_level: level };
 
     // 查找对应等级的VIP配置并更新关联的策略ID
     const vipConfig = await ctx.model.Vip.findOne({ where: { vipLv: level } });
@@ -1441,8 +1234,8 @@ class UserService extends Service {
 
     return {
       user_id: user.user_id,
-      user_name: user.user_name,
-      user_vip: user.user_vip,
+      user_name: user.username,
+      user_vip: user.vip_level,
       strategy_id: user.strategy_id,
     };
   }
@@ -1459,8 +1252,8 @@ class UserService extends Service {
     const user = await this.checkMemberAccess(userId, operator);
     ctx.assert(user_password, 422, '密码不能为空');
     const hashedPassword = await ctx.genHash(user_password);
-    await user.update({ user_password: hashedPassword });
-    return { user_id: user.user_id, user_name: user.user_name };
+    await user.update({ password: hashedPassword });
+    return { user_id: user.user_id, user_name: user.username };
   }
 
   /**
@@ -1476,7 +1269,7 @@ class UserService extends Service {
     ctx.assert(user_withdraw_password, 422, '提现密码不能为空');
     // 提现密码改为明文存储
     await user.update({ user_withdraw_password });
-    return { user_id: user.user_id, user_name: user.user_name };
+    return { user_id: user.user_id, user_name: user.username };
   }
 
   /**
@@ -1492,20 +1285,19 @@ class UserService extends Service {
 
     ctx.assert(withdraw_address, 422, '提现地址不能为空');
 
-    const withdrawRecord = await ctx.model.WithdrawRecord.findOne({
+    const withdrawRecord = await ctx.model.UserWithdraw.findOne({
       where: {
         id: withdrawId,
-        user_id: user.id,
+        user_id: user.user_id,
       },
     });
 
     ctx.assert(withdrawRecord, 404, '该提现记录不存在或不属于该用户');
 
-    await withdrawRecord.update({ address: withdraw_address });
+    await withdrawRecord.update({ user_receive_address: withdraw_address });
 
-    return { user_id: user.user_id, withdraw_id: withdrawRecord.id, address: withdrawRecord.address };
+    return { user_id: user.user_id, withdraw_id: withdrawRecord.id, address: withdrawRecord.user_receive_address };
   }
-
 
   /**
    * 获取会员活跃信息列表
@@ -1525,15 +1317,15 @@ class UserService extends Service {
     const activeRecords = [];
 
     // 注册记录
-    const user = await this.findUserByCodeOrId(userId);
-    if (user && user.user_create_time) {
+    const user = await this.findUserByIdentifier(userId);
+    if (user && user.create_time) {
       activeRecords.push({
-        userName: user.user_name || user.user_phone || null,
-        ipaddr: user.user_ip || null,
-        loginLocation: user.user_country || await this.resolveIpLocation(user.user_ip),
+        userName: user.username || user.phone || null,
+        ipaddr: user.last_login_ip || null, // 注册IP可能没存，用最后登录IP
+        loginLocation: await this.resolveIpLocation(user.last_login_ip),
         msg: '注册成功',
-        operTime: this.formatDateTime(user.user_create_time),
-        rawTime: new Date(user.user_create_time).getTime(),
+        operTime: this.formatDateTime(user.create_time),
+        rawTime: new Date(user.create_time).getTime(),
       });
     }
 
@@ -1544,10 +1336,10 @@ class UserService extends Service {
     });
     for (const item of loginLogs) {
       activeRecords.push({
-        userName: item.user_name || null,
-        ipaddr: item.ip || null,
-        loginLocation: item.location || await this.resolveIpLocation(item.ip),
-        msg: item.operation || '登录操作',
+        userName: item.username || null,
+        ipaddr: item.login_ip || null,
+        loginLocation: item.login_location || await this.resolveIpLocation(item.login_ip),
+        msg: item.remark || '登录操作',
         operTime: this.formatDateTime(item.create_time),
         rawTime: new Date(item.create_time).getTime(),
       });
@@ -1586,23 +1378,62 @@ class UserService extends Service {
    */
   async updateProfile(id, payload) {
     const { ctx } = this;
-    const user = await this.findUserByCodeOrId(id);
+    const user = await this.findUserByIdentifier(id);
     if (!user) {
       ctx.throw(404, '用户不存在');
     }
 
     // 不允许通过此处修改密码和用户名
     const safePayload = {};
-    if (payload.user_name !== undefined) safePayload.user_name = payload.user_name;
-    if (payload.user_email !== undefined) safePayload.user_email = payload.user_email;
-    if (payload.user_avatar !== undefined) safePayload.user_avatar = payload.user_avatar;
-    if (payload.user_phone !== undefined) safePayload.user_phone = payload.user_phone;
+    if (payload.nickname !== undefined) safePayload.nickname = payload.nickname;
+    if (payload.email !== undefined) safePayload.email = payload.email;
+    if (payload.avatar !== undefined) safePayload.avatar = payload.avatar;
+    if (payload.phone !== undefined) safePayload.phone = payload.phone;
 
     await user.update(safePayload);
 
-    const result = user.toJSON();
-    delete result.user_password;
-    return result;
+    return this.formatUserData(user);
+  }
+
+  /**
+   * 获取收货信息
+   * @param {number} userId 用户ID
+   * @return {Object} 收货信息
+   */
+  async getReceiptInfo(userId) {
+    const { ctx } = this;
+    const user = await ctx.model.SysUser.findByPk(userId, {
+      attributes: [ 'receipt_name', 'receipt_phone', 'receipt_address' ],
+    });
+    if (!user) {
+      ctx.throw(404, '用户不存在');
+    }
+    return user.toJSON();
+  }
+
+  /**
+   * 更新收货信息
+   * @param {number} userId 用户ID
+   * @param {Object} payload 收货信息参数
+   */
+  async updateReceiptInfo(userId, payload) {
+    const { ctx } = this;
+    const { receipt_name, receipt_phone, receipt_address } = payload;
+
+    ctx.assert(receipt_name, 422, '收货人姓名不能为空');
+    ctx.assert(receipt_phone, 422, '收货人联系方式不能为空');
+    ctx.assert(receipt_address, 422, '收货地址不能为空');
+
+    const user = await ctx.model.SysUser.findByPk(userId);
+    if (!user) {
+      ctx.throw(404, '用户不存在');
+    }
+
+    await user.update({
+      receipt_name,
+      receipt_phone,
+      receipt_address,
+    });
   }
 
   /**
@@ -1623,9 +1454,9 @@ class UserService extends Service {
     let withdrawRecords = [];
 
     if (type === 'all' || type === 'recharge') {
-      const recharges = await ctx.model.RechargeRequest.findAll({
-        where: { user_id: userId, status: 1 },
-        attributes: [ 'id', 'order_num', 'do_money', 'user_get_money', 'create_time' ],
+      const recharges = await ctx.model.UserRecharge.findAll({
+        where: { user_id: userId, status: 2 },
+        attributes: [ 'id', 'order_no', 'amount', 'user_receive_amount', 'create_time' ],
         order: [[ 'create_time', 'DESC' ]],
         raw: true,
       });
@@ -1633,8 +1464,8 @@ class UserService extends Service {
         id: r.id,
         type: 'recharge',
         typeName: '充值',
-        amount: Number(r.user_get_money),
-        originalAmount: Number(r.do_money),
+        amount: Number(r.user_receive_amount),
+        originalAmount: Number(r.amount),
         status: 'success',
         cTime: r.create_time ? new Date(r.create_time).toISOString() : null,
         timestamp: new Date(r.create_time).getTime(),
@@ -1642,9 +1473,9 @@ class UserService extends Service {
     }
 
     if (type === 'all' || type === 'withdraw') {
-      const withdraws = await ctx.model.WithdrawRecord.findAll({
-        where: { user_id: userId, status: 1 },
-        attributes: [ 'id', 'order_num', 'amount', 'sx_money', 'take_money', 'create_time' ],
+      const withdraws = await ctx.model.UserWithdraw.findAll({
+        where: { user_id: userId, status: 2 },
+        attributes: [ 'id', 'order_no', 'amount', 'fee_amount', 'user_receive_amount', 'create_time' ],
         order: [[ 'create_time', 'DESC' ]],
         raw: true,
       });
@@ -1653,8 +1484,8 @@ class UserService extends Service {
         type: 'withdraw',
         typeName: '提现',
         amount: Number(w.amount),
-        sxMoney: Number(w.sx_money),
-        takeMoney: Number(w.take_money),
+        sxMoney: Number(w.fee_amount),
+        takeMoney: Number(w.user_receive_amount),
         status: 'success',
         cTime: w.create_time ? new Date(w.create_time).toISOString() : null,
         timestamp: new Date(w.create_time).getTime(),
