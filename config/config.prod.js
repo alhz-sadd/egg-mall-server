@@ -6,6 +6,7 @@
  */
 module.exports = () => {
   return {
+    routerPrefix: '/api',
     sequelize: {
       // 生产环境使用 MySQL，连接信息通过环境变量注入
       dialect: 'mysql',
