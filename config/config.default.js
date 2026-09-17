@@ -9,7 +9,6 @@ module.exports = appInfo => {
   /** @type {Egg.EggAppConfig} */
   const config = {};
 
-  config.rou
   // Cookie 安全密钥，生产环境务必修改
   config.keys = appInfo.name + '_mall_secret_key_2026';
 
