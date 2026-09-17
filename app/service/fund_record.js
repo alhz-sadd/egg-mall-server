@@ -80,6 +80,13 @@ class FundRecordService extends Service {
       else if (qType === '5') where.biz_type = { [Op.in]: [ 2, 3 ] };
     }
 
+    // 过滤是否只看进账 (is_income = 1 表示只看进账，即 amount > 0)
+    if (query.is_income === '1' || query.is_income === 1) {
+      where.amount = {
+        [Op.gt]: 0
+      };
+    }
+
     // 分页
     const { page = 1, page_size = 10, pageSize = 10 } = query;
     const limit = Number(pageSize || page_size);
@@ -92,6 +99,13 @@ class FundRecordService extends Service {
       offset,
       raw: true,
     });
+
+    // 单独查一下这些过滤条件下的总收入金额
+    let total_revenue = 0;
+    if (query.is_income === '1' || query.is_income === 1) {
+      const sumResult = await ctx.model.UserWalletLog.sum('amount', { where });
+      total_revenue = Number(sumResult) || 0;
+    }
 
     const list = rows.map(log => {
       let mappedType = -1;
@@ -143,6 +157,7 @@ class FundRecordService extends Service {
 
     return {
       list,
+      total_revenue,
       pagination: {
         total: count,
         page: Number(page),

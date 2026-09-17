@@ -10,10 +10,10 @@ module.exports = {
   CUSTOMER_RELATION: 'customer_relation', // 用户客户关系表
   USER_LOGIN_LOG: 'user_login_log', // 用户登录日志表
   USER_IDENTITY: 'user_identity', // 用户上传证件表
-  USER_ORDER: 'user_order', // 用户订单表
+  USER_ORDER: 'user_order', // 用户完成订单都存在这个表里
   USER_RECHARGE: 'user_recharge', // 用户充值表
   USER_WITHDRAW: 'user_withdraw', // 用户提现表
-  USER_WALLET: 'user_wallet', // 用户钱包表
+  USER_WALLET: 'user_wallet', // 用户钱包表 balance余额（总）
   USER_WALLET_LOG: 'user_wallet_log', // 用户钱包日志表
   USER_COMMISSION_LOG: 'user_commission_log', // 业务员佣金明细表
 

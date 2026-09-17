@@ -81,6 +81,12 @@ module.exports = app => {
       allowNull: true,
       comment: '邮箱，可选',
     },
+    gender: {
+      type: TINYINT,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '性别：0未知，1男，2女',
+    },
     status: {
       type: TINYINT,
       allowNull: false,
@@ -110,7 +116,7 @@ module.exports = app => {
       comment: '最后登录IP',
     },
     totp_secret: {
-      type: STRING(64),
+      type: STRING(255),
       allowNull: true,
       comment: 'TOTP底层密钥，生成二维码、校验验证码靠它，只存后端，不给前端',
     },

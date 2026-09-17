@@ -202,6 +202,50 @@ class UserService extends Service {
 
       // 重新查询以获取最新数据
       updatedUser = await ctx.model.SysUser.findByPk(user.user_id);
+
+      // 发放邀请奖励
+      if (inviterUserId && shopId) {
+        const shopConfig = await ctx.model.ShopConfig.findOne({
+          where: { shop_id: shopId },
+          transaction,
+        });
+
+        if (shopConfig && shopConfig.invite_new_user_reward > 0) {
+          const rewardAmount = parseFloat(shopConfig.invite_new_user_reward);
+
+          let inviterWallet = await ctx.model.UserWallet.findOne({
+            where: { user_id: inviterUserId },
+            transaction,
+          });
+
+          if (!inviterWallet) {
+            inviterWallet = await ctx.model.UserWallet.create({
+              user_id: inviterUserId,
+              balance: 0,
+              voucher_balance: 0,
+            }, { transaction });
+          }
+
+          const beforeBalance = parseFloat(inviterWallet.voucher_balance);
+          const afterBalance = beforeBalance + rewardAmount;
+
+          await inviterWallet.update({
+            voucher_balance: afterBalance,
+          }, { transaction });
+
+          await ctx.model.UserWalletLog.create({
+            user_id: inviterUserId,
+            currency_type: 2, // 1:现金 2:代金券
+            log_type: 8, // 假设 8 代表邀请奖励
+            amount: rewardAmount,
+            before_balance: beforeBalance,
+            after_balance: afterBalance,
+            remark: `邀请新用户注册奖励, 新用户ID: ${user.user_id}`,
+            related_order_id: user.user_id,
+          }, { transaction });
+        }
+      }
+
     } catch (error) {
       await transaction.rollback();
       throw error;

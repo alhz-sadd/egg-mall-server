@@ -1,77 +1,16 @@
 'use strict';
 
-const Controller = require('egg').Controller;
+const CommonAuthController = require('../common/auth');
 
-class AdminOuterAuthController extends Controller {
+class AdminOuterAuthController extends CommonAuthController {
   // 登录接口
   async login() {
-    const { ctx, service } = this;
-    // 收集登录相关的元数据，比如 IP 和 User-Agent，用于记录登录日志
-    const meta = {
-      ip: ctx.ip,
-      userAgent: ctx.get('user-agent'),
-      device: 1, // 默认PC
-      browser: '未知',
-      os: '未知',
-    };
-
-    // 复用之前的 adminUser 登录逻辑，该逻辑里已经统一查询了 sys_user 并做了相应校验
-    const result = await service.adminOuterUser.login(ctx.request.body, meta);
-
-    // 组装符合之前接口格式的返回值
-    ctx.body = {
-      code: 200,
-      message: '登录成功',
-      data: {
-        token: result.accessToken, // 将 accessToken 返回给前端
-        refreshToken: result.refreshToken,
-      },
-    };
+    await this.commonLogin(this.service.adminOuterUser, true);
   }
 
   // 退出登录接口
   async logout() {
-    const { ctx } = this;
-    ctx.body = {
-      code: 200,
-      message: '退出成功',
-      data: null,
-    };
-  }
-
-  // 刷新 token 接口（如果有专门的 admin_outer 刷新逻辑，可以在此处实现；
-  // 但之前路由中写的是 controller.common.auth.refresh，建议保持一致）
-  async refresh() {
-    const { ctx, app } = this;
-    const { refreshToken } = ctx.request.body;
-
-    if (!refreshToken) {
-      ctx.throw(401, '缺少 refreshToken');
-    }
-
-    try {
-      const decoded = app.jwt.verify(refreshToken, app.config.jwt.secret);
-      if (!decoded.isRefresh || decoded.type !== 'admin_outer') {
-        ctx.throw(401, '无效的 refreshToken');
-      }
-
-      // 签发新的 accessToken
-      const newAccessToken = app.jwt.sign(
-        { adminOuterId: decoded.adminOuterId, type: 'admin_outer' },
-        app.config.jwt.secret,
-        { expiresIn: app.config.jwt.expiresIn },
-      );
-
-      ctx.body = {
-        code: 200,
-        message: '刷新成功',
-        data: {
-          token: newAccessToken,
-        },
-      };
-    } catch (err) {
-      ctx.throw(401, 'refreshToken 已过期或无效');
-    }
+    await this.commonLogout();
   }
 
   // 获取当前登录用户信息
@@ -148,22 +87,113 @@ class AdminOuterAuthController extends Controller {
     delete adminOuter.adminOuterId;
     delete adminOuter.role_id; // role_id 已不再直接使用，通过 sys_user_role 查
 
-    // 从 sys_user 表中查询最新的 invite_code
+    // 从 sys_user 表中查询最新的数据
     const userInfo = await ctx.model.SysUser.findOne({
       where: { user_id },
-      attributes: [ 'invite_code' ],
+      attributes: [ 'invite_code', 'nickname', 'phone', 'email', 'gender', 'totp_secret' ],
     });
 
     // 追加 roles 和 permissions
     adminOuter.roles = roles;
     adminOuter.permissions = [ ...new Set(permissions) ];
     adminOuter.invite_code = userInfo ? userInfo.invite_code : null;
+    if (userInfo) {
+      adminOuter.nickname = userInfo.nickname;
+      adminOuter.phone = userInfo.phone;
+      adminOuter.email = userInfo.email;
+      adminOuter.gender = userInfo.gender;
+      adminOuter.isBindGoogle = !!userInfo.totp_secret;
+    }
 
     ctx.body = {
       code: 200,
       message: '获取成功',
       data: adminOuter,
     };
+  }
+
+  /**
+   * 修改个人资料
+   */
+  async updateProfile() {
+    const { nickname, phone, email, gender } = this.ctx.request.body;
+    await this.commonUpdateProfile(this.ctx.state.adminOuter.adminOuterId, { nickname, phone, email, gender });
+  }
+
+  /**
+   * 修改当前账号登录密码
+   */
+  async updatePwd() {
+    await this.commonUpdatePwd(this.ctx.state.adminOuter.adminOuterId);
+  }
+
+  /**
+   * 自行解绑谷歌验证码
+   */
+  async unbindGoogle() {
+    await this.commonUnbindGoogle(this.ctx.state.adminOuter.adminOuterId);
+  }
+
+  /**
+   * 绑定前置：验证密码 (重写以传入允许的 user_type)
+   */
+  async verifyPasswordForBind() {
+    await super.verifyPasswordForBind([ 2, 3 ]);
+  }
+
+  /**
+   * 给其他用户重置密码 (B端操作)
+   */
+  async resetUserPwd() {
+    const { ctx } = this;
+    const { userId } = ctx.request.body;
+    ctx.assert(userId, 422, '需要被修改的用户ID不能为空');
+
+    const currentUserType = ctx.state.adminOuter.user_type;
+    const targetUser = await ctx.model.SysUser.findByPk(userId);
+    ctx.assert(targetUser, 404, '目标用户不存在');
+
+    if (currentUserType === 2) {
+      // 店长可以修改 自己及同级店长(2), 业务员(3), 用户(4)
+      ctx.assert([2, 3, 4].includes(targetUser.user_type), 403, '无权修改该类型用户的密码');
+    } else if (currentUserType === 3) {
+      // 业务员只可以修改 用户(4)
+      ctx.assert(targetUser.user_type === 4, 403, '无权修改该类型用户的密码');
+    } else {
+      ctx.throw(403, '无权操作');
+    }
+
+    await this.commonResetUserPwd(userId);
+  }
+
+  /**
+   * 给其他用户重置谷歌验证码 (B端操作)
+   */
+  async resetUserGoogle() {
+    const { ctx } = this;
+    const { userId } = ctx.request.body;
+    ctx.assert(userId, 422, '需要被重置的用户ID不能为空');
+
+    const currentUserType = ctx.state.adminOuter.user_type;
+    const targetUser = await ctx.model.SysUser.findByPk(userId);
+    ctx.assert(targetUser, 404, '目标用户不存在');
+
+    if (currentUserType === 2) {
+      // 店长可以重置 自己及同级店长(2), 业务员(3)
+      ctx.assert([2, 3].includes(targetUser.user_type), 403, '无权或无需重置该类型用户的谷歌验证码');
+    } else {
+      // 业务员不能重置任何人的谷歌（因为用户没有谷歌验证）
+      ctx.throw(403, '无权操作');
+    }
+
+    await this.commonResetUserGoogle(userId);
+  }
+
+  /**
+   * 登录第二步验证 (重写以传入对应的 service 和 formatData 标识)
+   */
+  async loginVerify() {
+    await super.loginVerify(this.service.adminOuterUser, true);
   }
 
   // 获取动态菜单路由 (仅B端调用)

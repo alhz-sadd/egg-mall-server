@@ -68,6 +68,9 @@ class PointsDeductService extends Service {
 
       // 3. 扣减钱包金额 & 记录流水
       await wallet.decrement(balanceField, { by: amount, transaction });
+      if (balanceField === 'voucher_balance') {
+        await wallet.decrement('balance', { by: amount, transaction });
+      }
 
       const { v4: uuidv4 } = require('uuid');
       const log_no = uuidv4().replace(/-/g, '');

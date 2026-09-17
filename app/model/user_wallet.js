@@ -19,7 +19,18 @@ module.exports = app => {
       comment: '关联 sys_user.user_id，唯一索引，一个用户1条钱包',
     },
     balance: {
-      field: 'voucher_balance',
+      type: DECIMAL(18, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+      comment: '总可用余额 (等于 voucher_balance + recharge_balance)',
+    },
+    recharge_balance: {
+      type: DECIMAL(18, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+      comment: '充值金额',
+    },
+    voucher_balance: {
       type: DECIMAL(18, 2),
       allowNull: false,
       defaultValue: 0.00,

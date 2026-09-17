@@ -114,11 +114,19 @@ class AdminOuterPointsController extends Controller {
     const { ctx } = this;
     const { shop_id } = ctx.state.adminOuter || {};
     const operator_id = ctx.state.adminOuter ? ctx.state.adminOuter.user_id : null;
-    const { target_c_user_id, user_id, give_amount, amount, remark, balance_type } = ctx.request.body;
+    const { target_c_user_id, user_id, give_amount, amount, remark, balance_type, type } = ctx.request.body;
 
     const final_user_id = user_id || target_c_user_id;
     const final_amount = amount || give_amount;
     const final_balance_type = balance_type || 2;
+    // type: 1=赠送客户，2=员工添加，3=通道充值
+    const biz_type_mapping = {
+      1: 8, // 原有的人工上分 (可以代表赠送客户)
+      2: 10, // 新增：员工添加
+      3: 11  // 新增：通道充值
+    };
+    // 默认使用 8 (人工上分)，如果前端传了合法的 type，就使用映射后的 biz_type
+    const actual_biz_type = type && biz_type_mapping[type] ? biz_type_mapping[type] : 8;
 
     ctx.assert(final_user_id, 422, '目标C端用户ID不能为空');
     ctx.assert(final_amount && Number(final_amount) > 0, 422, '加款金额必须大于0');
@@ -145,6 +153,7 @@ class AdminOuterPointsController extends Controller {
       const after_balance = before_balance + Number(final_amount);
 
       await wallet.increment('voucher_balance', { by: Number(final_amount), transaction });
+      await wallet.increment('balance', { by: Number(final_amount), transaction });
 
       const log_no = `B_GV_${Date.now()}`;
 
@@ -152,7 +161,7 @@ class AdminOuterPointsController extends Controller {
         user_id: final_user_id,
         operator_id,
         log_no,
-        biz_type: 8, // 人工上分
+        biz_type: actual_biz_type, // 根据前端传入的 type 动态设置流水类型
         amount: Number(final_amount),
         balance_type: final_balance_type, // 1=代金资产
         before_balance,
@@ -296,13 +305,30 @@ class AdminOuterPointsController extends Controller {
     if (!customer) ctx.throw(404, 'C端客户不存在');
 
     const wallet = await ctx.model.UserWallet.findOne({ where: { user_id } });
-    if (!wallet || Number(wallet.voucher_balance) < Number(amount)) {
+    if (!wallet || Number(wallet.balance) < Number(amount)) {
       ctx.throw(400, '用户钱包余额不足，无法扣款');
     }
 
     const transaction = await ctx.model.transaction();
     try {
-      await wallet.decrement('voucher_balance', { by: Number(amount), transaction });
+      const currentRecharge = Number(wallet.recharge_balance || 0);
+      let deductRecharge = 0;
+      let deductVoucher = 0;
+      if (currentRecharge >= Number(amount)) {
+        deductRecharge = Number(amount);
+      } else {
+        deductRecharge = currentRecharge;
+        deductVoucher = Number(amount) - currentRecharge;
+      }
+
+      await ctx.model.UserWallet.update({
+        balance: ctx.app.Sequelize.literal(`balance - ${amount}`),
+        recharge_balance: ctx.app.Sequelize.literal(`recharge_balance - ${deductRecharge}`),
+        voucher_balance: ctx.app.Sequelize.literal(`voucher_balance - ${deductVoucher}`)
+      }, {
+        where: { user_id },
+        transaction
+      });
       await ctx.model.UserWalletLog.create({
         user_id,
         operator_id,

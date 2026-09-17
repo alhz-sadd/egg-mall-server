@@ -390,38 +390,75 @@ class MerchantController extends Controller {
       ctx.throw(404, '找不到店铺信息');
     }
 
-    // 1. 总业务员数量
+    // 1. 业务员数量
     const salesperson_count = await ctx.model.SysUser.count({
       where: { shop_id: shopId, user_type: 3, is_deleted: 0 },
     });
 
-    // 2. 总h5注册数量
-    let h5_register_count = 0;
-    if (ctx.model.CustomerRelation) {
-      h5_register_count = await ctx.model.CustomerRelation.count({
-        where: { shop_id: shopId },
-      });
-    }
+    // 2. 店长数量
+    const shop_manager_count = await ctx.model.SysUser.count({
+      where: { shop_id: shopId, user_type: 2, is_deleted: 0 },
+    });
 
-    // 3~8. 充值相关统计
+    // 3. 总的c端用户数量
+    const total_c_user_count = await ctx.model.SysUser.count({
+      where: { shop_id: shopId, user_type: 4, is_deleted: 0 },
+    });
+
+    // 4~8. 充值相关统计
     let real_recharge_count = 0;
     let real_recharge_amount = 0;
+    let total_recharge_count = 0;
+    let total_recharge_amount = 0;
 
     if (ctx.model.UserRecharge) {
       const rechargeRecords = await ctx.model.UserRecharge.findAll({
         where: { shop_id: shopId, status: 2 },
-        attributes: [ 'amount' ],
+        attributes: [ 'user_receive_amount', 'audit_type' ],
         raw: true,
       });
 
       rechargeRecords.forEach(record => {
-        const amount = Number(record.amount) || 0;
-        real_recharge_count++;
-        real_recharge_amount += amount;
+        const amount = Number(record.user_receive_amount) || 0;
+        total_recharge_count++;
+        total_recharge_amount += amount;
+
+        if (record.audit_type === 1 || record.audit_type === null) {
+          real_recharge_count++;
+          real_recharge_amount += amount;
+        }
       });
     }
 
-    // 9. 身份验证成功数量
+    if (ctx.model.UserWalletLog) {
+      const cUsers = await ctx.model.SysUser.findAll({
+        where: { shop_id: shopId, user_type: 4, is_deleted: 0 },
+        attributes: ['user_id'],
+        raw: true
+      });
+      const cUserIds = cUsers.map(u => u.user_id);
+      
+      if (cUserIds.length > 0) {
+        const walletLogs = await ctx.model.UserWalletLog.findAll({
+          where: {
+            user_id: { [ctx.app.Sequelize.Op.in]: cUserIds },
+            biz_type: 1, 
+            balance_type: { [ctx.app.Sequelize.Op.in]: [1, 2] },
+          },
+          attributes: [ 'amount' ],
+          raw: true,
+        });
+        for (const log of walletLogs) {
+          const amount = Number(log.amount) || 0;
+          if (amount > 0) {
+             total_recharge_count++;
+             total_recharge_amount += amount;
+          }
+        }
+      }
+    }
+
+    // 9. 上传实名的用户数量
     let kyc_verified_count = 0;
     if (ctx.model.UserIdentity) {
       kyc_verified_count = await ctx.model.UserIdentity.count({
@@ -432,36 +469,127 @@ class MerchantController extends Controller {
           required: true,
           attributes: [],
         }],
-        where: { status: 1 },
+        where: { audit_status: 2 },
       });
     }
 
-    // 10. 身份验证成功奖励金额
-    let kyc_reward_amount = 0;
-    if (ctx.model.ShopConfig) {
-      const sysConfig = await ctx.model.ShopConfig.findOne({
-        where: { shop_id: shopId },
+    // 10. 店铺所有订单数
+    let total_order_count = 0;
+    if (ctx.model.ShopTaskUserItemProgress && ctx.model.ShopTask) {
+       // 通过 task_item_id -> shop_task_item -> shop_task -> shop_id 的路径查询
+       // 或者更简单的方式，直接找到该店铺的所有C端用户，然后查询这些用户的订单
+       const cUsersForOrders = await ctx.model.SysUser.findAll({
+         where: { shop_id: shopId, user_type: 4, is_deleted: 0 },
+         attributes: ['user_id'],
+         raw: true
+       });
+       const cUserIdsForOrders = cUsersForOrders.map(u => u.user_id);
+       
+       if (cUserIdsForOrders.length > 0) {
+         total_order_count = await ctx.model.ShopTaskUserItemProgress.count({
+           where: { user_id: { [ctx.app.Sequelize.Op.in]: cUserIdsForOrders } }
+         });
+       }
+    }
+
+    // ============================================
+    // 以下为组装下级业务员业绩列表 list 的逻辑
+    // ============================================
+    const { Op } = require('sequelize');
+    const salespersons = await ctx.model.SysUser.findAll({
+      where: { shop_id: shopId, user_type: 3, is_deleted: 0 },
+      attributes: [ 'user_id', 'username', 'nickname' ],
+      raw: true,
+    });
+
+    const list = [];
+    for (const sp of salespersons) {
+      const relations = await ctx.model.CustomerRelation.findAll({
+        where: { salesman_user_id: sp.user_id, is_deleted: 0 },
+        attributes: [ 'c_user_id' ],
         raw: true,
       });
-      const kycRewardAmountPerUser = sysConfig ? Number(sysConfig.real_name_reward) : 100;
-      kyc_reward_amount = kyc_verified_count * kycRewardAmountPerUser;
+
+      const userIds = relations.map(u => u.c_user_id);
+      const userCount = userIds.length;
+
+      let spTopUpCount = 0;
+      let spTopUpAmount = 0;
+      let spRealRechargeAmount = 0;
+      let spRealRechargeCount = 0;
+      let spMockRechargeAmount = 0;
+      let spMockRechargeCount = 0;
+
+      if (userIds.length > 0) {
+        const recharges = await ctx.model.UserRecharge.findAll({
+          where: {
+            user_id: { [Op.in]: userIds },
+            status: 2,
+          },
+          attributes: [ 'user_receive_amount', 'audit_type' ],
+          raw: true,
+        });
+
+        for (const record of recharges) {
+          const amount = Number(record.user_receive_amount || 0);
+          if (record.audit_type === 1 || record.audit_type === null) {
+            spRealRechargeAmount += amount;
+            spRealRechargeCount += 1;
+          } else if (record.audit_type === 2) {
+            spMockRechargeAmount += amount;
+            spMockRechargeCount += 1;
+          }
+        }
+
+        const walletLogs = await ctx.model.UserWalletLog.findAll({
+          where: {
+            user_id: { [Op.in]: userIds },
+            biz_type: 1, 
+            balance_type: { [Op.in]: [1, 2] }, 
+          },
+          attributes: [ 'amount' ],
+          raw: true,
+        });
+
+        for (const log of walletLogs) {
+          const amount = Number(log.amount || 0);
+          if (amount > 0) {
+             spTopUpAmount += amount;
+             spTopUpCount += 1;
+          }
+        }
+      }
+
+      list.push({
+        salesperson_id: sp.user_id,
+        salesperson_username: sp.username,
+        salesperson_nickname: sp.nickname,
+        user_count: userCount,
+        top_up_count: spTopUpCount,
+        top_up_amount: Number(spTopUpAmount.toFixed(2)),
+        real_recharge_amount: Number(spRealRechargeAmount.toFixed(2)),
+        real_recharge_count: spRealRechargeCount,
+        mock_recharge_amount: Number(spMockRechargeAmount.toFixed(2)),
+        mock_recharge_count: spMockRechargeCount,
+      });
     }
 
     ctx.body = {
       code: 200,
       message: 'success',
       data: {
-        salesperson_count,
-        h5_register_count,
-        real_recharge_count,
-        real_recharge_amount: Number(real_recharge_amount.toFixed(2)),
-        mock_recharge_count: 0,
-        mock_recharge_amount: 0,
-        total_recharge_count: real_recharge_count,
-        total_recharge_amount: Number(real_recharge_amount.toFixed(2)),
-        kyc_verified_count,
-        kyc_reward_amount: Number(kyc_reward_amount.toFixed(2)),
-        order_count: 0,
+        list,
+        stat: {
+          salesperson_count,
+          shop_manager_count,
+          total_c_user_count,
+          total_recharge_count,
+          total_recharge_amount: Number(total_recharge_amount.toFixed(2)),
+          real_recharge_amount: Number(real_recharge_amount.toFixed(2)),
+          real_recharge_count,
+          kyc_verified_count,
+          total_order_count,
+        }
       },
     };
   }

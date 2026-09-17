@@ -28,6 +28,7 @@ class ConfigController extends Controller {
         recharge_fee_rate: 0.00,
         withdraw_first_need_task: 0,
         withdraw_first_need_identity: 0,
+        invite_new_user_reward: 0.00,
       });
     }
 

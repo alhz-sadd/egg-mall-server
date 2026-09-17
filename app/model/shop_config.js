@@ -77,6 +77,12 @@ module.exports = app => {
       defaultValue: 0,
       comment: '首次提现是否需要实名认证',
     },
+    invite_new_user_reward: {
+      type: DECIMAL(16, 2),
+      allowNull: false,
+      defaultValue: 0.00,
+      comment: '邀请新用户奖励',
+    },
     create_time: {
       type: DATE,
       allowNull: false,

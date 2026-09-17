@@ -56,20 +56,42 @@ class TaskController extends Controller {
    */
   async getUserTaskInfo() {
     const { ctx, service } = this;
-    const userId = ctx.state.user.userId;
+    try {
+      // 兼容多种 userId 的解析方式
+      const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
-    const user = await ctx.model.SysUser.findByPk(userId);
-    if (!user || user.user_type !== 4) {
-      ctx.throw(404, '用户不存在');
+      if (!userId) {
+        ctx.throw(401, '未登录');
+      }
+
+      const user = await ctx.model.SysUser.findByPk(userId);
+      if (!user || user.user_type !== 4) {
+        // 软返回，不抛出 404 错误
+        ctx.status = 200;
+        ctx.body = {
+          code: 404,
+          message: '用户不存在',
+          data: null
+        };
+        return;
+      }
+
+      const result = await service.task.getUserTaskInfo(userId, user.user_vip || 1);
+
+      ctx.body = {
+        code: 200,
+        message: 'success',
+        data: result,
+      };
+    } catch (err) {
+      ctx.logger.error('Error in /api/mobile/getUserTaskInfo', err);
+      ctx.status = 200;
+      ctx.body = {
+        code: err.status || 500,
+        message: err.message,
+        data: null
+      };
     }
-
-    const result = await service.task.getUserTaskInfo(userId, user.user_vip || 1);
-
-    ctx.body = {
-      code: 200,
-      message: 'success',
-      data: result,
-    };
   }
 
   /**
@@ -81,8 +103,12 @@ class TaskController extends Controller {
   async search() {
     const { ctx, service } = this;
     try {
-      // 这里的 userId 是从 token 解析出的 SysUser 表主键
-      const userId = ctx.state.user.userId;
+      // 这里的 userId 是从 token 解析出的 SysUser 表主键，兼容多种写法
+      const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+
+      if (!userId) {
+        ctx.throw(401, '未登录');
+      }
 
       const result = await service.task.search(userId);
 
@@ -93,9 +119,13 @@ class TaskController extends Controller {
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/tasks/search', err);
+      
+      // 如果是我们主动抛出的业务错误，或者是其他异常，都以 200 HTTP 状态码返回，让前端自己处理
+      ctx.status = 200;
       ctx.body = {
-        message: err.message,
         code: err.status || 500,
+        message: err.message,
+        data: null
       };
     }
   }

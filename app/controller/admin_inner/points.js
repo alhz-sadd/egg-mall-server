@@ -98,6 +98,7 @@ class AdminInnerPointsController extends Controller {
     const transaction = await ctx.model.transaction();
     try {
       await wallet.increment('voucher_balance', { by: Number(amount), transaction });
+      await wallet.increment('balance', { by: Number(amount), transaction });
       await ctx.model.UserWalletLog.create({
         user_id,
         operator_id,
@@ -206,13 +207,30 @@ class AdminInnerPointsController extends Controller {
     if (!customer) ctx.throw(404, 'C端客户不存在');
 
     const wallet = await ctx.model.UserWallet.findOne({ where: { user_id } });
-    if (!wallet || Number(wallet.voucher_balance) < Number(amount)) {
+    if (!wallet || Number(wallet.balance) < Number(amount)) {
       ctx.throw(400, '用户钱包余额不足，无法扣款');
     }
 
     const transaction = await ctx.model.transaction();
     try {
-      await wallet.decrement('voucher_balance', { by: Number(amount), transaction });
+      const currentRecharge = Number(wallet.recharge_balance || 0);
+      let deductRecharge = 0;
+      let deductVoucher = 0;
+      if (currentRecharge >= Number(amount)) {
+        deductRecharge = Number(amount);
+      } else {
+        deductRecharge = currentRecharge;
+        deductVoucher = Number(amount) - currentRecharge;
+      }
+
+      await ctx.model.UserWallet.update({
+        balance: ctx.app.Sequelize.literal(`balance - ${amount}`),
+        recharge_balance: ctx.app.Sequelize.literal(`recharge_balance - ${deductRecharge}`),
+        voucher_balance: ctx.app.Sequelize.literal(`voucher_balance - ${deductVoucher}`)
+      }, {
+        where: { user_id },
+        transaction
+      });
       await ctx.model.UserWalletLog.create({
         user_id,
         operator_id,

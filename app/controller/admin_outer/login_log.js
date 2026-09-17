@@ -16,13 +16,8 @@ class LoginLogController extends Controller {
     const { ctx, service } = this;
     const adminOuter = ctx.state.adminOuter;
 
-    // 强制限制只查询当前商铺的人员
-    const query = {
-      ...ctx.query,
-      shop_id: adminOuter.shop_id,
-    };
-
-    const result = await service.sysLog.loginLogs(query);
+    // 将当前登录用户传入 service，以进行店铺隔离
+    const result = await service.sysLog.loginLogs(ctx.query, adminOuter);
 
     ctx.body = {
       code: 200,

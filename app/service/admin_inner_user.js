@@ -53,30 +53,17 @@ class AdminInnerUserService extends Service {
       ctx.throw(422, '账号或密码错误');
     }
 
-    if (adminInner.totp_secret && adminInner.totp_enable === 1) {
-      if (!googleCode) {
+    if (adminInner.totp_enable === 1) {
+      if (!payload.googleCode) {
         logData.user_id = adminInner.user_id;
-        logData.login_result = 0;
-        logData.remark = '登录失败：谷歌验证码不能为空';
+        logData.login_result = 1;
+        logData.remark = '密码校验成功，等待谷歌验证';
         await ctx.service.sysLog.recordLoginLog(logData);
-        ctx.throw(422, '谷歌验证码不能为空');
+        return { need_totp: true, userId: adminInner.user_id };
       }
-
-      const speakeasy = require('speakeasy');
-      const verified = speakeasy.totp.verify({
-        secret: adminInner.totp_secret,
-        encoding: 'base32',
-        token: googleCode,
-        window: 1,
-      });
-
-      if (!verified) {
-        logData.user_id = adminInner.user_id;
-        logData.login_result = 0;
-        logData.remark = '登录失败：谷歌验证码错误';
-        await ctx.service.sysLog.recordLoginLog(logData);
-        ctx.throw(422, '谷歌验证码错误');
-      }
+      
+      // 直接在此校验谷歌验证码
+      await ctx.service.totp.loginVerify(adminInner.user_id, payload.googleCode);
     }
 
     logData.user_id = adminInner.user_id;
@@ -90,6 +77,28 @@ class AdminInnerUserService extends Service {
       { expiresIn: ctx.app.config.jwt.expiresIn },
     );
     console.log('JWT Secret (Signing):', ctx.app.config.jwt.secret);
+
+    const refreshToken = ctx.app.jwt.sign(
+      { adminInnerId: adminInner.user_id, type: 'admin_inner', isRefresh: true },
+      ctx.app.config.jwt.secret,
+      { expiresIn: ctx.app.config.jwt.refreshExpiresIn },
+    );
+
+    return { need_totp: false, accessToken, refreshToken };
+  }
+
+  /**
+   * 登录第二步：谷歌验证通过后下发 token
+   */
+  async generateTokensAfterTotp(userId) {
+    const { ctx } = this;
+    const adminInner = await ctx.model.SysUser.findByPk(userId);
+    
+    const accessToken = ctx.app.jwt.sign(
+      { adminInnerId: adminInner.user_id, username: adminInner.username, type: 'admin_inner' },
+      ctx.app.config.jwt.secret,
+      { expiresIn: ctx.app.config.jwt.expiresIn },
+    );
 
     const refreshToken = ctx.app.jwt.sign(
       { adminInnerId: adminInner.user_id, type: 'admin_inner', isRefresh: true },

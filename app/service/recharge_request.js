@@ -303,14 +303,17 @@ class RechargeRequestService extends Service {
       // 更新钱包余额
       const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: user.user_id }, transaction });
       if (wallet) {
+        // 用户走充值，并且B端通过的金额是 recharge_balance，同时总余额 balance 也增加
         await wallet.increment({
           balance: Number(request.user_receive_amount),
+          recharge_balance: Number(request.user_receive_amount),
           total_recharge_amount: Number(request.amount),
         }, { transaction });
       } else {
         await ctx.model.UserWallet.create({
           user_id: user.user_id,
           balance: Number(request.user_receive_amount),
+          recharge_balance: Number(request.user_receive_amount),
           total_recharge_amount: Number(request.amount),
         }, { transaction });
       }

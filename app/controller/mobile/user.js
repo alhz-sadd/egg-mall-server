@@ -578,35 +578,48 @@ class UserController extends Controller {
    */
   async getUserRevenue() {
     const { ctx, service } = this;
-    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+    try {
+      const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
-    // 调用统一的资金明细服务获取数据
-    const result = await service.fundRecord.getFundDetails(userId, ctx.query);
+      // 调用统一的资金明细服务获取数据
+      const result = await service.fundRecord.getFundDetails(userId, ctx.query);
 
-    // 映射到接口规范所需的数据结构
-    const formattedData = result.list.map(item => ({
-      remark: item.remark || '',
-      ids: null,
-      googleCode: null,
-      revenueId: item.revenue_id,
-      userId: String(item.user_id), // 用户id
-      orderNum: item.order_no || '',
-      type: String(item.type),
-      doMoney: item.doMoney,
-      beforeMoney: String(item.beforeMoney || 0),
-      afterMoney: String(item.afterMoney || 0),
-      status: null,
-      cTime: item.create_time,
-      uTime: item.create_time,
-    }));
+      // 映射到接口规范所需的数据结构
+      const formattedData = result.list.map(item => ({
+        remark: item.remark || '',
+        ids: null,
+        googleCode: null,
+        revenueId: item.revenue_id,
+        userId: String(item.user_id), // 用户id
+        orderNum: item.order_no || '',
+        type: String(item.type),
+        doMoney: item.doMoney,
+        beforeMoney: String(item.beforeMoney || 0),
+        afterMoney: String(item.afterMoney || 0),
+        status: null,
+        cTime: item.create_time,
+        uTime: item.create_time,
+      }));
 
-    ctx.body = {
-      total: result.pagination.total,
-      data: formattedData,
-      code: 200,
-      status: true,
-      msg: null,
-    };
+      ctx.body = {
+        total: result.pagination.total,
+        data: {
+          list: formattedData,
+          total_revenue: result.total_revenue || 0,
+        },
+        code: 200,
+        status: true,
+        msg: null,
+      };
+    } catch (err) {
+      ctx.logger.error('Error in /api/mobile/getUserRevenue', err);
+      ctx.status = 200;
+      ctx.body = {
+        code: err.status || 500,
+        message: err.message,
+        data: null
+      };
+    }
   }
   /**
    * TEMPORARY: Create Mobile User (REMOVE AFTER USE)

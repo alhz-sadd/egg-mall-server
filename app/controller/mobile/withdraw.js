@@ -17,13 +17,24 @@ class MobileWithdrawController extends Controller {
    */
   async create() {
     const { ctx, app } = this;
-    const userId = ctx.state.user.id || ctx.state.user.user_id;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     if (!userId) {
       ctx.throw(401, '未登录');
     }
 
     const payload = ctx.request.body;
+    
+    // 如果前端传过来的 amount 是字符串，先转为数字，避免 validate 类型校验报错
+    if (payload.amount !== undefined) {
+      payload.amount = Number(payload.amount);
+    }
+    
+    // 兼容前端传参字段 user_withdraw_password
+    if (payload.user_withdraw_password !== undefined && payload.withdraw_pwd === undefined) {
+      payload.withdraw_pwd = payload.user_withdraw_password;
+    }
+
     ctx.validate({
       channel_code: { type: 'string', required: true },
       withdraw_address: { type: 'string', required: true },
@@ -39,7 +50,8 @@ class MobileWithdrawController extends Controller {
       where: { user_id: userId },
     });
 
-    if (!user || !user.withdraw_password) {
+    // 修复：数据库中提现密码的字段名是 user_withdraw_password
+    if (!user || !user.user_withdraw_password) {
       ctx.throw(400, '请先设置提现密码');
     }
 
@@ -47,9 +59,8 @@ class MobileWithdrawController extends Controller {
     const crypto = require('crypto');
     const hashedPwd = crypto.createHash('md5').update(payload.withdraw_pwd).digest('hex');
     // 如果系统使用的是带 salt 的，需调整
-    if (user.withdraw_password !== hashedPwd) {
-      // 临时放行，或者改为真实的校验
-      // ctx.throw(400, '提现密码错误');
+    if (user.user_withdraw_password !== hashedPwd && user.user_withdraw_password !== payload.withdraw_pwd) {
+      ctx.throw(400, '提现密码错误');
     }
 
     // 查询用户的归属关系
@@ -92,17 +103,30 @@ class MobileWithdrawController extends Controller {
         transaction,
       });
 
-      if (!wallet || wallet.voucher_balance < payload.amount) {
+      if (!wallet || Number(wallet.balance) < payload.amount) {
         throw new Error('可用余额不足');
       }
 
-      await wallet.decrement('voucher_balance', {
-        by: payload.amount,
-        transaction,
-      });
-      await wallet.increment('freeze_voucher_balance', {
-        by: payload.amount,
-        transaction,
+      const amount = payload.amount;
+      const currentRecharge = Number(wallet.recharge_balance || 0);
+      let deductRecharge = 0;
+      let deductVoucher = 0;
+      if (currentRecharge >= amount) {
+        deductRecharge = amount;
+      } else {
+        deductRecharge = currentRecharge;
+        deductVoucher = amount - currentRecharge;
+      }
+
+      // C端发起提现，先将申请提现的金额移入冻结资产
+      await ctx.model.UserWallet.update({
+        balance: ctx.app.Sequelize.literal(`balance - ${amount}`),
+        recharge_balance: ctx.app.Sequelize.literal(`recharge_balance - ${deductRecharge}`),
+        voucher_balance: ctx.app.Sequelize.literal(`voucher_balance - ${deductVoucher}`),
+        freeze_voucher_balance: ctx.app.Sequelize.literal(`freeze_voucher_balance + ${amount}`)
+      }, {
+        where: { user_id: userId },
+        transaction
       });
 
       const orderNo = 'WD' + Date.now() + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
@@ -125,10 +149,12 @@ class MobileWithdrawController extends Controller {
       await ctx.model.UserWalletLog.create({
         user_id: userId,
         biz_type: 2, // 提现
-        biz_id: withdraw.id,
-        biz_no: withdraw.order_no,
+        related_order_id: withdraw.id, // 修复字段名
+        log_no: withdraw.order_no, // 使用提现订单号作为流水号
         amount: -payload.amount,
-        balance_type: 'voucher_balance',
+        balance_type: 1, // 'voucher_balance' 对应枚举可能是 1，或者传 1
+        before_balance: Number(wallet.balance),
+        after_balance: Number(wallet.balance) - payload.amount,
         remark: '发起提现，扣除可用余额',
       }, { transaction });
 
@@ -154,11 +180,13 @@ class MobileWithdrawController extends Controller {
    */
   async list() {
     const { ctx } = this;
-    const userId = ctx.state.user.id || ctx.state.user.user_id;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
     const { page = 1, page_size = 10, status } = ctx.query;
 
     const where = { user_id: userId };
-    if (status) {
+    
+    // 如果 status 存在，且不为 0 (0表示全部)，则加入查询条件
+    if (status !== undefined && status !== '' && parseInt(status) !== 0) {
       where.status = parseInt(status);
     }
 

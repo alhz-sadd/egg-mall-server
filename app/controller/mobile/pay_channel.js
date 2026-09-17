@@ -7,7 +7,7 @@ class MobilePayChannelController extends Controller {
   async list() {
     const { ctx } = this;
     const { channel_type } = ctx.query;
-    const user_id = ctx.state.user ? (ctx.state.user.id || ctx.state.user.user_id) : null;
+    const user_id = ctx.state.user ? (ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId) : null;
 
     if (!user_id) {
       ctx.throw(401, '用户未登录');

@@ -46,6 +46,26 @@ module.exports = app => {
       allowNull: true,
       comment: '动态匹配的商品标题',
     },
+    is_lucky_order: {
+      type: INTEGER,
+      defaultValue: 0,
+      comment: '是否幸运订单 0否 1是',
+    },
+    yield_rate: {
+      type: DECIMAL(20, 5),
+      defaultValue: 0,
+      comment: '收益率',
+    },
+    rule_type: {
+      type: INTEGER,
+      allowNull: true,
+      comment: '规则类型：1=智能匹配，2=手动匹配',
+    },
+    append_amount: {
+      type: DECIMAL(10, 2),
+      defaultValue: 0,
+      comment: '追加金额',
+    },
     status: {
       type: INTEGER,
       defaultValue: 0,
@@ -85,6 +105,11 @@ module.exports = app => {
     tableName: tableNames.SHOP_TASK_USER_ITEM_PROGRESS,
     timestamps: false, // 如果需要sequelize自动维护，可开启并映射字段
   });
+
+  ShopTaskUserItemProgress.associate = function() {
+    app.model.ShopTaskUserItemProgress.belongsTo(app.model.SysUser, { foreignKey: 'user_id', as: 'user' });
+    app.model.ShopTaskUserItemProgress.belongsTo(app.model.ShopTaskUser, { foreignKey: 'shop_task_user_id', as: 'shop_task_user' });
+  };
 
   return ShopTaskUserItemProgress;
 };

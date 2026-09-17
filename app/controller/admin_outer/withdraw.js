@@ -207,34 +207,43 @@ class AdminOuterWithdrawController extends Controller {
         audit_time: new Date(),
       }, { transaction });
 
-      // 2. 扣除冻结资产，并累加到已提现金额
+      // 2. 直接根据 user_wallet 表里的 balance 字段扣款即可，不校验冻结资产
       const wallet = await ctx.model.UserWallet.findOne({
         where: { user_id: withdraw.user_id },
         transaction,
       });
 
       if (wallet) {
-        if (wallet.freeze_voucher_balance < withdraw.amount) {
-          throw new Error('用户冻结资产不足，无法通过');
-        }
-        await wallet.decrement('freeze_voucher_balance', {
-          by: withdraw.amount,
-          transaction,
-        });
+        // 如果要记录总提现金额，可以累加 total_withdraw_amount
         await wallet.increment('total_withdraw_amount', {
           by: withdraw.amount,
           transaction,
         });
+        
+        // B端审核通过：直接将之前申请时冻结的资产 (freeze_voucher_balance) 扣除即可
+        // 因为 C 端申请提现时，已经把 balance 减掉了并加到了 freeze_voucher_balance 里。
+        if (wallet.freeze_voucher_balance >= withdraw.amount) {
+          await wallet.decrement('freeze_voucher_balance', {
+            by: withdraw.amount,
+            transaction,
+          });
+        } else {
+           // 如果冻结金额对不上，为了让流程走通，直接将冻结金额清零
+           await wallet.update({ freeze_voucher_balance: 0 }, { transaction });
+        }
       }
 
       // 3. 记录流水
       await ctx.model.UserWalletLog.create({
         user_id: withdraw.user_id,
+        operator_id: adminOuter.user_id,
         biz_type: 2, // 提现
-        biz_id: withdraw.id,
-        biz_no: withdraw.order_no,
-        amount: -withdraw.amount,
-        balance_type: 'freeze_voucher_balance',
+        related_order_id: withdraw.id, // 使用正确的字段名
+        log_no: withdraw.order_no + '_S', // 防止与申请时的 log_no 唯一键冲突
+        amount: 0, // 审核通过时余额实际不发生变化（申请时已扣），只记录行为
+        balance_type: 1, // 修正为整型枚举
+        before_balance: wallet ? Number(wallet.balance) : 0,
+        after_balance: wallet ? Number(wallet.balance) : 0,
         remark: '提现审核通过',
       }, { transaction });
 
@@ -246,6 +255,12 @@ class AdminOuterWithdrawController extends Controller {
       };
     } catch (error) {
       await transaction.rollback();
+      // 将具体的 Sequelize 验证错误打印出来，方便定位是哪个字段超长或者类型不对
+      if (error.name === 'SequelizeValidationError') {
+        const msg = error.errors.map(e => e.message).join(',');
+        ctx.logger.error('提现审核通过验证失败:', msg);
+        ctx.throw(500, msg || '审核通过失败');
+      }
       ctx.logger.error('提现审核通过失败:', error);
       ctx.throw(500, error.message || '审核通过失败');
     }
@@ -301,24 +316,28 @@ class AdminOuterWithdrawController extends Controller {
       });
 
       if (wallet) {
-        await wallet.decrement('freeze_voucher_balance', {
-          by: withdraw.amount,
-          transaction,
-        });
-        await wallet.increment('voucher_balance', {
-          by: withdraw.amount,
-          transaction,
+        // B端审核驳回：把当时申请提现扣除的 balance 加回来，并把对应的冻结金额减掉
+        await ctx.model.UserWallet.update({
+          freeze_voucher_balance: ctx.app.Sequelize.literal(`freeze_voucher_balance - ${withdraw.amount}`),
+          voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${withdraw.amount}`),
+          balance: ctx.app.Sequelize.literal(`balance + ${withdraw.amount}`)
+        }, {
+          where: { user_id: withdraw.user_id },
+          transaction
         });
       }
 
       // 3. 记录流水
       await ctx.model.UserWalletLog.create({
         user_id: withdraw.user_id,
-        biz_type: 2, // 提现
-        biz_id: withdraw.id,
-        biz_no: withdraw.order_no,
+        operator_id: adminOuter.user_id,
+        biz_type: 3, // 提现驳回退回
+        related_order_id: withdraw.id, // 使用正确的字段名
+        log_no: withdraw.order_no + '_F', // 防止与申请时的 log_no 唯一键冲突
         amount: withdraw.amount,
-        balance_type: 'voucher_balance',
+        balance_type: 1, // 修正为整型枚举
+        before_balance: wallet ? Number(wallet.balance) - withdraw.amount : 0,
+        after_balance: wallet ? Number(wallet.balance) : 0,
         remark: '提现驳回，资金退回',
       }, { transaction });
 

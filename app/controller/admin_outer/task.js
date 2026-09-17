@@ -337,12 +337,97 @@ class AdminOuterTaskController extends Controller {
       ctx.throw(404, '任务子项不存在或无权操作');
     }
 
+    // 如果修改为普通订单 (is_lucky_order === 0)，则将子项的收益率同步为主任务的收益率，并且将规则相关的字段重置
+    if (payload.is_lucky_order === 0) {
+      payload.yield_rate = item.task.yield_rate; // 同步为主任务的收益率
+      payload.rule_type = null;
+      payload.append_amount = 0;
+      payload.goods_price = 0;
+      payload.goods_title = '';
+      payload.goods_id = null;
+    }
+
     await item.update(payload);
 
     ctx.body = {
       code: 200,
       message: '修改任务子项成功',
       data: item,
+    };
+  }
+
+  /**
+   * B端修改用户已绑定的任务子项
+   * PUT /api/admin-outer/tasks/user-items/:id
+   */
+  async updateUserItem() {
+    const { ctx } = this;
+    const adminOuter = ctx.state.adminOuter;
+
+    if (!adminOuter || !adminOuter.shop_id) {
+      ctx.throw(401, '未授权或未绑定店铺');
+    }
+
+    const id = ctx.params.id;
+    const payload = ctx.request.body;
+
+    ctx.validate({
+      user_id: { type: 'int', required: false }, // 支持通过 user_id + task_item_id 定位
+      is_lucky_order: { type: 'int', required: false }, // 0否 1是
+      yield_rate: { type: 'number', required: false }, // 收益率
+      rule_type: { type: 'int', required: false }, // 1=智能匹配，2=手动匹配
+      append_amount: { type: 'number', required: false }, // 追加金额
+      goods_price: { type: 'number', required: false }, // 商品价格
+      goods_title: { type: 'string', required: false }, // 商品标题
+      goods_id: { type: 'int', required: false }, // 商品ID
+    }, payload);
+
+    let itemProgress;
+
+    // 如果前端传了 user_id，则认为 URL 中的 id 是 task_item_id
+    if (payload.user_id) {
+      itemProgress = await ctx.model.ShopTaskUserItemProgress.findOne({
+        where: { task_item_id: id, user_id: payload.user_id, is_deleted: 0 },
+        include: [
+          {
+            model: ctx.model.SysUser,
+            as: 'user',
+            where: { shop_id: adminOuter.shop_id },
+          }
+        ],
+        order: [['id', 'DESC']] // 取最新的绑定记录
+      });
+    } else {
+      // 否则认为 URL 中的 id 是 progress_id
+      itemProgress = await ctx.model.ShopTaskUserItemProgress.findOne({
+        where: { id, is_deleted: 0 },
+        include: [
+          {
+            model: ctx.model.SysUser,
+            as: 'user',
+            where: { shop_id: adminOuter.shop_id },
+          }
+        ],
+      });
+    }
+
+    if (!itemProgress) {
+      ctx.throw(404, '已绑定的任务子项不存在或无权操作');
+    }
+
+    if (itemProgress.is_processing === 1 || itemProgress.status !== 0) {
+      ctx.throw(400, '当前任务子项正在进行中或已完成，无法修改');
+    }
+
+    const updateData = { ...payload };
+    delete updateData.user_id; // 不更新 user_id
+
+    await itemProgress.update(updateData);
+
+    ctx.body = {
+      code: 200,
+      message: '修改用户已绑定任务子项成功',
+      data: itemProgress,
     };
   }
 
@@ -382,28 +467,64 @@ class AdminOuterTaskController extends Controller {
       ctx.throw(404, 'C端用户不存在或无权操作');
     }
 
-    // 用户只能绑定一个任务模板。如果已绑定其他任务，则删除旧的绑定数据及对应的进度数据
-      const existBinds = await ctx.model.ShopTaskUser.findAll({
+    // 用户只能绑定一个任务模板。切换新的模板后，需要删除之前绑定的任务及子项，确保只有一条规则
+    const transaction = await ctx.model.transaction();
+    let bindRecord;
+    try {
+      // 删除该用户之前所有的进度子项
+      await ctx.model.ShopTaskUserItemProgress.destroy({
         where: { user_id },
+        transaction,
+        force: true
       });
 
-      if (existBinds && existBinds.length > 0) {
-        for (const oldBind of existBinds) {
-          // 删除关联的进度表数据
-          await ctx.model.ShopTaskUserItemProgress.destroy({
-            where: { shop_task_user_id: oldBind.id }
-          });
-          // 删除主绑定记录
-          await oldBind.destroy();
-        }
+      // 删除该用户之前所有的绑定记录
+      await ctx.model.ShopTaskUser.destroy({
+        where: { user_id },
+        transaction,
+        force: true
+      });
+
+      bindRecord = await ctx.model.ShopTaskUser.create({
+        user_id,
+        task_id,
+        status: 0,
+        task_status: 0,
+      }, { transaction });
+
+      // 查询模板的所有子项
+      const taskItems = await ctx.model.ShopTaskItem.findAll({
+        where: { task_id, is_deleted: 0 },
+        order: [['sort', 'ASC']],
+        transaction
+      });
+
+      // 绑定时即初始化子项进度，方便在未开启前修改特定用户的配置
+      if (taskItems.length > 0) {
+        const progressItems = taskItems.map(item => ({
+          shop_task_user_id: bindRecord.id,
+          user_id,
+          task_item_id: item.item_id,
+          is_lucky_order: item.is_lucky_order,
+          yield_rate: item.yield_rate,
+          rule_type: item.rule_type,
+          append_amount: item.append_amount,
+          goods_price: item.goods_price,
+          goods_title: item.goods_title,
+          goods_id: item.goods_id,
+          status: 0, // 未完成
+          revenue: 0.00000,
+          is_triggered: 0,
+          is_processing: 0,
+        }));
+        await ctx.model.ShopTaskUserItemProgress.bulkCreate(progressItems, { transaction });
       }
 
-      const bindRecord = await ctx.model.ShopTaskUser.create({
-      user_id,
-      task_id,
-      status: 0,
-      task_status: 0,
-    });
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
 
     ctx.body = {
       code: 200,
@@ -430,43 +551,26 @@ class AdminOuterTaskController extends Controller {
       ctx.throw(400, '用户ID和任务ID不能为空');
     }
 
-    // 查询绑定记录
+    // 查询最新的绑定记录（按 ID 倒序，防止查询到历史失效的记录）
     const userTask = await ctx.model.ShopTaskUser.findOne({
       where: { user_id, task_id },
+      order: [['id', 'DESC']]
     });
 
     if (!userTask) {
       ctx.throw(404, '用户尚未绑定此任务模板');
     }
 
-    if (userTask.task_status !== 0) {
+    if (userTask.status !== 0) {
       ctx.throw(400, '任务非“已绑定”状态，无法开启');
     }
-
-    // 查询模板的所有子项
-    const taskItems = await ctx.model.ShopTaskItem.findAll({
-      where: { task_id, is_deleted: 0 },
-      order: [['sort', 'ASC']],
-    });
 
     const transaction = await ctx.model.transaction();
     try {
       // 1. 更新主任务状态为进行中
-      await userTask.update({ task_status: 1 }, { transaction });
+      await userTask.update({ status: 1 }, { transaction });
 
-      // 2. 初始化子项进度
-      if (taskItems.length > 0) {
-        const progressItems = taskItems.map(item => ({
-          shop_task_user_id: userTask.id,
-          user_id,
-          task_item_id: item.item_id,
-          status: 0, // 未完成
-          revenue: 0.00000,
-          is_triggered: 0,
-          is_processing: 0,
-        }));
-        await ctx.model.ShopTaskUserItemProgress.bulkCreate(progressItems, { transaction });
-      }
+      // 注：不再在此初始化子项，改为在 bindUser 绑定时即生成，以支持绑定后开启前修改子项
 
       await transaction.commit();
 

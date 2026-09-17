@@ -150,12 +150,24 @@ class SysLogService extends Service {
         deviceType = map[deviceType] || 4;
       }
 
+      const ip = data.ip || data.login_ip || ctx.ip;
+      let location = data.location || data.login_location;
+
+      // 如果未传入 location，则通过 ip 解析地理位置
+      if (!location && ip) {
+        if (ctx.app.utils && ctx.app.utils.ip && ctx.app.utils.ip.getIpLocation) {
+          location = ctx.app.utils.ip.getIpLocation(ip);
+        } else {
+          location = this.resolveIpLocation(ip);
+        }
+      }
+
       await ctx.model.UserLoginLog.create({
         log_no: data.log_no || `L${Date.now()}${Math.floor(Math.random() * 1000)}`,
         user_id: data.userId || data.user_id || 0,
         username: data.username,
-        login_ip: data.ip || data.login_ip || ctx.ip,
-        login_location: data.location || data.login_location,
+        login_ip: ip,
+        login_location: location,
         user_agent: data.user_agent || ctx.get('user-agent'),
         device_type: deviceType,
         browser: data.browser,

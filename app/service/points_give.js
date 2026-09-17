@@ -61,6 +61,7 @@ class PointsGiveService extends Service {
 
       // 增加余额
       await wallet.increment(targetBalanceField, { by: amount, transaction });
+      await wallet.increment('balance', { by: amount, transaction });
 
       // 生成钱包流水
       const walletLog = await ctx.model.UserWalletLog.create({

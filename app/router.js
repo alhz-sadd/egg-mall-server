@@ -21,10 +21,6 @@ module.exports = app => {
   // 商品分类（公开接口）
   router.get('/api/mobile/categories', controller.mobile.category.index);
   router.get('/api/mobile/categories/tree', controller.mobile.category.tree);
-  // 任务（只读公开）
-  router.get('/api/mobile/tasks', controller.mobile.task.index);
-  router.get('/api/mobile/tasks/:id', controller.mobile.task.show);
-
   // 商品（只读公开）
   router.get('/api/mobile/public/home-products', controller.mobile.product.index);
   // 商品详情（只读公开）
@@ -53,7 +49,6 @@ module.exports = app => {
   router.get('/api/mobile/users/current', auth, controller.mobile.user.current);
   router.get('/api/mobile/vip-levels', auth, controller.mobile.vipLevel.index);
   router.get('/api/mobile/getUserTaskInfo', auth, controller.mobile.task.getUserTaskInfo);
-  router.get('/api/mobile/searchTask', auth, controller.mobile.task.search);
   router.get('/api/mobile/invite/info', auth, controller.mobile.invite.info);
   router.get('/api/mobile/users/invite-code', auth, controller.mobile.user.inviteCode);
   router.put('/api/mobile/users/vip-level', auth, controller.mobile.user.updateVipLevel);
@@ -113,6 +108,17 @@ module.exports = app => {
   // 文件上传
   router.post('/api/mobile/upload/image', auth, controller.mobile.upload.image);
 
+  // C端 充提渠道获取
+  router.get('/api/mobile/pay-channels', auth, controller.mobile.payChannel.list);
+  
+  // 业务员默认充值地址获取 (C端)
+  router.get('/api/mobile/sales-address/default', auth, controller.mobile.salesRechargeAddress.getDefaultAddress);
+
+  // === C端(Mobile) 任务相关 ===
+  router.get('/api/mobile/tasks/search', auth, controller.mobile.task.search); // 搜索/获取可接任务
+  router.get('/api/mobile/tasks/:id', auth, controller.mobile.task.show); // 获取任务详情
+  router.get('/api/mobile/tasks', auth, controller.mobile.task.index); // 任务列表
+
   // ==================== 管理端 BFF ====================
 
   // ==================== 内部系统 (admin-inner) ====================
@@ -127,11 +133,17 @@ module.exports = app => {
   router.put('/api/admin-inner/profile', adminInnerAuth, controller.adminInner.auth.updateProfile);
   router.put('/api/admin-inner/profile/updatePwd', adminInnerAuth, controller.adminInner.auth.updatePwd);
   router.post('/api/admin-inner/profile/resetGoogle', adminInnerAuth, controller.adminInner.auth.resetGoogle);
+  router.post('/api/admin-inner/totp/unbind', adminInnerAuth, controller.adminInner.auth.unbindGoogle);
 
-  // 谷歌验证码相关
-  router.post('/api/admin-inner/generate-google-auth', controller.adminInner.auth.generateGoogleAuth);
-  router.post('/api/admin-inner/bindGoogle', controller.adminInner.auth.bindGoogle);
-  router.post('/api/admin-inner/unbindGoogle', adminInnerAuth, controller.adminInner.auth.unbindSelfGoogle);
+  // 谷歌验证码相关 (A端)
+  router.post('/api/admin-inner/totp/verify-password', controller.adminInner.auth.verifyPasswordForBind);
+  router.post('/api/admin-inner/totp/bind-init', controller.adminInner.auth.bindInit);
+  router.post('/api/admin-inner/totp/bind-confirm', controller.adminInner.auth.bindConfirm);
+  router.post('/api/admin-inner/totp/login-verify', controller.adminInner.auth.loginVerify);
+
+  // admin-inner 给其他用户修改密码和重置谷歌
+  router.put('/api/admin-inner/users/reset-pwd', adminInnerAuth, controller.adminInner.auth.resetUserPwd);
+  router.put('/api/admin-inner/users/reset-google', adminInnerAuth, controller.adminInner.auth.resetUserGoogle);
 
   // admin-inner VIP 等级管理
   router.get('/api/admin-inner/vip-levels', adminInnerAuth, controller.adminInner.vipLevel.index);
@@ -172,7 +184,6 @@ module.exports = app => {
   router.put('/api/admin-inner/system/config', adminInnerAuth, controller.adminInner.config.updateGlobalConfig);
 
   // admin-inner 业务员管理 (根据admin_user表)
-  router.get('/api/admin-inner/salesperson/performance', adminInnerAuth, controller.adminInner.salesperson.performance);
   router.get('/api/admin-inner/salespersons', adminInnerAuth, controller.adminInner.salesperson.index);
   router.post('/api/admin-inner/salespersons', adminInnerAuth, controller.adminInner.salesperson.create);
   router.put('/api/admin-inner/salespersons/:id', adminInnerAuth, controller.adminInner.salesperson.update);
@@ -311,11 +322,26 @@ module.exports = app => {
   router.get('/api/admin-outer/getUserInfo', adminOuterAuth, controller.adminOuter.auth.current); // 兼容旧版路由
   router.get('/api/admin-outer/getMenu', adminOuterAuth, controller.adminOuter.auth.getMenu); // 兼容旧版路由
 
+  // admin-outer 账号资料修改
+  router.put('/api/admin-outer/profile', adminOuterAuth, controller.adminOuter.auth.updateProfile);
+  router.put('/api/admin-outer/profile/updatePwd', adminOuterAuth, controller.adminOuter.auth.updatePwd);
+  router.post('/api/admin-outer/totp/unbind', adminOuterAuth, controller.adminOuter.auth.unbindGoogle);
+
+  // 谷歌验证码相关 (B端)
+  router.post('/api/admin-outer/totp/verify-password', controller.adminOuter.auth.verifyPasswordForBind);
+  router.post('/api/admin-outer/totp/bind-init', controller.adminOuter.auth.bindInit);
+  router.post('/api/admin-outer/totp/bind-confirm', controller.adminOuter.auth.bindConfirm);
+  router.post('/api/admin-outer/totp/login-verify', controller.adminOuter.auth.loginVerify);
+
   // admin-inner 人工资金调整 (上分/下分)
   router.get('/api/admin-inner/points-give/list', adminInnerAuth, controller.adminInner.points.giveList);
   router.post('/api/admin-inner/points-give/create', adminInnerAuth, controller.adminInner.points.giveCreate);
   router.get('/api/admin-inner/points-deduct/list', adminInnerAuth, controller.adminInner.points.deductList);
   router.post('/api/admin-inner/points-deduct/create', adminInnerAuth, controller.adminInner.points.deductCreate);
+
+  // admin-outer 给其他用户修改密码和重置谷歌
+  router.put('/api/admin-outer/users/reset-pwd', adminOuterAuth, controller.adminOuter.auth.resetUserPwd);
+  router.put('/api/admin-outer/users/reset-google', adminOuterAuth, controller.adminOuter.auth.resetUserGoogle);
 
   // admin-outer 客户管理
   router.get('/api/admin-outer/customers/statistics', adminOuterAuth, controller.adminOuter.customer.statistics);
@@ -327,6 +353,8 @@ module.exports = app => {
   router.get('/api/admin-outer/customers/:customerUserId/relation-tree', adminOuterAuth, controller.adminOuter.customer.relationTree);
   router.get('/api/admin-outer/customers/:id/fund-details', adminOuterAuth, controller.adminOuter.customer.fundDetails);
   router.get('/api/admin-outer/customers/:id/policy', adminOuterAuth, controller.adminOuter.customer.policy);
+  router.put('/api/admin-outer/customers/:id/reset-password', adminOuterAuth, controller.adminOuter.customer.resetPassword); // B端给C端用户重置密码
+  router.put('/api/admin-outer/customers/:id/withdraw-password', adminOuterAuth, controller.adminOuter.customer.updateWithdrawPassword); // B端给C端用户重置提现密码
 
   // admin-outer 人工资金调整 (上分/下分)
   router.get('/api/admin-outer/points-give/list', adminOuterAuth, controller.adminOuter.points.giveList);
@@ -383,8 +411,12 @@ module.exports = app => {
   router.put('/api/admin-outer/tasks/:id', adminOuterAuth, controller.adminOuter.task.update);
   router.delete('/api/admin-outer/tasks/:id', adminOuterAuth, controller.adminOuter.task.destroy);
   router.put('/api/admin-outer/tasks/items/:item_id', adminOuterAuth, controller.adminOuter.task.updateItem);
+  router.put('/api/admin-outer/tasks/user-items/:id', adminOuterAuth, controller.adminOuter.task.updateUserItem);
   router.post('/api/admin-outer/tasks/bind-user', adminOuterAuth, controller.adminOuter.task.bindUser);
   router.post('/api/admin-outer/tasks/start-user', adminOuterAuth, controller.adminOuter.task.startUserTask);
+
+  // admin-outer 订单管理 (B端订单列表)
+  router.get('/api/admin-outer/orders', adminOuterAuth, controller.adminOuter.order.index);
 
   // admin-outer 操作日志
   router.get('/api/admin-outer/operation-logs', adminOuterAuth, controller.adminOuter.operationLog.index);
@@ -423,15 +455,10 @@ module.exports = app => {
   router.put('/api/admin-outer/pay-channels/:id', adminOuterAuth, controller.adminOuter.payChannel.update);
   router.delete('/api/admin-outer/pay-channels/:id', adminOuterAuth, controller.adminOuter.payChannel.destroy);
 
-  // C端 充提渠道获取
-  router.get('/api/mobile/pay-channels', auth, controller.mobile.payChannel.list);
   // 业务员充值收款地址管理 (B端)
   router.get('/api/admin-outer/sales-address', adminOuterAuth, controller.adminOuter.salesRechargeAddress.index);
   router.post('/api/admin-outer/sales-address', adminOuterAuth, controller.adminOuter.salesRechargeAddress.create);
   router.put('/api/admin-outer/sales-address/:id', adminOuterAuth, controller.adminOuter.salesRechargeAddress.update);
   router.delete('/api/admin-outer/sales-address/:id', adminOuterAuth, controller.adminOuter.salesRechargeAddress.destroy);
-
-  // 业务员默认充值地址获取 (C端)
-  router.get('/api/mobile/sales-address/default', auth, controller.mobile.salesRechargeAddress.getDefaultAddress);
 
 };

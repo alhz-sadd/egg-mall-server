@@ -109,26 +109,28 @@ class OrderController extends Controller {
    * @request path integer *id 订单ID
    * @response 200 ApiResponse 支付成功
    */
-  /**
-   * @summary 模拟支付
-   * @description 根据订单ID模拟支付
-   * @router post /api/mobile/orders/:id/pay
-   * @request header string Authorization Bearer token
-   * @request path integer *id 订单ID
-   * @response 200 ApiResponse 支付成功
-   */
   async pay() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
-    const { id } = ctx.params;
+    try {
+      const { userId } = ctx.state.user;
+      const { id } = ctx.params;
 
-    const order = await service.order.pay(id, userId);
+      const order = await service.order.pay(id, userId);
 
-    ctx.body = {
-      code: 200,
-      message: '支付成功',
-      data: order,
-    };
+      ctx.body = {
+        code: 200,
+        message: '支付成功',
+        data: order,
+      };
+    } catch (err) {
+      ctx.logger.error('Error in /api/mobile/orders/:id/pay', err);
+      ctx.status = 200;
+      ctx.body = {
+        code: err.status || 500,
+        message: err.message,
+        data: null
+      };
+    }
   }
 
   /**
@@ -141,18 +143,28 @@ class OrderController extends Controller {
    */
   async orderMsg() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
-    const { orderId } = ctx.request.body;
+    try {
+      const { userId } = ctx.state.user;
+      const { orderId } = ctx.request.body;
 
-    ctx.assert(orderId, 422, '订单号不能为空');
+      ctx.assert(orderId, 422, '订单号不能为空');
 
-    const orderMsg = await service.order.getOrderMsg(orderId, userId);
+      const orderMsg = await service.order.getOrderMsg(orderId, userId);
 
-    ctx.body = {
-      code: 200,
-      message: 'success',
-      data: orderMsg,
-    };
+      ctx.body = {
+        code: 200,
+        message: 'success',
+        data: orderMsg,
+      };
+    } catch (err) {
+      ctx.logger.error('Error in /api/mobile/orderMsg', err);
+      ctx.status = 200;
+      ctx.body = {
+        code: err.status || 500,
+        message: err.message,
+        data: null
+      };
+    }
   }
 
   /**
@@ -165,18 +177,28 @@ class OrderController extends Controller {
    */
   async finishOrder() {
     const { ctx, service } = this;
-    const { userId } = ctx.state.user;
-    const { orderId } = ctx.request.body;
+    try {
+      const { userId } = ctx.state.user;
+      const { orderId } = ctx.request.body;
 
-    ctx.assert(orderId, 422, '订单号不能为空');
+      ctx.assert(orderId, 422, '订单号不能为空');
 
-    const result = await service.order.pay(orderId, userId);
+      const result = await service.order.pay(orderId, userId);
 
-    ctx.body = {
-      code: 200,
-      message: '支付成功',
-      data: result,
-    };
+      ctx.body = {
+        code: 200,
+        message: '支付成功',
+        data: result,
+      };
+    } catch (err) {
+      ctx.logger.error('Error in /api/mobile/finishOrder', err);
+      ctx.status = 200;
+      ctx.body = {
+        code: err.status || 500,
+        message: err.message,
+        data: null
+      };
+    }
   }
 }
 

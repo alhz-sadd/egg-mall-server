@@ -209,6 +209,27 @@ class ShopController extends Controller {
     const { shop_id } = ctx.params;
     const payload = ctx.request.body;
 
+    ctx.validate({
+      real_name_reward: { type: 'number', required: false },
+      invite_new_user_reward: { type: 'number', required: false },
+      order_pay_timeout_switch: { type: 'int', required: false },
+      order_pay_timeout: { type: 'int', required: false },
+      withdraw_min_amount: { type: 'number', required: false },
+      withdraw_max_amount: { type: 'number', required: false },
+      withdraw_fee_type: { type: 'int', required: false },
+      withdraw_fee_value: { type: 'number', required: false },
+      withdraw_first_need_task: { type: 'int', required: false },
+      withdraw_first_need_identity: { type: 'int', required: false },
+      recharge_fee_rate: { type: 'number', required: false },
+    }, payload);
+
+    if (payload.real_name_reward !== undefined && payload.real_name_reward < 0) {
+      payload.real_name_reward = 0;
+    }
+    if (payload.invite_new_user_reward !== undefined && payload.invite_new_user_reward < 0) {
+      payload.invite_new_user_reward = 0;
+    }
+
     const setting = await ctx.model.ShopConfig.findOne({
       where: { shop_id },
     });

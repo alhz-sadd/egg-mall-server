@@ -234,13 +234,19 @@ class TaskService extends Service {
       }
     });
 
-    // 计算总任务数(基于正在进行的 shop_task_user)
-    let sumNum = 0;
+    // 获取最新的一条绑定的任务记录（包含已绑定但未开启、或者已开启的）
     const currentTaskUser = await ctx.model.ShopTaskUser.findOne({
-      where: { user_id: dbUserId, task_status: { [ctx.app.Sequelize.Op.in]: [0, 1] } } // 0=未完成, 1=进行中
+      where: { user_id: dbUserId, status: { [ctx.app.Sequelize.Op.in]: [0, 1] } }, // 0: 已绑定, 1: 任务进行中
+      order: [['id', 'DESC']]
     });
 
+    let isOpen = 0; // 是否已开启任务 0=未开启 1=已开启
+    let sumNum = 0;
+
     if (currentTaskUser) {
+      if (currentTaskUser.status === 1) {
+        isOpen = 1;
+      }
       const task = await ctx.model.ShopTask.findByPk(currentTaskUser.task_id);
       if (task) {
         sumNum = Number(task.task_count || 0);
@@ -248,12 +254,13 @@ class TaskService extends Service {
     }
 
     return {
-      freeze_money: '0.00', // 新表没有直接的冻结金额
+      freeze_voucher_balance: userWallet ? Number(userWallet.freeze_voucher_balance || 0).toFixed(2) : '0.00', // 冻结金额
       has_money: userWallet ? Number(userWallet.balance).toFixed(2) : '0.00',
       num: sumNum, // 当前任务总数量
       over_num: overNum || 0,
       revenue_today: todayIncomeVal.toFixed(2), // 今日收益
       revenue_yesterday: yesterdayIncomeVal.toFixed(2), // 昨日收益
+      is_open: isOpen, // 是否已开启任务 0未开启，1已开启
     };
   }
 
@@ -265,17 +272,23 @@ class TaskService extends Service {
     // 1. 获取用户信息和余额
     const user = await ctx.model.SysUser.findByPk(userId);
     if (!user || user.user_type !== 4) {
-      ctx.throw(404, '用户不存在');
+      // 不抛错，而是返回特定的未找到状态，交由上层统一包装 200 HTTP 响应
+      const err = new Error('用户不存在');
+      err.status = 404;
+      throw err;
     }
     
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
-    const userBalance = userWallet ? Number(userWallet.balance) : 0;
+    const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
+    
+    // 任务门槛和商品匹配，都使用总余额 balance
+    const totalBalance = userBalance;
 
     // 2. 检查是否有开启的任务
     const shopTaskUser = await ctx.model.ShopTaskUser.findOne({
       where: {
         user_id: userId,
-        task_status: 1 // 1: 任务进行中 (B端已开启)
+        status: 1 // 1: 任务进行中 (B端已开启)
       },
       order: [['id', 'DESC']]
     });
@@ -283,25 +296,33 @@ class TaskService extends Service {
     if (!shopTaskUser) {
       // 检查是否有未开启(已绑定)的任务
       const boundTask = await ctx.model.ShopTaskUser.findOne({
-        where: { user_id: userId, task_status: 0 }
+        where: { user_id: userId, status: 0 },
+        order: [['id', 'DESC']]
       });
       if (boundTask) {
-        return { '序列号': 0, sequence_no: 0, task_status: 0, wares: {}, order: {}, is_lucky: 0 };
+        return { sequence_no: 0, task_status: 0, wares: {}, order: {}, is_lucky: 0 };
       }
 
       // 检查是否有已完成的任务
       const completedTask = await ctx.model.ShopTaskUser.findOne({
-        where: { user_id: userId, task_status: 2 }
+        where: { user_id: userId, status: 2 },
+        order: [['id', 'DESC']]
       });
       if (completedTask) {
-        return { '序列号': 0, sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
+        return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
       }
-      return { '序列号': 0, sequence_no: 0, task_status: 0, wares: {}, order: {}, is_lucky: 0 };
+      
+      // 没有任何绑定的任务时
+      const err = new Error('任务不存在或已禁用');
+      err.status = 404;
+      throw err;
     }
 
     const shopTask = await ctx.model.ShopTask.findByPk(shopTaskUser.task_id);
-    if (!shopTask) {
-      return { '序列号': 0, sequence_no: 0, task_status: 0, wares: {}, order: {}, is_lucky: 0 };
+    if (!shopTask || shopTask.status !== 1) {
+      const err = new Error('任务不存在或已禁用');
+      err.status = 404;
+      throw err;
     }
 
     // 3. 检查是否有未支付订单 (is_processing = 1, status = 0)
@@ -322,23 +343,22 @@ class TaskService extends Service {
       
       const wares = {
         goods_id: unpaidProgress.goods_id,
-        goods_title: unpaidProgress.goods_title,
-        price: orderAmount
+        wares_name: unpaidProgress.goods_title,
+        total_price: orderAmount
       };
       
       const order = {
-        orderNo: unpaidProgress.order_id,
-        price: orderAmount,
-        backRate: yieldRate,
-        parentBackRate: parentYieldRate,
-        staticBackMoney: orderAmount * yieldRate,
-        dynamicBackMoney: orderAmount * parentYieldRate,
-        ruleType: taskItem ? taskItem.rule_type : 0,
-        cTime: unpaidProgress.create_time
+        order_id: unpaidProgress.order_id,
+        total_price: orderAmount,
+        revenue_rate: yieldRate,           // 收益率
+        return_money: orderAmount * yieldRate, // 回报金额
+        parent_revenue_rate: parentYieldRate,
+        parent_revenue: orderAmount * parentYieldRate,
+        order_type: taskItem ? (taskItem.is_lucky_order === 1 ? 2 : 1) : 1, // 1:普通订单, 2:幸运订单
+        c_time: unpaidProgress.create_time
       };
 
       return {
-        '序列号': taskItem ? taskItem.sort : 0,
         sequence_no: taskItem ? taskItem.sort : 0,
         task_status: 4,
         wares,
@@ -347,9 +367,9 @@ class TaskService extends Service {
       };
     }
 
-    // 4. 检查余额是否满足最小金额
-    if (userBalance < Number(shopTask.min_amount)) {
-      return { '序列号': 0, sequence_no: 0, task_status: 1, wares: {}, order: {}, is_lucky: 0 };
+    // 4. 检查余额是否满足最小金额 (使用总余额 balance)
+    if (totalBalance < Number(shopTask.min_amount)) {
+      return { sequence_no: 0, task_status: 1, wares: {}, order: {}, is_lucky: 0 };
     }
 
     // 5. 获取当前要进行的任务子项 (status = 0, is_processing = 0)
@@ -365,8 +385,8 @@ class TaskService extends Service {
 
     if (!nextProgress) {
       // 没有未开始的子项了，说明全部完成
-      await shopTaskUser.update({ task_status: 2 });
-      return { '序列号': 0, sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
+      await shopTaskUser.update({ status: 2 });
+      return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
     }
 
     const currentItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: nextProgress.task_item_id } });
@@ -375,9 +395,9 @@ class TaskService extends Service {
     }
 
     // 6. 选取商品
-    let targetGoodsPriceMax = userBalance;
+    let targetGoodsPriceMax = totalBalance;
     if (currentItem.is_lucky_order === 1) {
-      targetGoodsPriceMax = userBalance + Number(currentItem.append_amount);
+      targetGoodsPriceMax = totalBalance + Number(currentItem.append_amount);
     }
 
     const usedProgresses = await ctx.model.ShopTaskUserItemProgress.findAll({
@@ -443,24 +463,23 @@ class TaskService extends Service {
 
     const wares = {
       goods_id: waresModel.goods_id,
-      goods_title: waresModel.goods_name,
-      price: goodsPrice,
-      cover_image: waresModel.cover_image
+      wares_name: waresModel.goods_name,
+      total_price: goodsPrice,
+      pic_url: waresModel.cover_image
     };
 
     const order = {
-      orderNo: orderNo,
-      price: goodsPrice,
-      backRate: yieldRate,
-      parentBackRate: parentYieldRate,
-      staticBackMoney: revenue,
-      dynamicBackMoney: goodsPrice * parentYieldRate,
-      ruleType: currentItem.rule_type || 0,
-      cTime: cTime
+      order_id: orderNo,
+      total_price: goodsPrice,
+      revenue_rate: yieldRate,           // 收益率
+      return_money: revenue,           // 回报金额
+      parent_revenue_rate: parentYieldRate,
+      parent_revenue: goodsPrice * parentYieldRate,
+      order_type: currentItem ? (currentItem.is_lucky_order === 1 ? 2 : 1) : 1, // 1:普通订单, 2:幸运订单
+      c_time: cTime
     };
 
     return {
-      '序列号': currentItem.sort,
       sequence_no: currentItem.sort,
       task_status: 2,
       wares,

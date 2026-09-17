@@ -306,8 +306,25 @@ class AdminOuterCustomerService extends Service {
     const extraUserMap = {}; // 用于存放额外查询出的业务员/上级客户名称
     const firstRechargeMap = {}; // 存放首充信息
     const rechargeCountMap = {}; // 记录用户的充值总次数
+    const loginLogMap = {}; // 记录用户的最新登录信息
+    const withdrawCountMap = {}; // 新增：记录用户的提现次数
+    const withdrawAmountMap = {}; // 新增：记录用户的提现金额
 
     if (userIds.length > 0) {
+      // 查询每个用户的最新登录日志
+      const loginLogs = await ctx.model.UserLoginLog.findAll({
+        where: { user_id: { [Op.in]: userIds } },
+        attributes: [ 'user_id', 'login_ip', 'login_location', 'login_time' ],
+        order: [[ 'login_time', 'DESC' ]],
+        raw: true,
+      });
+      loginLogs.forEach(log => {
+        // 由于按倒序排，第一个出现的即为最新的记录
+        if (!loginLogMap[log.user_id]) {
+          loginLogMap[log.user_id] = log;
+        }
+      });
+
       const wallets = await ctx.model.UserWallet.findAll({
         where: { user_id: { [Op.in]: userIds } },
         attributes: [ 'user_id', 'balance', 'static_income', 'dynamic_income', 'total_recharge_amount', 'total_withdraw_amount' ],
@@ -364,6 +381,28 @@ class AdminOuterCustomerService extends Service {
           };
         }
       });
+
+      // 增加：动态查询并计算用户的提现统计 (只要审核通过的都算)
+      const allWithdraws = await ctx.model.UserWithdraw.findAll({
+        where: {
+          user_id: { [Op.in]: userIds },
+          status: 2, // 审核通过(已打款)
+        },
+        attributes: ['user_id', 'amount'],
+        raw: true,
+      });
+
+      // 初始化所有用户的默认值，确保存在映射
+      userIds.forEach(id => {
+        withdrawCountMap[id] = 0;
+        withdrawAmountMap[id] = 0;
+      });
+
+      allWithdraws.forEach(wRecord => {
+        const uid = Number(wRecord.user_id);
+        withdrawCountMap[uid] = (withdrawCountMap[uid] || 0) + 1;
+        withdrawAmountMap[uid] = (withdrawAmountMap[uid] || 0) + parseFloat(wRecord.amount || 0);
+      });
     }
 
     // 获取所有启用的 VIP 规则
@@ -416,6 +455,7 @@ class AdminOuterCustomerService extends Service {
       }
 
       const firstRechargeInfo = firstRechargeMap[row.user_id] || {};
+      const latestLoginInfo = loginLogMap[row.user_id] || {};
 
       return {
         ...row.toJSON(),
@@ -436,11 +476,13 @@ class AdminOuterCustomerService extends Service {
         first_recharge_time: firstRechargeInfo.time || null,
         allow_withdraw: 1,
         temp_withdraw_status: 1,
-        total_withdraw_amount: w.total_withdraw_amount ? Number(w.total_withdraw_amount) : 0,
-        total_withdraw_count: 0,
-        last_login_ip: row.last_login_ip || null,
-        last_login_location: row.last_login_ip ? (ctx.app.utils && ctx.app.utils.ip ? ctx.app.utils.ip.getIpLocation(row.last_login_ip) : '未知') : null,
-        last_login_time: row.last_login_time || null,
+        total_withdraw_amount: (withdrawAmountMap[row.user_id] || 0).toFixed(2),
+        total_withdraw_count: withdrawCountMap[row.user_id] || 0,
+        
+        // 登录信息：优先从 user_login_log 取最新一条，如果为空则回退使用主表记录
+        last_login_ip: latestLoginInfo.login_ip || row.last_login_ip || null,
+        last_login_location: latestLoginInfo.login_location || (row.last_login_ip ? (ctx.service.sysLog ? ctx.service.sysLog.resolveIpLocation(row.last_login_ip) : '未知') : null),
+        last_login_time: latestLoginInfo.login_time || row.last_login_time || null,
 
         parent_customer_user_id: r.parent_customer_user_id || null,
         parent_customer_name: extraUserMap[r.parent_customer_user_id] || null,

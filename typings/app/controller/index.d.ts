@@ -36,6 +36,7 @@ import ExportAdminOuterEmployee = require('../../../app/controller/admin_outer/e
 import ExportAdminOuterGoods = require('../../../app/controller/admin_outer/goods');
 import ExportAdminOuterLoginLog = require('../../../app/controller/admin_outer/login_log');
 import ExportAdminOuterOperationLog = require('../../../app/controller/admin_outer/operation_log');
+import ExportAdminOuterOrder = require('../../../app/controller/admin_outer/order');
 import ExportAdminOuterPayChannel = require('../../../app/controller/admin_outer/pay_channel');
 import ExportAdminOuterPoints = require('../../../app/controller/admin_outer/points');
 import ExportAdminOuterRecharge = require('../../../app/controller/admin_outer/recharge');
@@ -109,6 +110,7 @@ declare module 'egg' {
       goods: ExportAdminOuterGoods;
       loginLog: ExportAdminOuterLoginLog;
       operationLog: ExportAdminOuterOperationLog;
+      order: ExportAdminOuterOrder;
       payChannel: ExportAdminOuterPayChannel;
       points: ExportAdminOuterPoints;
       recharge: ExportAdminOuterRecharge;

@@ -77,6 +77,11 @@ module.exports = app => {
       defaultValue: 1,
       comment: '订单状态：1待审核，2审核通过，3审核驳回，4已取消',
     },
+    audit_type: {
+      type: TINYINT,
+      allowNull: true,
+      comment: '审核类型：1真实充值，2虚拟充值',
+    },
     voucher_img: {
       type: STRING(255),
       allowNull: true,
