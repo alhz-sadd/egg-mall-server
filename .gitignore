@@ -28,6 +28,7 @@ node_modules/
 .node_repl_history
 
 # 不上传规范文档
+.gf/
 .规范/
 
 # Output of 'npm pack'
