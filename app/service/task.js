@@ -226,20 +226,14 @@ class TaskService extends Service {
       yesterdayIncomeVal += Number(p.revenue || 0);
     }
 
-    // 从进度表计算已完成订单数
-    const overNum = await ctx.model.ShopTaskUserItemProgress.count({
-      where: {
-        user_id: dbUserId,
-        status: 1 // 已完成
-      }
-    });
-
+    // 从进度表计算已完成订单数 (修改: 仅统计当前活动任务模板下的订单，而不是该用户历史所有订单)
     // 获取最新的一条绑定的任务记录（包含已绑定但未开启、或者已开启的）
     const currentTaskUser = await ctx.model.ShopTaskUser.findOne({
       where: { user_id: dbUserId, status: { [ctx.app.Sequelize.Op.in]: [0, 1] } }, // 0: 已绑定, 1: 任务进行中
       order: [['id', 'DESC']]
     });
 
+    let overNum = 0;
     let isOpen = 0; // 是否已开启任务 0=未开启 1=已开启
     let sumNum = 0;
 
@@ -247,6 +241,16 @@ class TaskService extends Service {
       if (currentTaskUser.status === 1) {
         isOpen = 1;
       }
+      
+      // 仅统计当前活动任务下的已完成订单数
+      overNum = await ctx.model.ShopTaskUserItemProgress.count({
+        where: {
+          shop_task_user_id: currentTaskUser.id,
+          user_id: dbUserId,
+          status: 1 // 已完成
+        }
+      });
+      
       const task = await ctx.model.ShopTask.findByPk(currentTaskUser.task_id);
       if (task) {
         sumNum = Number(task.task_count || 0);
@@ -395,58 +399,87 @@ class TaskService extends Service {
     }
 
     // 6. 选取商品
-    let targetGoodsPriceMax = totalBalance;
-    if (currentItem.is_lucky_order === 1) {
-      targetGoodsPriceMax = totalBalance + Number(currentItem.append_amount);
-    }
+    const isLuckyOrder = nextProgress.is_lucky_order !== null ? nextProgress.is_lucky_order : currentItem.is_lucky_order;
+    const appendAmount = nextProgress.append_amount !== null ? Number(nextProgress.append_amount) : Number(currentItem.append_amount);
+    const ruleType = nextProgress.rule_type !== null ? nextProgress.rule_type : currentItem.rule_type;
+    const yieldRate = nextProgress.yield_rate !== null && Number(nextProgress.yield_rate) > 0 ? Number(nextProgress.yield_rate) : Number(shopTask.yield_rate);
 
-    const usedProgresses = await ctx.model.ShopTaskUserItemProgress.findAll({
-      where: {
-        shop_task_user_id: shopTaskUser.id,
-        user_id: userId,
-        goods_id: { [Op.not]: null }
-      },
-      attributes: ['goods_id']
-    });
-    const usedGoodsIds = usedProgresses.map(p => p.goods_id);
+    let waresModel = null;
+    let goodsPrice = 0;
 
-    let goodsWhere = {
-      status: 1,
-      is_deleted: 0,
-      price: { [Op.lte]: targetGoodsPriceMax }
-    };
+    if (ruleType === 2) {
+      // 手动匹配
+      const goodsId = nextProgress.goods_id || currentItem.goods_id;
+      if (goodsId) {
+        waresModel = await ctx.model.Goods.findOne({ where: { goods_id: goodsId, is_deleted: 0 } });
+      }
+      
+      if (!waresModel) {
+        // 如果找不到商品，但手动匹配配置了价格和名称，也可以直接用
+        const title = nextProgress.goods_title || currentItem.goods_title || '未知商品';
+        const price = nextProgress.goods_price !== null ? Number(nextProgress.goods_price) : Number(currentItem.goods_price);
+        waresModel = {
+          goods_id: goodsId || 0,
+          goods_name: title,
+          price: price,
+          cover_image: ''
+        };
+      }
+      goodsPrice = Number(waresModel.price);
+    } else {
+      // 智能匹配
+      let targetGoodsPriceMax = totalBalance;
+      if (isLuckyOrder === 1) {
+        targetGoodsPriceMax = totalBalance + appendAmount;
+      }
 
-    if (usedGoodsIds.length > 0) {
-      goodsWhere.goods_id = { [Op.notIn]: usedGoodsIds };
-    }
+      const usedProgresses = await ctx.model.ShopTaskUserItemProgress.findAll({
+        where: {
+          shop_task_user_id: shopTaskUser.id,
+          user_id: userId,
+          goods_id: { [Op.not]: null }
+        },
+        attributes: ['goods_id']
+      });
+      const usedGoodsIds = usedProgresses.map(p => p.goods_id);
 
-    let waresModel = await ctx.model.Goods.findOne({
-      where: goodsWhere,
-      order: Sequelize.literal('RAND()')
-    });
+      let goodsWhere = {
+        status: 1,
+        is_deleted: 0,
+        price: { [Op.lte]: targetGoodsPriceMax }
+      };
 
-    if (!waresModel && usedGoodsIds.length > 0) {
-      delete goodsWhere.goods_id;
+      if (usedGoodsIds.length > 0) {
+        goodsWhere.goods_id = { [Op.notIn]: usedGoodsIds };
+      }
+
       waresModel = await ctx.model.Goods.findOne({
         where: goodsWhere,
         order: Sequelize.literal('RAND()')
       });
-    }
 
-    if (!waresModel) {
-      ctx.throw(500, '暂无匹配的商品可接取，请稍后再试');
-    }
+      if (!waresModel && usedGoodsIds.length > 0) {
+        delete goodsWhere.goods_id;
+        waresModel = await ctx.model.Goods.findOne({
+          where: goodsWhere,
+          order: Sequelize.literal('RAND()')
+        });
+      }
 
-    let goodsPrice = Number(waresModel.price);
-    if (currentItem.is_lucky_order === 1) {
-      goodsPrice = targetGoodsPriceMax;
+      if (!waresModel) {
+        ctx.throw(500, '暂无匹配的商品可接取，请稍后再试');
+      }
+
+      goodsPrice = Number(waresModel.price);
+      if (isLuckyOrder === 1) {
+        goodsPrice = targetGoodsPriceMax;
+      }
     }
 
     // 7. 更新进度（生成订单）
     const orderNo = 'T' + Date.now() + Math.floor(Math.random() * 1000);
     const cTime = new Date();
     
-    const yieldRate = Number(shopTask.yield_rate);
     const parentYieldRate = Number(shopTask.parent_yield_rate);
     const revenue = goodsPrice * yieldRate;
 
@@ -475,7 +508,7 @@ class TaskService extends Service {
       return_money: revenue,           // 回报金额
       parent_revenue_rate: parentYieldRate,
       parent_revenue: goodsPrice * parentYieldRate,
-      order_type: currentItem ? (currentItem.is_lucky_order === 1 ? 2 : 1) : 1, // 1:普通订单, 2:幸运订单
+      order_type: isLuckyOrder === 1 ? 2 : 1, // 1:普通订单, 2:幸运订单
       c_time: cTime
     };
 
@@ -484,7 +517,7 @@ class TaskService extends Service {
       task_status: 2,
       wares,
       order,
-      is_lucky: currentItem.is_lucky_order
+      is_lucky: isLuckyOrder
     };
   }
 }

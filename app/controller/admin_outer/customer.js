@@ -503,6 +503,10 @@ class AdminOuterCustomerController extends Controller {
         where: { shop_task_user_id: userTask.id, user_id: userId }
       });
 
+      // 计算任务进度 (已完成的订单数 / 总任务数)
+      const totalCount = taskItems.length;
+      const completedCount = progressItems.filter(p => p.status === 1).length; // status 为 1 表示已完成/已支付
+
       // 5. 组装返回数据
       ctx.body = {
         code: 200,
@@ -510,7 +514,8 @@ class AdminOuterCustomerController extends Controller {
         data: {
           task_id: taskInfo ? taskInfo.task_id : null,
           task_name: taskInfo ? taskInfo.task_name : '未知任务',
-          task_status: userTask.task_status, // 0已绑定 1任务进行中 2全部完成 3已过期截止
+          task_status: userTask.status, // 返回主状态：0未开启，1进行中
+          progress_text: `${completedCount}/${totalCount}`, // 当前用户任务进度
           items: taskItems.map((item, index) => {
             // 找到对应的进度记录
             const progress = progressItems.find(p => p.task_item_id === item.item_id);

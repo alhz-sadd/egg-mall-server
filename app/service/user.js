@@ -193,16 +193,6 @@ class UserService extends Service {
         }, { transaction });
       }
 
-      await transaction.commit();
-
-      // 刷新 VIP 等级（根据 shop_id 规则，初始可能为 VIP1）
-      if (shopId) {
-        await service.vipLevel.refreshUserVip(user.user_id);
-      }
-
-      // 重新查询以获取最新数据
-      updatedUser = await ctx.model.SysUser.findByPk(user.user_id);
-
       // 发放邀请奖励
       if (inviterUserId && shopId) {
         const shopConfig = await ctx.model.ShopConfig.findOne({
@@ -245,6 +235,16 @@ class UserService extends Service {
           }, { transaction });
         }
       }
+
+      await transaction.commit();
+
+      // 刷新 VIP 等级（根据 shop_id 规则，初始可能为 VIP1）
+      if (shopId) {
+        await service.vipLevel.refreshUserVip(user.user_id);
+      }
+
+      // 重新查询以获取最新数据
+      updatedUser = await ctx.model.SysUser.findByPk(user.user_id);
 
     } catch (error) {
       await transaction.rollback();

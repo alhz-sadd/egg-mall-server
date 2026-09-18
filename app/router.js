@@ -414,6 +414,7 @@ module.exports = app => {
   router.put('/api/admin-outer/tasks/user-items/:id', adminOuterAuth, controller.adminOuter.task.updateUserItem);
   router.post('/api/admin-outer/tasks/bind-user', adminOuterAuth, controller.adminOuter.task.bindUser);
   router.post('/api/admin-outer/tasks/start-user', adminOuterAuth, controller.adminOuter.task.startUserTask);
+  router.post('/api/admin-outer/tasks/close-user', adminOuterAuth, controller.adminOuter.task.closeUserTask);
 
   // admin-outer 订单管理 (B端订单列表)
   router.get('/api/admin-outer/orders', adminOuterAuth, controller.adminOuter.order.index);

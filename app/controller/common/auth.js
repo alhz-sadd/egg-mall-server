@@ -82,11 +82,20 @@ class CommonAuthController extends Controller {
         { expiresIn: app.config.jwt.expiresIn },
       );
 
+      // 签发新的 refreshToken，实现无感刷新/会话顺延
+      const newRefreshToken = app.jwt.sign(
+        { ...payload, isRefresh: true },
+        app.config.jwt.secret,
+        { expiresIn: app.config.jwt.refreshExpiresIn },
+      );
+
       ctx.body = {
         code: 200,
         message: '刷新成功',
         data: {
-          token: newAccessToken,
+          token: newAccessToken, // 兼容 B端
+          accessToken: newAccessToken, // 兼容 C端
+          refreshToken: newRefreshToken, // 返回新的 refreshToken
         },
       };
     } catch (err) {

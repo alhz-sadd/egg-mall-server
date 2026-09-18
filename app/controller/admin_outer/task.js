@@ -467,6 +467,12 @@ class AdminOuterTaskController extends Controller {
       ctx.throw(404, 'C端用户不存在或无权操作');
     }
 
+    // 校验用户是否在执行任务中 (status === 1)
+    const currentTaskUser = await ctx.model.ShopTaskUser.findOne({
+      where: { user_id, status: { [ctx.model.Sequelize.Op.in]: [0, 1] } },
+      order: [['id', 'DESC']]
+    });
+
     // 用户只能绑定一个任务模板。切换新的模板后，需要删除之前绑定的任务及子项，确保只有一条规则
     const transaction = await ctx.model.transaction();
     let bindRecord;
@@ -485,10 +491,13 @@ class AdminOuterTaskController extends Controller {
         force: true
       });
 
+      // 继承之前的任务状态（如果之前是执行中则保持执行中，否则保持未开启）
+      const newStatus = currentTaskUser && currentTaskUser.status === 1 ? 1 : 0;
+
       bindRecord = await ctx.model.ShopTaskUser.create({
         user_id,
         task_id,
-        status: 0,
+        status: newStatus,
         task_status: 0,
       }, { transaction });
 
@@ -583,6 +592,62 @@ class AdminOuterTaskController extends Controller {
       ctx.logger.error('[AdminOuterTaskController.startUserTask] 开启任务失败', error);
       ctx.throw(500, '开启任务失败：' + error.message);
     }
+  }
+  /**
+   * B端关闭用户任务
+   * POST /api/admin-outer/tasks/close-user
+   */
+  async closeUserTask() {
+    const { ctx } = this;
+    const adminOuter = ctx.state.adminOuter;
+
+    if (!adminOuter || !adminOuter.shop_id) {
+      ctx.throw(401, '未授权或未绑定店铺');
+    }
+
+    const { user_id, task_id } = ctx.request.body;
+
+    if (!user_id || !task_id) {
+      ctx.throw(400, '用户ID和任务ID不能为空');
+    }
+
+    // 查询最新的绑定记录（按 ID 倒序）
+    const userTask = await ctx.model.ShopTaskUser.findOne({
+      where: { user_id, task_id },
+      order: [['id', 'DESC']]
+    });
+
+    if (!userTask) {
+      ctx.throw(404, '用户尚未绑定此任务模板');
+    }
+
+    if (userTask.status !== 1) {
+      ctx.throw(400, '任务非“执行中”状态，无法关闭');
+    }
+
+    // 检查用户是否已经搜索过（即是否有已经生成的订单或已支付的子项）
+    const triggeredProgress = await ctx.model.ShopTaskUserItemProgress.findOne({
+      where: {
+        shop_task_user_id: userTask.id,
+        user_id,
+        [ctx.app.Sequelize.Op.or]: [
+          { is_triggered: 1 },
+          { status: 1 }
+        ]
+      }
+    });
+
+    // 只要用户搜索过（或支付过），就不允许关闭
+    if (triggeredProgress) {
+      ctx.throw(400, '用户已经接取或完成过订单，无法关闭任务');
+    }
+
+    await userTask.update({ status: 0 }); // 恢复到未开启（已绑定）状态
+
+    ctx.body = {
+      code: 200,
+      message: '任务关闭成功',
+    };
   }
 }
 
