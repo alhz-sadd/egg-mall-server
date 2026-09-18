@@ -45,7 +45,7 @@ class AdminOuterCustomerController extends Controller {
     const { username, password, phone } = ctx.request.body;
 
     ctx.assert(username, 422, '用户名/手机号不能为空');
-    ctx.assert(password, 422, '密码不能为空');
+    ctx.assert(password, 422, '密码不能为空 ');
 
     // 默认如果没传 phone 就用 username
     const registerPhone = phone || username;
