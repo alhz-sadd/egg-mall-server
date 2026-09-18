@@ -28,6 +28,8 @@ import ExportUserCommissionLog = require('../../../app/model/user_commission_log
 import ExportUserIdentity = require('../../../app/model/user_identity');
 import ExportUserLoginLog = require('../../../app/model/user_login_log');
 import ExportUserRecharge = require('../../../app/model/user_recharge');
+import ExportUserTaskIncomeLog = require('../../../app/model/user_task_income_log');
+import ExportUserTaskStat = require('../../../app/model/user_task_stat');
 import ExportUserWallet = require('../../../app/model/user_wallet');
 import ExportUserWalletLog = require('../../../app/model/user_wallet_log');
 import ExportUserWithdraw = require('../../../app/model/user_withdraw');
@@ -59,6 +61,8 @@ declare module 'egg' {
     UserIdentity: ReturnType<typeof ExportUserIdentity>;
     UserLoginLog: ReturnType<typeof ExportUserLoginLog>;
     UserRecharge: ReturnType<typeof ExportUserRecharge>;
+    UserTaskIncomeLog: ReturnType<typeof ExportUserTaskIncomeLog>;
+    UserTaskStat: ReturnType<typeof ExportUserTaskStat>;
     UserWallet: ReturnType<typeof ExportUserWallet>;
     UserWalletLog: ReturnType<typeof ExportUserWalletLog>;
     UserWithdraw: ReturnType<typeof ExportUserWithdraw>;

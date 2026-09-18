@@ -309,6 +309,7 @@ class AdminOuterCustomerService extends Service {
     const loginLogMap = {}; // 记录用户的最新登录信息
     const withdrawCountMap = {}; // 新增：记录用户的提现次数
     const withdrawAmountMap = {}; // 新增：记录用户的提现金额
+    const parentIncomeAmountMap = {}; // 新增：记录给上级贡献的佣金
 
     if (userIds.length > 0) {
       // 查询每个用户的最新登录日志
@@ -391,6 +392,45 @@ class AdminOuterCustomerService extends Service {
         attributes: ['user_id', 'amount'],
         raw: true,
       });
+
+      // 增加：动态查询该用户给其直属上级产生的下级贡献佣金总计
+      // 由于流水表里没有直接存“下级是谁”，我们可以通过联表查询 shop_task_user_item_progress 来确认
+      // 先把该页所有用户的进度记录ID查出来
+      const userProgresses = await ctx.model.ShopTaskUserItemProgress.findAll({
+        where: { user_id: { [Op.in]: userIds } },
+        attributes: ['id', 'user_id'],
+        raw: true
+      });
+      
+      const progressToUserMap = {};
+      const progressIds = [];
+      userProgresses.forEach(p => {
+        progressToUserMap[p.id] = p.user_id;
+        progressIds.push(p.id);
+      });
+
+      userIds.forEach(id => {
+        parentIncomeAmountMap[id] = 0;
+      });
+
+      if (progressIds.length > 0) {
+        // 然后去流水表查这些进度ID产生的上级动态收益
+        const allParentIncomes = await ctx.model.UserWalletLog.findAll({
+          where: {
+            biz_type: 5, // 5 = 动态收益发放
+            related_order_id: { [Op.in]: progressIds }
+          },
+          attributes: ['related_order_id', 'amount'],
+          raw: true,
+        });
+
+        allParentIncomes.forEach(log => {
+          const uid = progressToUserMap[log.related_order_id];
+          if (uid) {
+            parentIncomeAmountMap[uid] += parseFloat(log.amount || 0);
+          }
+        });
+      }
 
       // 初始化所有用户的默认值，确保存在映射
       userIds.forEach(id => {
@@ -479,6 +519,9 @@ class AdminOuterCustomerService extends Service {
         total_withdraw_amount: (withdrawAmountMap[row.user_id] || 0).toFixed(2),
         total_withdraw_count: withdrawCountMap[row.user_id] || 0,
         
+        // 增加：给上级产生的佣金贡献字段
+        contribute_commission_to_parent: (parentIncomeAmountMap ? (parentIncomeAmountMap[row.user_id] || 0) : 0).toFixed(2),
+
         // 登录信息：优先从 user_login_log 取最新一条，如果为空则回退使用主表记录
         last_login_ip: latestLoginInfo.login_ip || row.last_login_ip || null,
         last_login_location: latestLoginInfo.login_location || (row.last_login_ip ? (ctx.service.sysLog ? ctx.service.sysLog.resolveIpLocation(row.last_login_ip) : '未知') : null),

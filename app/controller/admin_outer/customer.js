@@ -507,6 +507,11 @@ class AdminOuterCustomerController extends Controller {
       const totalCount = taskItems.length;
       const completedCount = progressItems.filter(p => p.status === 1).length; // status 为 1 表示已完成/已支付
 
+      // 当用户完成了所有任务时，如果当前任务状态是开启的(1)，则返回前端未开启状态(0)
+      // 注意：这只是在B端展示上返回未开启状态。实际在C端走 search 接口搜索订单时，
+      // 如果没有未开始的子项了，C端的 search 接口也会自动把 `shop_task_user` 的 status 更新为 2 (已完成)
+      const displayTaskStatus = (completedCount >= totalCount && totalCount > 0) ? 0 : userTask.status;
+
       // 5. 组装返回数据
       ctx.body = {
         code: 200,
@@ -514,7 +519,7 @@ class AdminOuterCustomerController extends Controller {
         data: {
           task_id: taskInfo ? taskInfo.task_id : null,
           task_name: taskInfo ? taskInfo.task_name : '未知任务',
-          task_status: userTask.status, // 返回主状态：0未开启，1进行中
+          task_status: displayTaskStatus, // 修正后的返回主状态：全部完成则显示0未开启，否则按实际来
           progress_text: `${completedCount}/${totalCount}`, // 当前用户任务进度
           items: taskItems.map((item, index) => {
             // 找到对应的进度记录

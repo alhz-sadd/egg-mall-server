@@ -188,43 +188,25 @@ class TaskService extends Service {
 
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
 
-    // 从进度表计算今日收益
-    const todayStart = dayjs().startOf('day').toDate();
-    const todayEnd = dayjs().endOf('day').toDate();
-
-    const todayProgress = await ctx.model.ShopTaskUserItemProgress.findAll({
+    // 从统计表获取今日收益
+    const todayStr = dayjs().format('YYYY-MM-DD');
+    const todayStat = await ctx.model.UserTaskStat.findOne({
       where: {
         user_id: dbUserId,
-        status: 1, // 已完成
-        update_time: {
-          [ctx.app.Sequelize.Op.between]: [todayStart, todayEnd]
-        }
-      }
+        stat_date: todayStr,
+      },
     });
+    const todayIncomeVal = todayStat ? Number(todayStat.task_income || 0) : 0;
 
-    let todayIncomeVal = 0;
-    for (const p of todayProgress) {
-      todayIncomeVal += Number(p.revenue || 0);
-    }
-
-    // 从进度表计算昨日收益
-    const yesterdayStart = dayjs().subtract(1, 'day').startOf('day').toDate();
-    const yesterdayEnd = dayjs().subtract(1, 'day').endOf('day').toDate();
-
-    const yesterdayProgress = await ctx.model.ShopTaskUserItemProgress.findAll({
+    // 从统计表获取昨日收益
+    const yesterdayStr = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
+    const yesterdayStat = await ctx.model.UserTaskStat.findOne({
       where: {
         user_id: dbUserId,
-        status: 1,
-        update_time: {
-          [ctx.app.Sequelize.Op.between]: [yesterdayStart, yesterdayEnd]
-        }
-      }
+        stat_date: yesterdayStr,
+      },
     });
-
-    let yesterdayIncomeVal = 0;
-    for (const p of yesterdayProgress) {
-      yesterdayIncomeVal += Number(p.revenue || 0);
-    }
+    const yesterdayIncomeVal = yesterdayStat ? Number(yesterdayStat.task_income || 0) : 0;
 
     // 从进度表计算已完成订单数 (修改: 仅统计当前活动任务模板下的订单，而不是该用户历史所有订单)
     // 获取最新的一条绑定的任务记录（包含已绑定但未开启、或者已开启的）

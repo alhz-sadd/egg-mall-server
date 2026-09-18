@@ -511,6 +511,43 @@ class OrderService extends Service {
         }, { transaction });
       }
 
+      // 6.2 记录到 user_task_income_log (记录产生的收益)
+      if (revenue > 0) {
+        await ctx.model.UserTaskIncomeLog.create({
+          user_id: dbUserId,
+          task_id: taskItem.task_id,
+          task_item_id: progress.task_item_id,
+          order_id: progress.id, // 关联的进度(订单)ID
+          income_type: 1, // 1=订单任务收益
+          income_amount: revenue,
+          settle_time: new Date(),
+          create_time: new Date(),
+          update_time: new Date()
+        }, { transaction });
+      }
+
+      // 6.3 记录/更新到 user_task_stat
+      const todayStr = dayjs().format('YYYY-MM-DD');
+      const statRecord = await ctx.model.UserTaskStat.findOne({
+        where: { user_id: dbUserId, stat_date: todayStr }
+      });
+      if (statRecord) {
+        await statRecord.update({
+          task_order_count: ctx.app.Sequelize.literal(`task_order_count + 1`),
+          task_income: ctx.app.Sequelize.literal(`task_income + ${revenue}`),
+          update_time: new Date()
+        }, { transaction });
+      } else {
+        await ctx.model.UserTaskStat.create({
+          user_id: dbUserId,
+          stat_date: todayStr,
+          task_order_count: 1,
+          task_income: revenue,
+          create_time: new Date(),
+          update_time: new Date()
+        }, { transaction });
+      }
+
       // 7. 处理上级返佣 (如果有上级)
       if (userObj.inviter_user_id && dynamicRevenue > 0) {
         const parentWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userObj.inviter_user_id } });

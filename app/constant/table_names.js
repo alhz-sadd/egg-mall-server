@@ -16,6 +16,8 @@ module.exports = {
   USER_WALLET: 'user_wallet', // 用户钱包表 balance余额（总）
   USER_WALLET_LOG: 'user_wallet_log', // 用户钱包日志表
   USER_COMMISSION_LOG: 'user_commission_log', // 业务员佣金明细表
+  USER_TASK_INCOME_LOG: 'user_task_income_log', // 用户任务收益明细流水表
+  USER_TASK_STAT: 'user_task_stat', // 用户任务日汇总统计表
 
 
   // --- 商店相关1 ---
