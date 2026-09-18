@@ -17,6 +17,7 @@ module.exports = () => {
       timezone: '+08:00',
       logging: false,
     },
+    proxy: true,
     jwt: {
       secret: process.env.JWT_SECRET,
     },
