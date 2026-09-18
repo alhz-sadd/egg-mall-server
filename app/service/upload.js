@@ -48,10 +48,9 @@ class UploadService extends Service {
     await fs.promises.rename(file.filepath, targetPath);
 
     const relativePath = `/public/uploads/${dir}/${dateDir}/${filename}`;
-    const fullUrl = `${ctx.origin}${relativePath}`;
 
     return {
-      url: fullUrl,
+      url: relativePath,
       path: relativePath,
       name: file.filename,
       size: fileSize,
