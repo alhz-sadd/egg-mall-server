@@ -49,11 +49,18 @@ class UserController extends Controller {
    */
   getLoginMeta() {
     const { ctx } = this;
+    // 打印所有的请求头，用来排查线上真实情况
+    ctx.logger.info('===== Login Request Headers =====');
+    ctx.logger.info(JSON.stringify(ctx.request.headers));
+    
     // 强制从请求头中获取真实 IP，兼容 Nginx、CDN 和框架获取不到的情况
     let ip = ctx.get('X-Real-IP') || ctx.get('X-Forwarded-For') || ctx.ip || ctx.request.ip || '127.0.0.1';
     if (ip && ip.includes(',')) {
       ip = ip.split(',')[0].trim(); // 如果有多个 IP (经过多层代理)，取第一个真实客户端 IP
     }
+    
+    ctx.logger.info('Parsed IP:', ip);
+    ctx.logger.info('=================================');
     
     const userAgent = ctx.get('user-agent') || '';
     const { device, browser, os } = this.parseUserAgent(userAgent);
