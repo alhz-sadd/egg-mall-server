@@ -49,33 +49,7 @@ class UserController extends Controller {
    */
   getLoginMeta() {
     const { ctx } = this;
-    
-    // 终极杀招：穿透 Egg.js，直接从 Node.js 原生请求中提取各种可能的 IP
-    const req = ctx.req || ctx.request.req || {};
-    const headers = req.headers || {};
-    
-    // 依次尝试获取，注意 Header 必须全小写
-    let rawIp = 
-      headers['x-real-ip'] || 
-      headers['x-forwarded-for'] || 
-      headers['remote-host'] || 
-      headers['cf-connecting-ip'] || // 如果套了 Cloudflare
-      headers['x-client-ip'] || 
-      req.connection?.remoteAddress || 
-      req.socket?.remoteAddress || 
-      ctx.ip || 
-      '127.0.0.1';
-
-    // 如果拿到的是类似 "104.28.66.136, 127.0.0.1" 这种用逗号分隔的代理链
-    if (rawIp && typeof rawIp === 'string' && rawIp.includes(',')) {
-      rawIp = rawIp.split(',')[0].trim();
-    }
-    
-    // 如果拿到的是 IPv6 格式的本地环回 (::ffff:127.0.0.1)
-    if (rawIp.includes('::ffff:')) {
-      rawIp = rawIp.split('::ffff:')[1];
-    }
-
+    const ip = ctx.ip || ctx.request.ip || '127.0.0.1';
     const userAgent = ctx.get('user-agent') || '';
     const { device, browser, os } = this.parseUserAgent(userAgent);
 
@@ -110,16 +84,7 @@ class UserController extends Controller {
     ctx.assert(confirm_password, 422, '确认密码不能为空');
 
     // 获取注册 IP
-    let clientIp = '127.0.0.1';
-    try {
-      const req = ctx.req || ctx.request.req || {};
-      const headers = req.headers || {};
-      clientIp = headers['x-real-ip'] || headers['x-forwarded-for'] || headers['remote-host'] || ctx.ip || '127.0.0.1';
-      if (clientIp && typeof clientIp === 'string' && clientIp.includes(',')) {
-        clientIp = clientIp.split(',')[0].trim();
-      }
-      if (clientIp.includes('::ffff:')) clientIp = clientIp.split('::ffff:')[1];
-    } catch(e) {}
+    const clientIp = ctx.ip || ctx.request.ip || '127.0.0.1';
 
     const user = await service.user.register({
       user_phone: registerPhone,

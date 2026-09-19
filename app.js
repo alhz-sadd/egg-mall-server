@@ -22,6 +22,11 @@ class AppBootHook {
     this.app.config.proxy = true;
     this.app.config.maxProxyCount = 1;
   }
+  
+  // 在中间件最顶层拦截并打印 IP 和 Headers
+  async configDidLoad() {
+    this.app.config.coreMiddleware.unshift('ipTracker');
+  }
 
   async beforeStart() {
     const app = this.app;
