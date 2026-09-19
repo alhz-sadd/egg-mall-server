@@ -119,6 +119,7 @@ module.exports = appInfo => {
     buffer: false,
   };
 
+  // 强制开启代理信任，不管什么环境都生效
   config.proxy = true;
   config.maxProxyCount = 1; // 告诉 Egg.js 前面有 1 层代理 (Nginx)
   config.appBaseUrl = process.env.APP_BASE_URL || '';

@@ -19,6 +19,7 @@ module.exports = () => {
       timezone: '+08:00',
       logging: false,
     },
+    // 强制开启代理信任
     proxy: true,
     maxProxyCount: 1, // 告诉 Egg.js 前面有 1 层代理 (Nginx)
     jwt: {
