@@ -49,7 +49,12 @@ class UserController extends Controller {
    */
   getLoginMeta() {
     const { ctx } = this;
-    const ip = ctx.ip || ctx.request.ip || '127.0.0.1';
+    // 强制从请求头中获取真实 IP，兼容 Nginx、CDN 和框架获取不到的情况
+    let ip = ctx.get('X-Real-IP') || ctx.get('X-Forwarded-For') || ctx.ip || ctx.request.ip || '127.0.0.1';
+    if (ip && ip.includes(',')) {
+      ip = ip.split(',')[0].trim(); // 如果有多个 IP (经过多层代理)，取第一个真实客户端 IP
+    }
+    
     const userAgent = ctx.get('user-agent') || '';
     const { device, browser, os } = this.parseUserAgent(userAgent);
 
@@ -83,12 +88,18 @@ class UserController extends Controller {
     ctx.assert(registerPassword.length >= 6, 422, '密码长度不能少于6位');
     ctx.assert(confirm_password, 422, '确认密码不能为空');
 
+    // 获取注册 IP
+    let clientIp = ctx.get('X-Real-IP') || ctx.get('X-Forwarded-For') || ctx.ip || ctx.request.ip || '127.0.0.1';
+    if (clientIp && clientIp.includes(',')) {
+      clientIp = clientIp.split(',')[0].trim();
+    }
+
     const user = await service.user.register({
       user_phone: registerPhone,
       user_password: registerPassword,
       confirm_password,
       user_invite_code: registerInviteCode,
-      user_ip: ctx.ip,
+      user_ip: clientIp,
     });
 
     ctx.body = {
