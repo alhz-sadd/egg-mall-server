@@ -63,7 +63,7 @@ class UserController extends Controller {
       const logPath = path.join(process.cwd(), 'ip-debug.log');
       fs.appendFileSync(logPath, `[${new Date().toISOString()}] Headers: ${JSON.stringify(ctx.request.headers)} | IP: ${ip}\n`);
     } catch(e) {}
-    
+    //
     const userAgent = ctx.get('user-agent') || '';
     const { device, browser, os } = this.parseUserAgent(userAgent);
 
