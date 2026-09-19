@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv').config();
+
 /**
  * 默认配置文件，所有环境都会加载
  * @param {Egg.EggAppInfo} appInfo 应用信息
