@@ -416,6 +416,12 @@ class UserService extends Service {
       { expiresIn: app.config.jwt.refreshExpiresIn },
     );
 
+    // 每次登录成功时，更新最后登录IP和时间到 sys_user 表，以便后台展示
+    await user.update({
+      last_login_ip: ip,
+      last_login_time: new Date()
+    });
+
     await this.recordLoginLog({
       log_no: logNo,
       user_id: user.user_id,

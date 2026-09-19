@@ -26,13 +26,16 @@ class InviteController extends Controller {
       ctx.throw(404, '用户不存在');
     }
 
-    // 获取用户钱包信息（为了拿 total_invite_income）
-    const wallet = await ctx.model.UserWallet.findOne({
-      where: { user_id: userId },
-      attributes: [ 'total_invite_income' ],
+    // 获取所有下级产生的动态佣金总和
+    // 逻辑：查询 user_wallet_log，user_id 为当前用户，biz_type 为 5（动态收益发放）
+    const totalInviteIncomeStatsResult = await ctx.model.UserWalletLog.sum('amount', {
+      where: {
+        user_id: userId, // 当前用户是佣金接收者
+        biz_type: 5,     // 动态收益发放
+      },
     });
 
-    const totalIncome = wallet ? wallet.total_invite_income : '0.00';
+    const totalIncome = totalInviteIncomeStatsResult ? Number(totalInviteIncomeStatsResult).toFixed(2) : '0.00';
 
     ctx.body = {
       code: 200,
