@@ -6,6 +6,8 @@
  */
 module.exports = () => {
   return {
+    // 本地开发域名
+    appBaseUrl: 'http://127.0.0.1:7001',
     sequelize: {
       // 本地开发使用 MySQL，连接信息通过环境变量注入，默认值为本地开发库
       dialect: 'mysql',

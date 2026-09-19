@@ -6,6 +6,8 @@
  */
 module.exports = () => {
   return {
+    // 生产环境域名
+    appBaseUrl: 'http://47.238.77.10:7001',
     sequelize: {
       // 生产环境使用 MySQL，连接信息通过环境变量注入
       dialect: 'mysql',

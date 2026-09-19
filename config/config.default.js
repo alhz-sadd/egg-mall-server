@@ -13,7 +13,7 @@ module.exports = appInfo => {
   config.keys = appInfo.name + '_mall_secret_key_2026';
 
   // 加载的中间件，按数组顺序执行
-  config.middleware = [ 'i18nResponse', 'errorHandler', 'requestLog', 'operationLog' ];
+  config.middleware = [ 'i18nResponse', 'errorHandler', 'requestLog', 'operationLog', 'formatImageUrl' ];
 
   // 安全插件配置
   config.security = {
@@ -45,6 +45,16 @@ module.exports = appInfo => {
     mode: 'file',
     fileSize: '10mb',
     fileExtensions: [ '.jpg', '.jpeg', '.png', '.gif', '.webp' ],
+  };
+
+  // OSS 配置
+  config.oss = {
+    client: {
+      accessKeyId: process.env.OSS_ACCESS_KEY_ID || 'your_access_key_id',
+      accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET || 'your_access_key_secret',
+      endpoint: process.env.OSS_ENDPOINT || 'oss-cn-hongkong.aliyuncs.com', // 注意：香港节点应该是 oss-cn-hongkong
+      bucket: process.env.OSS_BUCKET || 'mall-assect',
+    },
   };
 
   // Sequelize 数据库配置
@@ -95,6 +105,20 @@ module.exports = appInfo => {
     // 是否返回详细错误堆栈（开发环境开启）
     detailed: appInfo.env === 'local',
   };
+
+  // 静态文件服务配置
+  const path = require('path');
+  config.static = {
+    prefix: '/public/',
+    dir: path.join(appInfo.baseDir, 'app/public'),
+    dynamic: true,
+    preload: false,
+    maxAge: 31536000,
+    buffer: false,
+  };
+
+  // 全局基础域名配置（用于图片绝对路径拼接）
+  config.appBaseUrl = process.env.APP_BASE_URL || '';
 
   // Swagger API 文档配置
   // egg-swagger-doc 的 dirScanner 只接受单个字符串路径，设置为其父目录即可递归扫描 mobile/admin 子目录

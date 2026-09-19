@@ -34,24 +34,25 @@ class UploadService extends Service {
       ctx.throw(422, `图片大小不能超过 ${Math.floor(maxSize / 1024 / 1024)}MB`);
     }
 
-    // 按日期分目录存储，避免单目录文件过多
-    const dateDir = new Date().toISOString().slice(0, 10)
-      .replace(/-/g, '');
-    const uploadDir = path.join(app.baseDir, 'app', 'public', 'uploads', dir, dateDir);
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    // 按日期分目录存储
+    const dateDir = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
+    
+    // OSS 上的文件路径
+    const objectName = `uploads/${dir}/${dateDir}/${filename}`;
+
+    let result;
+    try {
+      // 上传文件至 OSS
+      result = await ctx.oss.put(objectName, file.filepath);
+    } catch (err) {
+      ctx.logger.error('OSS 上传失败:', err);
+      ctx.throw(500, '图片上传失败');
     }
 
-    const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
-    const targetPath = path.join(uploadDir, filename);
-
-    await fs.promises.rename(file.filepath, targetPath);
-
-    const relativePath = `/public/uploads/${dir}/${dateDir}/${filename}`;
-
     return {
-      url: relativePath,
-      path: relativePath,
+      url: result.url,
+      path: result.url, // OSS 返回绝对路径，如果需要存储相对路径可以使用 '/' + result.name
       name: file.filename,
       size: fileSize,
     };

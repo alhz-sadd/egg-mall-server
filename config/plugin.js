@@ -37,4 +37,13 @@ module.exports = {
     enable: true,
     package: 'egg-validate',
   },
+  // 静态文件服务插件
+  static: {
+    enable: true,
+  },
+  // OSS 插件
+  oss: {
+    enable: true,
+    package: 'egg-oss',
+  },
 };

@@ -315,6 +315,9 @@ module.exports = app => {
   // ==================== B端/外层管理系统 (admin-outer) ====================
   const adminOuterAuth = app.middleware.adminOuterAuth();
 
+  // admin-outer 文件上传
+  router.post('/api/admin-outer/upload/image', adminOuterAuth, controller.adminOuter.upload.image);
+
   router.post('/api/admin-outer/login', controller.adminOuter.auth.login);
   router.post('/api/admin-outer/logout', adminOuterAuth, controller.adminOuter.auth.logout);
   router.post('/api/admin-outer/auth/refresh', controller.common.auth.refresh);
