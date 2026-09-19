@@ -49,20 +49,7 @@ class UserController extends Controller {
    */
   getLoginMeta() {
     const { ctx } = this;
-    
-    // 强制从请求头中获取真实 IP，兼容 Nginx、CDN 和框架获取不到的情况
-    let ip = ctx.get('X-Real-IP') || ctx.get('X-Forwarded-For') || ctx.get('REMOTE-HOST') || ctx.ip || ctx.request.ip || '127.0.0.1';
-    if (ip && ip.includes(',')) {
-      ip = ip.split(',')[0].trim(); // 如果有多个 IP (经过多层代理)，取第一个真实客户端 IP
-    }
-    
-    // 我们必须知道 Egg.js 到底收到了什么头，所以写到绝对路径下
-    const fs = require('fs');
-    try {
-      const logPath = '/www/wwwlogs/ip-debug.log'; // 强制写到宝塔的日志目录下
-      fs.appendFileSync(logPath, `[${new Date().toISOString()}] Headers: ${JSON.stringify(ctx.request.headers)} | IP: ${ip}\n`);
-    } catch(e) {}
-    
+    const ip = ctx.ip || ctx.request.ip || '127.0.0.1';
     const userAgent = ctx.get('user-agent') || '';
     const { device, browser, os } = this.parseUserAgent(userAgent);
 
