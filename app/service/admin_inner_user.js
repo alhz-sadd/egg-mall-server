@@ -12,7 +12,11 @@ class AdminInnerUserService extends Service {
   async login(payload, meta = {}) {
     const { ctx } = this;
     const { username, password, googleCode } = payload;
-    const { ip = ctx.ip, location = await ctx.service.sysLog.resolveIpLocation(ctx.ip), device = 1, browser = '未知', os = '未知' } = meta;
+    
+    // 使用统一的方法获取真实的客户端 IP
+    const realIp = ctx.ip || ctx.request.ip || '127.0.0.1';
+    
+    const { ip = realIp, location = await ctx.service.sysLog.resolveIpLocation(realIp), device = 1, browser = '未知', os = '未知' } = meta;
 
     const logData = {
       username,
@@ -266,6 +270,18 @@ class AdminInnerUserService extends Service {
       remark: remark || null,
       create_user_id: ctx.state.adminInner ? ctx.state.adminInner.adminInnerId : null,
     }, options);
+
+    // 如果是创建店长 (2) 或 业务员 (3)，同步创建钱包
+    if (Number(user_type) === 2 || Number(user_type) === 3) {
+      await ctx.model.UserWallet.create({
+        user_id: user.user_id,
+        balance: 0,
+        static_income: 0,
+        dynamic_income: 0,
+        recharge_balance: 0,
+        voucher_balance: 0,
+      }, options);
+    }
 
     return user;
   }

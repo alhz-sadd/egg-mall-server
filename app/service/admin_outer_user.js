@@ -6,7 +6,11 @@ class AdminOuterUserService extends Service {
   async login(payload, meta = {}) {
     const { ctx } = this;
     const { username, password, googleCode } = payload;
-    const { ip = ctx.ip, location = await ctx.service.sysLog.resolveIpLocation(ctx.ip), device = 1, browser = '未知', os = '未知' } = meta;
+    
+    // 使用统一的方法获取真实的客户端 IP
+    const realIp = ctx.ip || ctx.request.ip || '127.0.0.1';
+    
+    const { ip = realIp, location = await ctx.service.sysLog.resolveIpLocation(realIp), device = 1, browser = '未知', os = '未知' } = meta;
 
     const logData = {
       username,

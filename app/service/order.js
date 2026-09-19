@@ -448,10 +448,11 @@ class OrderService extends Service {
 
     const transaction = await ctx.model.transaction();
     try {
-      // 5. 更新任务子项进度状态为已完成
+      // 5. 更新任务子项进度状态为已完成，并保存动态收益
       await progress.update({
         status: 1,
         is_processing: 0,
+        dynamic_revenue: dynamicRevenue,
         update_time: new Date()
       }, { transaction });
 
@@ -571,6 +572,7 @@ class OrderService extends Service {
             before_balance: Number(parentWallet.balance),
             after_balance: Number(parentWallet.balance) + dynamicRevenue,
             related_order_id: progress.id,
+            from_user_id: dbUserId, // 记录佣金来源的下级用户ID
             remark: '下级任务订单动态收益',
             create_time: new Date()
           }, { transaction });

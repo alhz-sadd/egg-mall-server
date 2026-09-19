@@ -497,6 +497,13 @@ class AdminOuterCustomerService extends Service {
       const firstRechargeInfo = firstRechargeMap[row.user_id] || {};
       const latestLoginInfo = loginLogMap[row.user_id] || {};
 
+      // 登录信息：优先从 user_login_log 取最新一条，如果为空则回退使用主表记录
+      const finalLoginIp = latestLoginInfo.login_ip || row.last_login_ip || null;
+      let finalLoginLocation = latestLoginInfo.login_location;
+      if (!finalLoginLocation && finalLoginIp) {
+        finalLoginLocation = ctx.service.sysLog ? ctx.service.sysLog.resolveIpLocation(finalLoginIp) : '未知';
+      }
+
       return {
         ...row.toJSON(),
 
@@ -519,12 +526,13 @@ class AdminOuterCustomerService extends Service {
         total_withdraw_amount: (withdrawAmountMap[row.user_id] || 0).toFixed(2),
         total_withdraw_count: withdrawCountMap[row.user_id] || 0,
         
-        // 增加：给上级产生的佣金贡献字段
+        // 增加：给上级产生的佣金贡献字段，并起名为总佣金字段兼容前端
         contribute_commission_to_parent: (parentIncomeAmountMap ? (parentIncomeAmountMap[row.user_id] || 0) : 0).toFixed(2),
+        total_commission_amount: (parentIncomeAmountMap ? (parentIncomeAmountMap[row.user_id] || 0) : 0).toFixed(2),
 
         // 登录信息：优先从 user_login_log 取最新一条，如果为空则回退使用主表记录
-        last_login_ip: latestLoginInfo.login_ip || row.last_login_ip || null,
-        last_login_location: latestLoginInfo.login_location || (row.last_login_ip ? (ctx.service.sysLog ? ctx.service.sysLog.resolveIpLocation(row.last_login_ip) : '未知') : null),
+        last_login_ip: finalLoginIp,
+        last_login_location: finalLoginLocation || null,
         last_login_time: latestLoginInfo.login_time || row.last_login_time || null,
 
         parent_customer_user_id: r.parent_customer_user_id || null,

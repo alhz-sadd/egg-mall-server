@@ -52,6 +52,11 @@ module.exports = app => {
       allowNull: true,
       comment: '关联订单ID，充值/提现订单id',
     },
+    from_user_id: {
+      type: BIGINT,
+      allowNull: true,
+      comment: '来源用户ID(如下级)',
+    },
     operator_id: {
       type: BIGINT,
       allowNull: true,

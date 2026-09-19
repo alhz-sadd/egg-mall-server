@@ -44,6 +44,7 @@ import ExportAdminOuterSalesRechargeAddress = require('../../../app/controller/a
 import ExportAdminOuterShop = require('../../../app/controller/admin_outer/shop');
 import ExportAdminOuterShopSetting = require('../../../app/controller/admin_outer/shop_setting');
 import ExportAdminOuterTask = require('../../../app/controller/admin_outer/task');
+import ExportAdminOuterUpload = require('../../../app/controller/admin_outer/upload');
 import ExportAdminOuterUserIdentity = require('../../../app/controller/admin_outer/user_identity');
 import ExportAdminOuterVipLevel = require('../../../app/controller/admin_outer/vip_level');
 import ExportAdminOuterWithdraw = require('../../../app/controller/admin_outer/withdraw');
@@ -118,6 +119,7 @@ declare module 'egg' {
       shop: ExportAdminOuterShop;
       shopSetting: ExportAdminOuterShopSetting;
       task: ExportAdminOuterTask;
+      upload: ExportAdminOuterUpload;
       userIdentity: ExportAdminOuterUserIdentity;
       vipLevel: ExportAdminOuterVipLevel;
       withdraw: ExportAdminOuterWithdraw;

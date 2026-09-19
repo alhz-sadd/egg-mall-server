@@ -870,25 +870,81 @@ class UserService extends Service {
     });
 
     let totalRecharge = 0;
-    let totalInviteIncome = 0;
     allUsers.forEach(u => {
       if (u.wallet) {
         totalRecharge += Number(u.wallet.total_recharge_amount || 0);
-        totalInviteIncome += Number(u.wallet.dynamic_income || 0);
       }
     });
+
+    // 计算 statistics.total_invite_income: 当前用户作为上级收到的所有下级贡献的佣金总和
+    const totalInviteIncomeStatsResult = await ctx.model.UserWalletLog.sum('amount', {
+      where: {
+        user_id: userId, // 当前团队用户是佣金接收者
+        biz_type: 5,     // 动态收益发放
+      },
+    });
+    const totalInviteIncome = totalInviteIncomeStatsResult || 0;
+
+    // 计算 list 中每个下级贡献的佣金总和 (user_invite_income)
+    const subordinateIds = rows.map(item => item.user_id);
+    let subordinateContributedIncomeMap = new Map();
+
+    if (subordinateIds.length > 0) {
+      // 1. 查出这些下级产生的所有订单进度 ID
+      const progressRecords = await ctx.model.ShopTaskUserItemProgress.findAll({
+        attributes: ['id', 'user_id'],
+        where: {
+          user_id: { [ctx.app.Sequelize.Op.in]: subordinateIds },
+          status: 1 // 假设状态1为已完成，有收益
+        },
+        raw: true
+      });
+
+      // 构建 map: progressId -> user_id
+      const progressToUserMap = new Map();
+      progressRecords.forEach(p => {
+        progressToUserMap.set(p.id, p.user_id);
+      });
+
+      const progressIds = progressRecords.map(p => p.id);
+
+      if (progressIds.length > 0) {
+        // 2. 用这些订单进度 ID 查流水 (因为从前的记录 from_user_id 可能为空，只能靠 related_order_id 关联)
+        const contributedIncomes = await ctx.model.UserWalletLog.findAll({
+          attributes: [
+            'related_order_id',
+            'amount',
+          ],
+          where: {
+            user_id: userId, // 当前团队用户是佣金接收者
+            biz_type: 5,     // 动态收益发放
+            related_order_id: { [ctx.app.Sequelize.Op.in]: progressIds },
+          },
+          raw: true,
+        });
+
+        // 3. 将流水金额按产生订单的 user_id 汇总
+        contributedIncomes.forEach(item => {
+          const fromUserId = progressToUserMap.get(item.related_order_id);
+          if (fromUserId) {
+            const currentTotal = subordinateContributedIncomeMap.get(fromUserId) || 0;
+            subordinateContributedIncomeMap.set(fromUserId, currentTotal + Number(item.amount || 0));
+          }
+        });
+      }
+    }
 
     return {
       list: rows.map(item => ({
         user_id: item.user_id,
         user_name: item.nickname || item.username,
-        user_invite_income: item.wallet ? item.wallet.dynamic_income : 0,
+        user_invite_income: subordinateContributedIncomeMap.get(item.user_id) || 0, // 从 Map 中获取该下级贡献的佣金
         total_recharge_amount: item.wallet ? item.wallet.total_recharge_amount : 0,
         create_time: item.create_time,
       })),
       statistics: {
         total_recharge_amount: totalRecharge || 0,
-        total_invite_income: totalInviteIncome || 0,
+        total_invite_income: totalInviteIncome, // 使用重新计算的佣金总和
         valid_subordinate_count: count,
       },
       pagination: {

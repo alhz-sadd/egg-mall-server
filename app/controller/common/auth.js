@@ -10,8 +10,12 @@ class CommonAuthController extends Controller {
    */
   async commonLogin(userService, formatData = false) {
     const { ctx } = this;
+    
+    // 使用统一的方法获取真实的客户端 IP
+    const realIp = ctx.ip || ctx.request.ip || '127.0.0.1';
+    
     const meta = {
-      ip: ctx.ip,
+      ip: realIp,
       userAgent: ctx.get('user-agent'),
       device: 1, // 默认PC
       browser: '未知',
