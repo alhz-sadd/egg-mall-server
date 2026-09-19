@@ -49,18 +49,19 @@ class UserController extends Controller {
    */
   getLoginMeta() {
     const { ctx } = this;
-    // 打印所有的请求头，用来排查线上真实情况
-    ctx.logger.info('===== Login Request Headers =====');
-    ctx.logger.info(JSON.stringify(ctx.request.headers));
     
+    // 终极排查：把所有的 headers 保存到数据库（通过返回到响应里，或者直接打印并返回）
+    // 为了让你能直接在前端/Postman看到到底收到了什么请求头，我暂时把它塞到报错信息里
+    const headersStr = JSON.stringify(ctx.request.headers);
+    if (ctx.request.body && ctx.request.body.test_ip === '1') {
+       ctx.throw(400, `Headers: ${headersStr}`);
+    }
+
     // 强制从请求头中获取真实 IP，兼容 Nginx、CDN 和框架获取不到的情况
-    let ip = ctx.get('X-Real-IP') || ctx.get('X-Forwarded-For') || ctx.ip || ctx.request.ip || '127.0.0.1';
+    let ip = ctx.get('X-Real-IP') || ctx.get('X-Forwarded-For') || ctx.get('REMOTE-HOST') || ctx.ip || ctx.request.ip || '127.0.0.1';
     if (ip && ip.includes(',')) {
       ip = ip.split(',')[0].trim(); // 如果有多个 IP (经过多层代理)，取第一个真实客户端 IP
     }
-    
-    ctx.logger.info('Parsed IP:', ip);
-    ctx.logger.info('=================================');
     
     const userAgent = ctx.get('user-agent') || '';
     const { device, browser, os } = this.parseUserAgent(userAgent);
