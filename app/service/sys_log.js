@@ -65,12 +65,27 @@ class SysLogService extends Service {
       return '本地';
     }
     try {
-      const IP2Region = require('ip2region');
+      const IP2Region = require('ip2region').default;
       const searcher = new IP2Region();
       const result = searcher.search(ip);
       if (!result) return '未知';
-      return result.region || '未知';
+      
+      let region = '未知';
+      if (typeof result === 'string') {
+        region = result;
+      } else if (result.region) {
+        region = result.region;
+      } else if (result.country || result.province || result.city) {
+        region = [ result.country, result.province, result.city ].filter(Boolean).join(' ');
+      }
+      
+      // ip2region 的默认输出通常是 "国家|区域|省份|城市|ISP"，把 `|0|` 或者空的部分去掉，让显示更好看
+      if (region !== '未知') {
+        region = region.replace(/\|0\|/g, '|').replace(/\|/g, ' ').trim();
+      }
+      return region;
     } catch (err) {
+      this.ctx.logger.error('ip2region 解析失败:', err);
       return '未知';
     }
   }

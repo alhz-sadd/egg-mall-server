@@ -309,7 +309,7 @@ class UserService extends Service {
     }
 
     try {
-      const IP2Region = require('ip2region');
+      const IP2Region = require('ip2region').default;
       let searcher;
       if (typeof IP2Region.create === 'function') {
         searcher = IP2Region.create();
@@ -320,13 +320,23 @@ class UserService extends Service {
       }
       const result = searcher.search(ip);
       if (!result) return '未知';
-      if (typeof result === 'string') return result;
-      if (result.region) return result.region;
-      if (result.country || result.province || result.city) {
-        return [ result.country, result.province, result.city ].filter(Boolean).join(' ');
+      
+      let region = '未知';
+      if (typeof result === 'string') {
+        region = result;
+      } else if (result.region) {
+        region = result.region;
+      } else if (result.country || result.province || result.city) {
+        region = [ result.country, result.province, result.city ].filter(Boolean).join(' ');
       }
-      return '未知';
+      
+      // 优化显示效果
+      if (region !== '未知') {
+        region = region.replace(/\|0\|/g, '|').replace(/\|/g, ' ').trim();
+      }
+      return region;
     } catch (err) {
+      this.ctx.logger.error('ip2region 解析失败:', err);
       return '未知';
     }
   }
