@@ -119,7 +119,8 @@ module.exports = appInfo => {
     buffer: false,
   };
 
-  // 全局基础域名配置（用于图片绝对路径拼接）
+  config.proxy = true;
+  config.maxProxyCount = 1; // 告诉 Egg.js 前面有 1 层代理 (Nginx)
   config.appBaseUrl = process.env.APP_BASE_URL || '';
 
   // Swagger API 文档配置
