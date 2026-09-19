@@ -17,6 +17,10 @@ class AppBootHook {
   configWillLoad() {
     // 在配置文件加载完成后，模型加载前，挂载常量到全局 app 对象
     this.app.TableNames = TableNames;
+    
+    // 强制开启代理信任，防止 Egg.js 丢弃 Nginx 传来的真实 IP (X-Real-IP)
+    this.app.config.proxy = true;
+    this.app.config.maxProxyCount = 1;
   }
 
   async beforeStart() {
