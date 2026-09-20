@@ -50,6 +50,12 @@ class MobileRechargeController extends Controller {
     // 假设手续费为0，实际应该根据渠道配置计算
     const fee = 0;
 
+    // 检查是否首充
+    const rechargeCount = await ctx.model.UserRecharge.count({
+      where: { user_id: userId, status: { [ctx.app.Sequelize.Op.in]: [1, 2] } } // 统计审核中和已通过的
+    });
+    const isFirstRecharge = rechargeCount === 0 ? 1 : 0;
+
     const newRecharge = await ctx.model.UserRecharge.create({
       order_no: orderNo,
       shop_id: relation.shop_id,
@@ -64,6 +70,7 @@ class MobileRechargeController extends Controller {
       voucher_img: payload.voucher_img,
       remark: payload.remark,
       status: 1, // 待审核
+      is_first_recharge: isFirstRecharge,
     });
 
     ctx.body = {

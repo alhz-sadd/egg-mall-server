@@ -268,47 +268,91 @@ class AdminOuterRechargeController extends Controller {
       ctx.throw(401, '未授权或未绑定店铺');
     }
 
-    const where = {
+    const baseWhere = {
       shop_id: adminOuter.shop_id,
       status: 2, // 审核通过
     };
 
     // 业务员只能看自己的
     if (adminOuter.user_type === 4) {
-      where.sales_user_id = adminOuter.user_id;
+      baseWhere.sales_user_id = adminOuter.user_id;
     }
 
-    // 总充值金额 (审核通过的)
-    const totalAmount = await ctx.model.UserRecharge.sum('user_receive_amount', { where }) || 0;
+    // 封装一个按日期区间获取统计数据的函数
+    const getStatsByDate = async (startTime, endTime) => {
+      const recharges = await ctx.model.UserRecharge.findAll({
+        where: {
+          ...baseWhere,
+          audit_time: {
+            [Op.gte]: startTime,
+            [Op.lt]: endTime,
+          },
+        },
+        include: [{
+          model: ctx.model.SysUser,
+          as: 'user',
+          attributes: ['user_id', 'create_time'],
+        }]
+      });
 
-    // 今日充值金额
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayWhere = {
-      ...where,
-      audit_time: {
-        [Op.gte]: today,
-      },
-    };
-    const todayAmount = await ctx.model.UserRecharge.sum('user_receive_amount', { where: todayWhere }) || 0;
+      let recharge_amount = 0;
+      let new_user_recharge_amount = 0;
+      let old_user_recharge_amount = 0;
 
-    // 待审核数量
-    const pendingWhere = {
-      shop_id: adminOuter.shop_id,
-      status: 1, // 待审核
+      const userSet = new Set();
+      const newUserSet = new Set();
+      const oldUserSet = new Set();
+
+      for (const r of recharges) {
+        const amount = Number(r.user_receive_amount) || 0;
+        recharge_amount += amount;
+        userSet.add(r.user_id);
+
+        if (r.user && r.user.create_time) {
+          const userCreateTime = new Date(r.user.create_time);
+          // 判断用户注册时间是否在该区间内，如果是则为新用户
+          if (userCreateTime >= startTime && userCreateTime < endTime) {
+            new_user_recharge_amount += amount;
+            newUserSet.add(r.user_id);
+          } else {
+            old_user_recharge_amount += amount;
+            oldUserSet.add(r.user_id);
+          }
+        } else {
+          old_user_recharge_amount += amount;
+          oldUserSet.add(r.user_id);
+        }
+      }
+
+      return {
+        recharge_amount: recharge_amount.toFixed(2),
+        recharge_users: userSet.size,
+        new_user_recharge_amount: new_user_recharge_amount.toFixed(2),
+        new_user_recharge_users: newUserSet.size,
+        old_user_recharge_amount: old_user_recharge_amount.toFixed(2),
+        old_user_recharge_users: oldUserSet.size,
+      };
     };
-    if (adminOuter.user_type === 4) {
-      pendingWhere.sales_user_id = adminOuter.user_id;
-    }
-    const pendingCount = await ctx.model.UserRecharge.count({ where: pendingWhere });
+
+    // 计算今日和昨日的时间区间
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(todayStart);
+    todayEnd.setDate(todayEnd.getDate() + 1);
+
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const yesterdayEnd = new Date(todayStart);
+
+    const todayStats = await getStatsByDate(todayStart, todayEnd);
+    const yesterdayStats = await getStatsByDate(yesterdayStart, yesterdayEnd);
 
     ctx.body = {
       code: 200,
       message: '获取成功',
       data: {
-        total_amount: Number(totalAmount).toFixed(2),
-        today_amount: Number(todayAmount).toFixed(2),
-        pending_count: pendingCount,
+        yesterday: yesterdayStats,
+        today: todayStats,
       },
     };
   }
