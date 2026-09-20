@@ -43,10 +43,13 @@ module.exports = appInfo => {
   };
 
   // 文件上传配置
+  const path = require('path');
   config.multipart = {
     mode: 'file',
     fileSize: '10mb',
     fileExtensions: [ '.jpg', '.jpeg', '.png', '.gif', '.webp' ],
+    // 自定义上传临时目录，避免线上部署时系统 /tmp 目录无权限 (EACCES) 的问题
+    tmpdir: path.join(appInfo.baseDir, 'run/multipart-tmp'),
   };
 
   // OSS 配置
@@ -109,7 +112,6 @@ module.exports = appInfo => {
   };
 
   // 静态文件服务配置
-  const path = require('path');
   config.static = {
     prefix: '/public/',
     dir: path.join(appInfo.baseDir, 'app/public'),

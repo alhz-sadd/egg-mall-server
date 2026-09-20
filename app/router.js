@@ -421,6 +421,7 @@ module.exports = app => {
 
   // admin-outer 订单管理 (B端订单列表)
   router.get('/api/admin-outer/orders', adminOuterAuth, controller.adminOuter.order.index);
+  router.get('/api/admin-outer/orders/:id', adminOuterAuth, controller.adminOuter.order.show);
 
   // admin-outer 操作日志
   router.get('/api/admin-outer/operation-logs', adminOuterAuth, controller.adminOuter.operationLog.index);

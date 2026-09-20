@@ -3,6 +3,59 @@
 const Service = require('egg').Service;
 
 class AdminOuterOrderService extends Service {
+  async getAllowedUserIds(currentUser) {
+    const { ctx } = this;
+    const { Op } = ctx.app.Sequelize;
+    let allowedUserIds = [];
+
+    if (currentUser.user_type === 3) {
+      // 业务员：获取自己直推和裂变的所有下级客户
+      const directRelations = await ctx.model.CustomerRelation.findAll({
+        where: {
+          root_salesman_user_id: currentUser.user_id,
+          is_deleted: 0,
+        },
+        attributes: [ 'c_user_id' ],
+      });
+
+      let currentLevelIds = directRelations.map(r => r.c_user_id);
+      const allDescendantIds = new Set(currentLevelIds);
+
+      while (currentLevelIds.length > 0) {
+        const children = await ctx.model.CustomerRelation.findAll({
+          where: {
+            parent_customer_user_id: { [Op.in]: currentLevelIds },
+            is_deleted: 0,
+          },
+          attributes: [ 'c_user_id' ],
+        });
+
+        currentLevelIds = [];
+        for (const child of children) {
+          if (!allDescendantIds.has(child.c_user_id)) {
+            allDescendantIds.add(child.c_user_id);
+            currentLevelIds.push(child.c_user_id);
+          }
+        }
+      }
+
+      if (allDescendantIds.size > 0) {
+        allowedUserIds = Array.from(allDescendantIds);
+      }
+    } else if (currentUser.user_type === 2) {
+      // 店长：获取店铺下的所有客户
+      const shopRelations = await ctx.model.CustomerRelation.findAll({
+        where: { shop_id: currentUser.shop_id, is_deleted: 0 },
+        attributes: [ 'c_user_id' ],
+      });
+      const shopUserIds = shopRelations.map(r => r.c_user_id);
+      if (shopUserIds.length > 0) {
+        allowedUserIds = shopUserIds;
+      }
+    }
+    return allowedUserIds;
+  }
+
   /**
    * B端获取订单列表 (基于任务进度表)
    */
@@ -41,59 +94,10 @@ class AdminOuterOrderService extends Service {
     }
 
     // 权限隔离逻辑
-    let allowedUserIds = [];
+    let allowedUserIds = await this.getAllowedUserIds(currentUser);
 
-    if (currentUser.user_type === 3) {
-      // 业务员：获取自己直推和裂变的所有下级客户
-      const directRelations = await ctx.model.CustomerRelation.findAll({
-        where: {
-          root_salesman_user_id: currentUser.user_id,
-          is_deleted: 0,
-        },
-        attributes: [ 'c_user_id' ],
-      });
-
-      let currentLevelIds = directRelations.map(r => r.c_user_id);
-      const allDescendantIds = new Set(currentLevelIds);
-
-      while (currentLevelIds.length > 0) {
-        const children = await ctx.model.CustomerRelation.findAll({
-          where: {
-            parent_customer_user_id: { [Op.in]: currentLevelIds },
-            is_deleted: 0,
-          },
-          attributes: [ 'c_user_id' ],
-        });
-
-        currentLevelIds = [];
-        for (const child of children) {
-          if (!allDescendantIds.has(child.c_user_id)) {
-            allDescendantIds.add(child.c_user_id);
-            currentLevelIds.push(child.c_user_id);
-          }
-        }
-      }
-
-      if (allDescendantIds.size > 0) {
-        allowedUserIds = Array.from(allDescendantIds);
-      } else {
-        return { list: [], total: 0 };
-      }
-
-    } else if (currentUser.user_type === 2) {
-      // 店长：获取店铺下的所有客户
-      const shopRelations = await ctx.model.CustomerRelation.findAll({
-        where: { shop_id: currentUser.shop_id, is_deleted: 0 },
-        attributes: [ 'c_user_id' ],
-      });
-      const shopUserIds = shopRelations.map(r => r.c_user_id);
-      if (shopUserIds.length > 0) {
-        allowedUserIds = shopUserIds;
-      } else {
-        return { list: [], total: 0 };
-      }
-    } else {
-      return { list: [], total: 0 }; // 无权限
+    if (allowedUserIds.length === 0) {
+      return { list: [], total: 0 };
     }
 
     // 合并前端传来的指定 user_id 查询条件
@@ -193,6 +197,59 @@ class AdminOuterOrderService extends Service {
       list,
       total: count,
     };
+  }
+  /**
+   * B端获取订单详情(收益列表)
+   */
+  async getOrderDetail(id, currentUser) {
+    const { ctx } = this;
+    const { Op } = ctx.app.Sequelize;
+
+    // 1. 查询订单基本信息，校验权限
+    const progress = await ctx.model.ShopTaskUserItemProgress.findOne({
+      where: { id, is_deleted: 0 }
+    });
+
+    if (!progress) {
+      ctx.throw(404, '订单不存在');
+    }
+
+    const allowedUserIds = await this.getAllowedUserIds(currentUser);
+    if (!allowedUserIds.includes(progress.user_id)) {
+      ctx.throw(403, '无权限查看该订单明细');
+    }
+
+    // 2. 从 user_wallet_log 查询该订单对应的静态收益(biz_type=4)和动态收益(biz_type=5)
+    const logs = await ctx.model.UserWalletLog.findAll({
+      where: {
+        related_order_id: id,
+        biz_type: { [Op.in]: [ 4, 5 ] }
+      },
+      order: [[ 'create_time', 'ASC' ]],
+      include: [
+        {
+          model: ctx.model.SysUser,
+          as: 'user',
+          attributes: ['user_id', 'username']
+        }
+      ]
+    });
+
+    // 3. 组装返回数据结构
+    // 1=静态收入(自己), 2=动态收入(上级)
+    const result = logs.map(log => {
+      const data = log.toJSON();
+      return {
+        user_id: data.user_id,
+        username: data.user ? data.user.username : '未知用户',
+        log_no: data.log_no,
+        amount: data.amount,
+        type: data.biz_type === 4 ? 1 : 2, // 1=静态收入, 2=动态收入
+        create_time: data.create_time,
+      };
+    });
+
+    return result;
   }
 }
 

@@ -28,7 +28,10 @@ class UploadService extends Service {
       ctx.throw(422, `不支持的图片格式，仅允许：${allowedExts.join('、')}`);
     }
 
-    const maxSize = app.config.multipart.fileSize || 10 * 1024 * 1024;
+    const maxSizeStr = app.config.multipart.fileSize || '10mb';
+    // 简单处理 '10mb' 字符串转数字，如果是数字则直接使用
+    const maxSize = typeof maxSizeStr === 'string' ? parseInt(maxSizeStr) * 1024 * 1024 : maxSizeStr;
+    
     const fileSize = file.size || (await fs.promises.stat(file.filepath)).size;
     if (fileSize > maxSize) {
       ctx.throw(422, `图片大小不能超过 ${Math.floor(maxSize / 1024 / 1024)}MB`);
@@ -47,7 +50,8 @@ class UploadService extends Service {
       result = await ctx.oss.put(objectName, file.filepath);
     } catch (err) {
       ctx.logger.error('OSS 上传失败:', err);
-      ctx.throw(500, '图片上传失败');
+      // 将具体的错误信息抛出，方便在线上环境排查 500 错误的原因
+      ctx.throw(500, `图片上传失败: ${err.message}`);
     }
 
     return {

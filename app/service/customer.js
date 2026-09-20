@@ -160,7 +160,8 @@ class CustomerService extends Service {
       limit,
     });
 
-    const list = rows.map(item => {
+    const list = [];
+    for (const item of rows) {
       // 兼容底层模型查询时如果没获取到 remark 字段的情况
       const defaultRemark = item.login_result === 1 ? '登录成功' : '登录失败';
       let remark = defaultRemark;
@@ -174,16 +175,32 @@ class CustomerService extends Service {
         // 如果 Sequelize 抛出 Unknown column 异常被捕获到这里
       }
 
-      return {
+      // 根据IP解析实际地址
+      let loginLocation = item.login_location;
+      if (!loginLocation || loginLocation === '未知' || loginLocation === '') {
+        if (item.login_ip) {
+          loginLocation = await ctx.service.user.resolveIpLocation(item.login_ip);
+        } else {
+          loginLocation = '未知';
+        }
+      } else if (item.login_ip) {
+        // 强制根据 ip 重新解析以确保最新或更准确的地址
+        const resolvedLocation = await ctx.service.user.resolveIpLocation(item.login_ip);
+        if (resolvedLocation !== '未知') {
+          loginLocation = resolvedLocation;
+        }
+      }
+
+      list.push({
         id: item.id,
         login_ip: item.login_ip,
-        login_location: item.login_location,
+        login_location: loginLocation,
         login_status: item.login_result, // 模型字段是 login_result
         login_device: item.device_type === 1 ? 'PC电脑' : item.device_type === 2 ? '安卓' : item.device_type === 3 ? 'iOS苹果' : item.browser || 'H5浏览器',
         login_time: item.login_time,
         remark,
-      };
-    });
+      });
+    }
 
     return { total: count, list };
   }
