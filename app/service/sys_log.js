@@ -301,16 +301,15 @@ class SysLogService extends Service {
       const result = parser.getResult();
 
       // 获取浏览器
-      if (result.browser.name) {
+      if (result.browser && result.browser.name) {
         browser = result.browser.name;
         if (result.browser.version) {
-          // 只保留主版本号，比如 Chrome 120
           browser += ' ' + result.browser.version.split('.')[0];
         }
       }
 
       // 获取操作系统
-      if (result.os.name) {
+      if (result.os && result.os.name) {
         os = result.os.name;
         if (result.os.version) {
           os += ' ' + result.os.version;
@@ -323,8 +322,8 @@ class SysLogService extends Service {
       }
 
       // 判断设备类型
-      const deviceName = result.device.type || ''; // console, mobile, tablet, smarttv, wearable, embedded
-      const osName = result.os.name || '';
+      const deviceName = (result.device && result.device.type) ? result.device.type : ''; 
+      const osName = (result.os && result.os.name) ? result.os.name : '';
 
       if (deviceName === 'mobile' || deviceName === 'tablet') {
         if (osName === 'iOS' || osName === 'Mac OS') {
@@ -336,6 +335,23 @@ class SysLogService extends Service {
         deviceType = 1; // PC
       }
       
+      // 添加基础正则后备机制
+      const uaLower = userAgent.toLowerCase();
+      if (os === '未知') {
+        if (uaLower.includes('windows')) os = 'Windows';
+        else if (uaLower.includes('mac os') || uaLower.includes('macintosh')) os = 'Mac OS';
+        else if (uaLower.includes('android')) os = 'Android';
+        else if (uaLower.includes('iphone') || uaLower.includes('ipad') || uaLower.includes('ios')) os = 'iOS';
+        else if (uaLower.includes('linux')) os = 'Linux';
+      }
+      if (browser === '未知') {
+        if (uaLower.includes('micromessenger')) browser = '微信内置浏览器';
+        else if (uaLower.includes('edg/')) browser = 'Edge';
+        else if (uaLower.includes('chrome/')) browser = 'Chrome';
+        else if (uaLower.includes('safari/') && !uaLower.includes('chrome/')) browser = 'Safari';
+        else if (uaLower.includes('firefox/')) browser = 'Firefox';
+      }
+
       return { browser, os, deviceType };
     } catch (e) {
       this.ctx.logger.error('ua-parser-js 解析失败:', e);
