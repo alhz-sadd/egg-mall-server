@@ -349,47 +349,11 @@ class UserService extends Service {
 
   /**
    * 根据IP解析地区
-   * 优先使用 ip2region 库，未安装或解析失败时返回兜底值
    * @param {string} ip IP地址
    * @return {string} 地区信息
    */
   async resolveIpLocation(ip) {
-    if (!ip) return '未知';
-    if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
-      return '本地';
-    }
-
-    try {
-      const IP2Region = require('ip2region').default;
-      let searcher;
-      if (typeof IP2Region.create === 'function') {
-        searcher = IP2Region.create();
-      } else if (typeof IP2Region === 'function') {
-        searcher = new IP2Region();
-      } else {
-        return '未知';
-      }
-      const result = searcher.search(ip);
-      if (!result) return '未知';
-      
-      let region = '未知';
-      if (typeof result === 'string') {
-        region = result;
-      } else if (result.region) {
-        region = result.region;
-      } else if (result.country || result.province || result.city) {
-        region = [ result.country, result.province, result.city ].filter(Boolean).join(' ');
-      }
-      
-      // 优化显示效果
-      if (region !== '未知') {
-        region = region.replace(/\|0\|/g, '|').replace(/\|/g, ' ').trim();
-      }
-      return region;
-    } catch (err) {
-      this.ctx.logger.error('ip2region 解析失败:', err);
-      return '未知';
-    }
+    return this.ctx.service.sysLog.resolveIpLocation(ip);
   }
 
   /**
@@ -415,6 +379,8 @@ class UserService extends Service {
     const startTime = Date.now();
 
     const logNo = `LL${Date.now()}${Math.floor(Math.random() * 10000)}`;
+    const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
+
     const user = await ctx.model.SysUser.findOne({ where: { username: user_phone } });
     if (!user) {
       await this.recordLoginLog({
@@ -422,9 +388,9 @@ class UserService extends Service {
         user_id: 0,
         username: user_phone,
         login_ip: ip,
-        device_type: 4, // 默认未知
-        browser,
-        os,
+        device_type: device || parsedUa.deviceType, // 默认未知
+        browser: browser || parsedUa.browser,
+        os: os || parsedUa.os,
         login_type: 3, // 默认C端H5
         login_result: 0, // 失败
         remark: '登录失败：用户不存在',
@@ -439,9 +405,9 @@ class UserService extends Service {
         user_id: user.user_id,
         username: user.username || user_phone,
         login_ip: ip,
-        device_type: 4,
-        browser,
-        os,
+        device_type: device || parsedUa.deviceType,
+        browser: browser || parsedUa.browser,
+        os: os || parsedUa.os,
         login_type: 3,
         login_result: 0,
         remark: '登录失败：密码错误',
@@ -455,9 +421,9 @@ class UserService extends Service {
         user_id: user.user_id,
         username: user.username || user_phone,
         login_ip: ip,
-        device_type: 4,
-        browser,
-        os,
+        device_type: device || parsedUa.deviceType,
+        browser: browser || parsedUa.browser,
+        os: os || parsedUa.os,
         login_type: 3,
         login_result: 0,
         remark: '登录失败：账号已禁用',
@@ -488,9 +454,9 @@ class UserService extends Service {
       user_id: user.user_id,
       username: user.username || user_phone,
       login_ip: ip,
-      device_type: 4,
-      browser,
-      os,
+      device_type: device || parsedUa.deviceType,
+      browser: browser || parsedUa.browser,
+      os: os || parsedUa.os,
       login_type: 3,
       login_result: 1, // 成功
       remark: '登录成功',

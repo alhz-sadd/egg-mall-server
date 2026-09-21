@@ -313,18 +313,7 @@ class AdminOuterCustomerService extends Service {
 
     if (userIds.length > 0) {
       // 查询每个用户的最新登录日志
-      const loginLogs = await ctx.model.UserLoginLog.findAll({
-        where: { user_id: { [Op.in]: userIds } },
-        attributes: [ 'user_id', 'login_ip', 'login_location', 'login_time' ],
-        order: [[ 'login_time', 'DESC' ]],
-        raw: true,
-      });
-      loginLogs.forEach(log => {
-        // 由于按倒序排，第一个出现的即为最新的记录
-        if (!loginLogMap[log.user_id]) {
-          loginLogMap[log.user_id] = log;
-        }
-      });
+      const loginLogMap = await ctx.service.sysLog.getLatestLoginInfoMap(userIds);
 
       const wallets = await ctx.model.UserWallet.findAll({
         where: { user_id: { [Op.in]: userIds } },
@@ -497,15 +486,11 @@ class AdminOuterCustomerService extends Service {
       const firstRechargeInfo = firstRechargeMap[row.user_id] || {};
       const latestLoginInfo = loginLogMap[row.user_id] || {};
 
-      // 登录信息：优先从 user_login_log 取最新一条，如果为空则回退使用主表记录
-      const finalLoginIp = latestLoginInfo.login_ip || row.last_login_ip || null;
-      let finalLoginLocation = latestLoginInfo.login_location;
-      if (!finalLoginLocation && finalLoginIp) {
-        finalLoginLocation = ctx.service.sysLog ? ctx.service.sysLog.resolveIpLocation(finalLoginIp) : '未知';
-      }
-
       return {
         ...row.toJSON(),
+
+        // 注册IP归属地
+        register_location: await ctx.service.user.resolveIpLocation(row.register_ip),
 
         // 真实钱包表查询出的可用资产
         voucher_balance: Number(w.balance || w.voucher_balance || 0).toFixed(2),
@@ -530,10 +515,10 @@ class AdminOuterCustomerService extends Service {
         contribute_commission_to_parent: (parentIncomeAmountMap ? (parentIncomeAmountMap[row.user_id] || 0) : 0).toFixed(2),
         total_commission_amount: (parentIncomeAmountMap ? (parentIncomeAmountMap[row.user_id] || 0) : 0).toFixed(2),
 
-        // 登录信息：优先从 user_login_log 取最新一条，如果为空则回退使用主表记录
-        last_login_ip: finalLoginIp,
-        last_login_location: finalLoginLocation || null,
-        last_login_time: latestLoginInfo.login_time || row.last_login_time || null,
+        // 登录信息
+        last_login_ip: latestLoginInfo.login_ip || null,
+        last_login_location: latestLoginInfo.login_location || null,
+        last_login_time: latestLoginInfo.login_time || null,
 
         parent_customer_user_id: r.parent_customer_user_id || null,
         parent_customer_name: extraUserMap[r.parent_customer_user_id] || null,

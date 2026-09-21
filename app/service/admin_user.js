@@ -27,14 +27,16 @@ class AdminUserService extends Service {
 
     // 用户不存在
     if (!admin) {
+      const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
+
       await ctx.service.sysLog.recordLoginLog({
         user_id: null,
         username,
         ip,
         location,
-        device_type: device,
-        browser,
-        os,
+        device_type: device || parsedUa.deviceType,
+        browser: browser || parsedUa.browser,
+        os: os || parsedUa.os,
         login_type: 1, // A端
         login_result: 0,
         remark: '登录失败：用户不存在',
@@ -44,14 +46,16 @@ class AdminUserService extends Service {
 
     // 账号已禁用
     if (admin.status !== 1) {
+      const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
+
       await ctx.service.sysLog.recordLoginLog({
         user_id: admin.user_id,
         username,
         ip,
         location,
-        device_type: device,
-        browser,
-        os,
+        device_type: device || parsedUa.deviceType,
+        browser: browser || parsedUa.browser,
+        os: os || parsedUa.os,
         login_type: 1,
         login_result: 0,
         remark: '登录失败：账号已禁用',
@@ -62,14 +66,16 @@ class AdminUserService extends Service {
     // 密码校验
     const match = await ctx.compare(password, admin.password);
     if (!match) {
+      const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
+
       await ctx.service.sysLog.recordLoginLog({
         user_id: admin.user_id,
         username,
         ip,
         location,
-        device_type: device,
-        browser,
-        os,
+        device_type: device || parsedUa.deviceType,
+        browser: browser || parsedUa.browser,
+        os: os || parsedUa.os,
         login_type: 1,
         login_result: 0,
         remark: '登录失败：密码错误',
@@ -90,14 +96,16 @@ class AdminUserService extends Service {
       });
 
       if (!verified) {
+        const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
+
         await ctx.service.sysLog.recordLoginLog({
           user_id: admin.user_id,
           username,
           ip,
           location,
-          device_type: device,
-          browser,
-          os,
+          device_type: device || parsedUa.deviceType,
+          browser: browser || parsedUa.browser,
+          os: os || parsedUa.os,
           login_type: 1,
           login_result: 0,
           remark: '登录失败：谷歌验证码错误',
@@ -112,14 +120,16 @@ class AdminUserService extends Service {
       last_login_time: new Date(),
     });
 
+    const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
+
     await ctx.service.sysLog.recordLoginLog({
       user_id: admin.user_id,
       username,
       ip,
       location,
-      device_type: device,
-      browser,
-      os,
+      device_type: device || parsedUa.deviceType,
+      browser: browser || parsedUa.browser,
+      os: os || parsedUa.os,
       login_type: 1,
       login_result: 1,
       remark: '登录成功',

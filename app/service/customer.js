@@ -37,6 +37,10 @@ class CustomerService extends Service {
       ctx.throw(404, '客户不存在');
     }
 
+    // 调用统一个方法获取最新登录信息
+    const loginInfoMap = await ctx.service.sysLog.getLatestLoginInfoMap([customerUserId]);
+    const latestLoginInfo = loginInfoMap[customerUserId] || {};
+
     // 4. 最近充值聚合
     const rechargeAgg = await ctx.model.UserRecharge.findOne({
       where: { user_id: customerUserId, status: 1 },
@@ -88,9 +92,9 @@ class CustomerService extends Service {
 
     return {
       // 登录活跃信息
-      last_login_ip: userInfo.last_login_ip,
-      last_login_location: null, // 从ip解析或日志获取
-      last_login_time: userInfo.last_login_time,
+      last_login_ip: latestLoginInfo.login_ip || null,
+      last_login_location: latestLoginInfo.login_location || null,
+      last_login_time: latestLoginInfo.login_time || null,
       register_time: userInfo.create_time,
       days_since_register: daysSinceRegister,
 
@@ -179,13 +183,13 @@ class CustomerService extends Service {
       let loginLocation = item.login_location;
       if (!loginLocation || loginLocation === '未知' || loginLocation === '') {
         if (item.login_ip) {
-          loginLocation = await ctx.service.user.resolveIpLocation(item.login_ip);
+          loginLocation = await ctx.service.sysLog.resolveIpLocation(item.login_ip);
         } else {
           loginLocation = '未知';
         }
       } else if (item.login_ip) {
         // 强制根据 ip 重新解析以确保最新或更准确的地址
-        const resolvedLocation = await ctx.service.user.resolveIpLocation(item.login_ip);
+        const resolvedLocation = await ctx.service.sysLog.resolveIpLocation(item.login_ip);
         if (resolvedLocation !== '未知') {
           loginLocation = resolvedLocation;
         }
