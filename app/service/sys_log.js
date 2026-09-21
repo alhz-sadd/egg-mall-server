@@ -595,7 +595,8 @@ class SysLogService extends Service {
         const data = item.toJSON();
         
         let loc = data.login_location;
-        if (!loc || loc === '' || loc === '未知') {
+        // 如果是未知或者为空或者甚至是带有不可见字符的未知，都重新解析
+        if (!loc || loc.trim() === '' || loc.includes('未知')) {
           loc = await this.resolveIpLocation(data.login_ip);
         }
 
