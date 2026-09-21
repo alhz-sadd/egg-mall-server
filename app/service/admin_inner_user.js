@@ -26,9 +26,9 @@ class AdminInnerUserService extends Service {
       username,
       ip,
       location,
-      device_type: device || parsedUa.deviceType,
-      browser: browser || parsedUa.browser,
-      os: os || parsedUa.os,
+      device_type: parsedUa.deviceType,
+      browser: parsedUa.browser,
+      os: parsedUa.os,
       login_type: 1, // 1:A端
     };
 
