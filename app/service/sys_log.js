@@ -8,39 +8,145 @@ const Service = require('egg').Service;
  * 0新增 1修改 2删除 3授权 4导出 5导入 6强退 7生成代码 8清空数据 9其他
  */
 const BUSINESS_RULES = [
-  // 导出
-  { method: 'GET', pattern: /\/export(\?|$)/, businessType: 4, title: '导出数据' },
-  { method: 'POST', pattern: /\/export(\?|$)/, businessType: 4, title: '导出数据' },
-  // 导入
-  { method: 'POST', pattern: /\/import(\?|$)/, businessType: 5, title: '导入数据' },
-  // 生成代码
-  { method: 'POST', pattern: /\/generate-code(\?|$)/, businessType: 7, title: '生成代码' },
-  // 强退
-  { method: 'POST', pattern: /\/(force-logout|kick-out)(\?|$)/, businessType: 6, title: '强制退出' },
-  // 授权
-  { method: 'POST', pattern: /\/(login|auth|authorize|grant|role-permissions)(\?|$)/, businessType: 3, title: '授权操作' },
-  { method: 'PUT', pattern: /\/(role-permissions)(\?|$)/, businessType: 3, title: '授权操作' },
-  // 清空数据
-  { method: 'DELETE', pattern: /\/clear-/, businessType: 8, title: '清空数据' },
-  { method: 'POST', pattern: /\/clear-/, businessType: 8, title: '清空数据' },
-  // 新增
-  { method: 'POST', pattern: /\/merchants(\?|$)/, businessType: 0, title: '添加商家' },
-  { method: 'POST', pattern: /\/shops(\?|$)/, businessType: 0, title: '创建店铺' },
-  { method: 'POST', pattern: /\/vip-levels(\?|$)/, businessType: 0, title: '添加VIP等级' },
-  { method: 'POST', pattern: /\/products(\?|$)/, businessType: 0, title: '添加商品' },
-  { method: 'POST', pattern: /\/tasks(\?|$)/, businessType: 0, title: '添加任务' },
-  // 修改
-  { method: 'PUT', pattern: /\/merchants\//, businessType: 1, title: '修改商家' },
-  { method: 'PUT', pattern: /\/shops\//, businessType: 1, title: '修改店铺' },
-  { method: 'PUT', pattern: /\/vip-levels\//, businessType: 1, title: '修改VIP等级' },
-  { method: 'PUT', pattern: /\/products\//, businessType: 1, title: '修改商品' },
-  { method: 'PUT', pattern: /\/tasks\//, businessType: 1, title: '修改任务' },
-  // 删除
-  { method: 'DELETE', pattern: /\/merchants\//, businessType: 2, title: '删除商家' },
-  { method: 'DELETE', pattern: /\/shops\//, businessType: 2, title: '删除店铺' },
-  { method: 'DELETE', pattern: /\/vip-levels\//, businessType: 2, title: '删除VIP等级' },
-  { method: 'DELETE', pattern: /\/products\//, businessType: 2, title: '删除商品' },
-  { method: 'DELETE', pattern: /\/tasks\//, businessType: 2, title: '删除任务' },
+  // === 1. 资金与充提 ===
+  { method: 'POST', pattern: /^\/api\/mobile\/recharge\/submit(\?|$)/, businessType: 0, title: '发起充值请求' },
+  { method: 'POST', pattern: /^\/api\/mobile\/withdraw\/submit(\?|$)/, businessType: 0, title: '发起提现请求' },
+  { method: 'POST', pattern: /^\/api\/admin-outer\/recharge\/[^\/]+\/audit-success(\?|$)/, businessType: 1, title: '通过充值请求' },
+  { method: 'POST', pattern: /^\/api\/admin-outer\/recharge\/[^\/]+\/audit-fail(\?|$)/, businessType: 1, title: '拒绝充值请求' },
+  { method: 'POST', pattern: /^\/api\/admin-outer\/withdraw\/[^\/]+\/audit-success(\?|$)/, businessType: 1, title: '通过提现请求' },
+  { method: 'POST', pattern: /^\/api\/admin-outer\/withdraw\/[^\/]+\/audit-fail(\?|$)/, businessType: 1, title: '拒绝提现请求' },
+  { method: 'PUT', pattern: /^\/api\/admin-outer\/withdraw\/[^\/]+\/address(\?|$)/, businessType: 1, title: '修改提现地址' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/points-give\/create(\?|$)/, businessType: 0, title: '人工上分' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/points-deduct\/create(\?|$)/, businessType: 0, title: '人工下分' },
+
+  // === 2. 认证与授权 ===
+  { method: 'POST', pattern: /^\/api\/admin-outer\/user-identities\/[^\/]+\/audit-success(\?|$)/, businessType: 1, title: '通过实名认证' },
+  { method: 'POST', pattern: /^\/api\/admin-outer\/user-identities\/[^\/]+\/audit-fail(\?|$)/, businessType: 1, title: '拒绝实名认证' },
+  { method: 'POST', pattern: /^\/api\/mobile\/users\/identity(\?|$)/, businessType: 0, title: '提交实名认证' },
+  { method: 'POST', pattern: /^\/api\/mobile\/users\/register(\?|$)/, businessType: 0, title: '用户注册' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(login|auth|authorize|grant|role-permissions)(\?|$)/, businessType: 3, title: '授权操作' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/(role-permissions)(\?|$)/, businessType: 3, title: '授权操作' },
+
+  // === 3. 订单与任务 ===
+  { method: 'PUT', pattern: /^\/api\/admin-outer\/tasks\/items\/[^\/]+(\?|$)/, businessType: 1, title: '修改任务子项' },
+  { method: 'PUT', pattern: /^\/api\/admin-outer\/tasks\/user-items\/[^\/]+(\?|$)/, businessType: 1, title: '修改用户任务子项' },
+  { method: 'POST', pattern: /^\/api\/admin-outer\/tasks\/(bind-user|start-user|close-user)(\?|$)/, businessType: 1, title: '任务状态修改' },
+  { method: 'POST', pattern: /^\/api\/admin-outer\/tasks(\?|$)/, businessType: 0, title: '新增任务模板' },
+  { method: 'PUT', pattern: /^\/api\/admin-outer\/tasks\/[^\/]+(\?|$)/, businessType: 1, title: '修改任务模板' },
+  { method: 'DELETE', pattern: /^\/api\/admin-outer\/tasks\/[^\/]+(\?|$)/, businessType: 2, title: '删除任务模板' },
+  { method: 'POST', pattern: /^\/api\/mobile\/orders\/[^\/]+\/pay(\?|$)/, businessType: 1, title: '支付订单' },
+  { method: 'PUT', pattern: /^\/api\/mobile\/orders\/[^\/]+\/cancel(\?|$)/, businessType: 1, title: '取消订单' },
+  { method: 'POST', pattern: /^\/api\/mobile\/orders(\?|$)/, businessType: 0, title: '创建订单' },
+  { method: 'POST', pattern: /^\/api\/mobile\/finishOrder(\?|$)/, businessType: 1, title: '完成任务订单' },
+
+  // === 4. 账号与资料管理 ===
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/profile\/updatePwd(\?|$)/, businessType: 1, title: '修改后台密码' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/profile(\?|$)/, businessType: 1, title: '修改后台资料' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/totp\//, businessType: 1, title: '谷歌验证码操作' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/users\/reset-pwd(\?|$)/, businessType: 1, title: '重置用户密码' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/users\/reset-google(\?|$)/, businessType: 1, title: '重置用户谷歌验证' },
+  { method: 'PUT', pattern: /^\/api\/mobile\/users\/password(\?|$)/, businessType: 1, title: '修改登录密码' },
+  { method: 'PUT', pattern: /^\/api\/mobile\/users\/withdraw-password(\?|$)/, businessType: 1, title: '修改提现密码' },
+  { method: 'PUT', pattern: /^\/api\/mobile\/users\/profile(\?|$)/, businessType: 1, title: '修改个人资料' },
+  { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt-info(\?|$)/, businessType: 1, title: '修改收货信息' },
+  { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt(\?|$)/, businessType: 1, title: '修改收货信息' },
+  { method: 'POST', pattern: /^\/api\/mobile\/users\/credential(\?|$)/, businessType: 0, title: '上传凭证' },
+  { method: 'DELETE', pattern: /^\/api\/mobile\/users\/credential(\?|$)/, businessType: 2, title: '删除凭证' },
+
+  // === 5. C端收货地址 ===
+  { method: 'POST', pattern: /^\/api\/mobile\/addresses(\?|$)/, businessType: 0, title: '新增收货地址' },
+  { method: 'PUT', pattern: /^\/api\/mobile\/addresses\/[^\/]+\/default(\?|$)/, businessType: 1, title: '设为默认地址' },
+  { method: 'PUT', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 1, title: '修改收货地址' },
+  { method: 'DELETE', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 2, title: '删除收货地址' },
+
+  // === 6. VIP 模板 ===
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(shop-)?vip-levels\/bind-shop(\?|$)/, businessType: 1, title: '同步VIP模板' },
+  { method: 'PUT', pattern: /^\/api\/admin-outer\/vip-levels\/user\/update(\?|$)/, businessType: 1, title: '修改用户VIP等级' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(shop-)?vip-levels(\?|$)/, businessType: 0, title: '新增VIP模板' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/(shop-)?vip-levels\/[^\/]+(\?|$)/, businessType: 1, title: '修改VIP模板' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/(shop-)?vip-levels\/[^\/]+(\?|$)/, businessType: 2, title: '删除VIP模板' },
+
+  // === 7. 系统与后台管理 ===
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/merchants(\?|$)/, businessType: 0, title: '新增商家' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/merchants\/[^\/]+(\?|$)/, businessType: 1, title: '修改商家' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/merchants\/[^\/]+(\?|$)/, businessType: 2, title: '删除商家' },
+
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/shops(\?|$)/, businessType: 0, title: '新增店铺' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/shops\/[^\/]+\/setting(\?|$)/, businessType: 1, title: '修改店铺设置' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/shops\/[^\/]+\/config(\?|$)/, businessType: 1, title: '修改店铺配置' },
+  { method: 'PUT', pattern: /^\/api\/admin-outer\/shop\/settings(\?|$)/, businessType: 1, title: '修改店铺设置' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/shops\/[^\/]+(\?|$)/, businessType: 1, title: '修改店铺' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/shops\/[^\/]+(\?|$)/, businessType: 2, title: '删除店铺' },
+
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(salespersons|operators)(\?|$)/, businessType: 0, title: '新增业务员' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/(salespersons|operators)\/[^\/]+(\?|$)/, businessType: 1, title: '修改业务员' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/(salespersons|operators)\/[^\/]+(\?|$)/, businessType: 2, title: '删除业务员' },
+
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/customers(\?|$)/, businessType: 0, title: '新增客户' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/customers\/[^\/]+\/reset-password(\?|$)/, businessType: 1, title: '重置客户密码' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/customers\/[^\/]+\/withdraw-password(\?|$)/, businessType: 1, title: '重置客户提现密码' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/customers\/[^\/]+(\?|$)/, businessType: 1, title: '修改客户' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/customers\/[^\/]+(\?|$)/, businessType: 2, title: '删除客户' },
+
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/employees(\?|$)/, businessType: 0, title: '新增员工' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/employees\/[^\/]+\/reset-password(\?|$)/, businessType: 1, title: '重置员工密码' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/employees\/[^\/]+(\?|$)/, businessType: 1, title: '修改员工' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/employees\/[^\/]+(\?|$)/, businessType: 2, title: '删除员工' },
+
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(products|goods)(\?|$)/, businessType: 0, title: '新增商品' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/(products|goods)\/[^\/]+(\?|$)/, businessType: 1, title: '修改商品' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/(products|goods)\/[^\/]+(\?|$)/, businessType: 2, title: '删除商品' },
+
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(notices|h5-config\/notices)(\?|$)/, businessType: 0, title: '新增公告' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/(notices|h5-config\/notices)\/[^\/]+(\?|$)/, businessType: 1, title: '修改公告' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/(notices|h5-config\/notices)\/[^\/]+(\?|$)/, businessType: 2, title: '删除公告' },
+
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(banners|h5-config\/banners)(\?|$)/, businessType: 0, title: '新增轮播图' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/(banners|h5-config\/banners)\/[^\/]+(\?|$)/, businessType: 1, title: '修改轮播图' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/(banners|h5-config\/banners)\/[^\/]+(\?|$)/, businessType: 2, title: '删除轮播图' },
+
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/h5-config\/rules(\?|$)/, businessType: 0, title: '新增H5规则' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/h5-config\/rules\/[^\/]+\/status(\?|$)/, businessType: 1, title: '修改H5规则状态' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/h5-config\/rules\/?(\?|$)/, businessType: 1, title: '修改H5规则' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/h5-config\/rules\/?(\?|$)/, businessType: 2, title: '删除H5规则' },
+
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(customer-services|h5-services|h5-config\/service-entries)(\?|$)/, businessType: 0, title: '新增客服配置' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/(customer-services|h5-services|h5-config\/service-entries)\/[^\/]+(\?|$)/, businessType: 1, title: '修改客服配置' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/(customer-services|h5-services|h5-config\/service-entries)\/[^\/]+(\?|$)/, businessType: 2, title: '删除客服配置' },
+
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/pay-channels\/bind-shop(\?|$)/, businessType: 1, title: '同步支付通道' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/pay-channels(\?|$)/, businessType: 0, title: '新增支付通道' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/pay-channels\/[^\/]+(\?|$)/, businessType: 1, title: '修改支付通道' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/pay-channels\/[^\/]+(\?|$)/, businessType: 2, title: '删除支付通道' },
+
+  { method: 'POST', pattern: /^\/api\/admin-outer\/sales-address(\?|$)/, businessType: 0, title: '新增收款地址' },
+  { method: 'PUT', pattern: /^\/api\/admin-outer\/sales-address\/[^\/]+(\?|$)/, businessType: 1, title: '修改收款地址' },
+  { method: 'DELETE', pattern: /^\/api\/admin-outer\/sales-address\/[^\/]+(\?|$)/, businessType: 2, title: '删除收款地址' },
+
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/config(\?|$)/, businessType: 1, title: '修改系统配置' },
+  
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/menu\/delete(\?|$)/, businessType: 2, title: '删除系统菜单' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/menu(\?|$)/, businessType: 0, title: '新增系统菜单' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/menu\/[^\/]+(\?|$)/, businessType: 1, title: '修改系统菜单' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/menu\/[^\/]+(\?|$)/, businessType: 2, title: '删除系统菜单' },
+
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/role(\?|$)/, businessType: 0, title: '新增系统角色' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/role\/[^\/]+\/menus(\?|$)/, businessType: 3, title: '角色分配菜单' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/role\/[^\/]+(\?|$)/, businessType: 1, title: '修改系统角色' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/role\/[^\/]+(\?|$)/, businessType: 2, title: '删除系统角色' },
+
+  // === 8. 通用操作 ===
+  { method: 'GET', pattern: /^\/api\/(admin-inner|admin-outer)\/export(\?|$)/, businessType: 4, title: '导出数据' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/export(\?|$)/, businessType: 4, title: '导出数据' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/import(\?|$)/, businessType: 5, title: '导入数据' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/generate-code(\?|$)/, businessType: 7, title: '生成代码' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(force-logout|kick-out)(\?|$)/, businessType: 6, title: '强制退出' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/clear-/, businessType: 8, title: '清空数据' },
+  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/clear-/, businessType: 8, title: '清空数据' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/operation-logs\/batch(\?|$)/, businessType: 2, title: '批量删除操作日志' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/operation-logs\/clear(\?|$)/, businessType: 8, title: '清空操作日志' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/login-logs\/batch(\?|$)/, businessType: 2, title: '批量删除登录日志' },
+  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/login-logs\/clear(\?|$)/, businessType: 8, title: '清空登录日志' },
 ];
 
 class SysLogService extends Service {
@@ -145,14 +251,72 @@ class SysLogService extends Service {
    */
   shouldLog(method, url) {
     const upperMethod = method.toUpperCase();
-    if (!url.startsWith('/api/admin-inner/') && !url.startsWith('/api/admin-outer/')) return false;
+    if (!url.startsWith('/api/admin-inner/') && !url.startsWith('/api/admin-outer/') && !url.startsWith('/api/mobile/')) return false;
     if (upperMethod === 'GET') {
       return BUSINESS_RULES.some(rule => rule.method === 'GET' && rule.pattern.test(url));
     }
     return [ 'POST', 'PUT', 'DELETE', 'PATCH' ].includes(upperMethod);
   }
   /**
+   * 解析 User-Agent 获取浏览器、操作系统和设备类型信息
+   * @param {string} userAgent
+   */
+  resolveUserAgent(userAgent) {
+    if (!userAgent) return { browser: '未知', os: '未知', deviceType: 4 }; // 默认 4:未知
+    
+    let browser = '未知';
+    let os = '未知';
+    let deviceType = 4; // 1:PC, 2:Android, 3:iOS, 4:未知
+
+    // 解析浏览器
+    if (userAgent.includes('MicroMessenger')) {
+      browser = '微信内置浏览器';
+    } else if (userAgent.includes('QQ/')) {
+      browser = 'QQ内置浏览器';
+    } else if (userAgent.includes('UCBrowser')) {
+      browser = 'UC浏览器';
+    } else if (userAgent.includes('Edge')) {
+      browser = 'Edge浏览器';
+    } else if (userAgent.includes('Firefox') || userAgent.includes('FxiOS')) {
+      browser = 'Firefox';
+    } else if (userAgent.includes('Chrome') || userAgent.includes('CriOS')) {
+      browser = 'Chrome';
+    } else if (userAgent.includes('Safari') && userAgent.includes('Version')) {
+      browser = 'Safari';
+    } else if (userAgent.includes('Trident') || userAgent.includes('MSIE')) {
+      browser = 'IE浏览器';
+    } else {
+      browser = '其他浏览器';
+    }
+
+    // 解析操作系统和设备类型
+    if (userAgent.includes('Windows NT') || userAgent.includes('Macintosh') || userAgent.includes('Windows') || (userAgent.includes('Linux') && !userAgent.includes('Android'))) {
+      deviceType = 1; // PC
+      if (userAgent.includes('Windows NT 10.0')) os = 'Windows 10/11';
+      else if (userAgent.includes('Windows NT 6.2')) os = 'Windows 8';
+      else if (userAgent.includes('Windows NT 6.1')) os = 'Windows 7';
+      else if (userAgent.includes('Mac OS X')) os = 'macOS';
+      else if (userAgent.includes('Linux')) os = 'Linux';
+      else os = 'Windows';
+    } else if (userAgent.includes('Android')) {
+      deviceType = 2; // Android
+      os = 'Android';
+    } else if (userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod')) {
+      deviceType = 3; // iOS
+      if (userAgent.includes('iPhone')) os = 'iOS (iPhone)';
+      else if (userAgent.includes('iPad')) os = 'iOS (iPad)';
+      else os = 'iOS';
+    } else {
+      deviceType = 4; // 未知设备
+      os = '其他操作系统';
+    }
+
+    return { browser, os, deviceType };
+  }
+
+  /**
    * 记录登录日志
+
    * @param {Object} data 日志数据
    */
   async recordLoginLog(data) {
@@ -168,12 +332,28 @@ class SysLogService extends Service {
       const ip = data.ip || data.login_ip || ctx.ip;
       let location = data.location || data.login_location;
 
-      // 如果未传入 location，则通过 ip 解析地理位置
-      if (!location && ip) {
+      // 如果未传入 location，或者 location 是空的，则通过 ip 解析地理位置
+      if ((!location || location === '') && ip) {
         if (ctx.app.utils && ctx.app.utils.ip && ctx.app.utils.ip.getIpLocation) {
           location = ctx.app.utils.ip.getIpLocation(ip);
         } else {
           location = this.resolveIpLocation(ip);
+        }
+      }
+
+      const uaStr = data.user_agent || ctx.get('user-agent');
+      let browser = data.browser;
+      let os = data.os;
+
+      // 如果前端未传或传了空，服务端通过 UA 兜底解析
+      if (!browser || !os || !deviceType || browser === '' || os === '') {
+        const parsedUa = this.resolveUserAgent(uaStr);
+        browser = browser || parsedUa.browser;
+        os = os || parsedUa.os;
+        
+        // 修正 deviceType，如果原来传了字符串，已经被转换为数字了
+        if (deviceType === 4 || !deviceType) {
+          deviceType = parsedUa.deviceType;
         }
       }
 
@@ -183,10 +363,10 @@ class SysLogService extends Service {
         username: data.username,
         login_ip: ip,
         login_location: location,
-        user_agent: data.user_agent || ctx.get('user-agent'),
+        user_agent: uaStr,
         device_type: deviceType,
-        browser: data.browser,
-        os: data.os,
+        browser: browser,
+        os: os,
         login_type: data.login_type, // 1:A端 2:B端 3:C端
         login_result: data.login_result !== undefined ? data.login_result : 1,
         remark: data.remark || data.msg,
@@ -214,7 +394,7 @@ class SysLogService extends Service {
         user_id: data.userId || data.user_id,
         username: data.username,
         title: data.title,
-        business_type: data.businessType || data.business_type || 9,
+        business_type: data.businessType !== undefined ? data.businessType : (data.business_type !== undefined ? data.business_type : 9),
         method: data.method || data.operUrl || data.oper_url,
         request_method: data.requestMethod || data.request_method,
         oper_url: data.operUrl || data.oper_url,
@@ -224,6 +404,7 @@ class SysLogService extends Service {
         json_result: typeof data.jsonResult === 'object' ? JSON.stringify(data.jsonResult) : data.jsonResult,
         status: data.status !== undefined ? data.status : 0,
         error_msg: data.errorMsg || data.error_msg,
+        cost_time: data.costTime !== undefined ? data.costTime : (data.cost_time !== undefined ? data.cost_time : 0),
       });
     } catch (err) {
       ctx.logger.error('[SysLogService] 记录操作日志失败：', err.message);
@@ -373,7 +554,7 @@ class SysLogService extends Service {
     const include = [{
       model: ctx.model.SysUser,
       as: 'user',
-      attributes: [ 'nickname', 'shop_id' ],
+      attributes: [ 'nickname', 'shop_id', 'user_type' ],
     }];
 
     // 权限控制：A端(user_type=1)看全部，B端(user_type=2/3)只能看本店日志
@@ -393,7 +574,7 @@ class SysLogService extends Service {
       total: count,
       list: rows.map(item => {
         const data = item.toJSON();
-        const typeMap = { 0: '新增', 1: '修改', 2: '删除', 3: '授权', 4: '导出', 5: '导入', 6: '强退', 7: '生成代码', 8: '清除数据', 9: '其他' };
+        const typeMap = { 0: '新增', 1: '修改', 2: '删除', 3: '授权', 4: '导出', 5: '导入', 6: '强退', 7: '生成代码', 8: '清空数据', 9: '其他' };
 
         let params = {};
         try {
@@ -406,12 +587,15 @@ class SysLogService extends Service {
           id: data.id,
           log_no: `OP${data.id}`,
           module: data.title,
-          oper_type: typeMap[data.business_type] || '其他',
+          oper_type: data.business_type,
           oper_desc: `${data.title} - ${typeMap[data.business_type] || '操作'}`,
-          oper_name: data.username,
+          oper_id: data.user_id,
+          oper_user_type: data.user ? data.user.user_type : null,
+          oper_name: data.username || (data.user ? data.user.nickname : '未知'),
           oper_ip: data.oper_ip,
           oper_location: data.oper_location || '未知',
-          status: data.status === 0 ? '正常' : '异常',
+          status: data.status,
+          cost_time: data.cost_time !== undefined ? data.cost_time : (data.costTime !== undefined ? data.costTime : 0),
           oper_time: this.formatDate(data.oper_time),
           request_info: {
             req_module: data.title,
@@ -419,7 +603,8 @@ class SysLogService extends Service {
             req_params: params,
             req_method: data.request_method,
             res_body: data.json_result,
-            res_status: data.status === 0 ? '正常' : '异常',
+            res_status: data.status,
+            cost_time: data.cost_time !== undefined ? data.cost_time : (data.costTime !== undefined ? data.costTime : 0),
             req_desc: data.title,
           },
         };

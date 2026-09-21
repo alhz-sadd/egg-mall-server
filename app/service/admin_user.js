@@ -622,8 +622,7 @@ class AdminUserService extends Service {
     let adminCode = null;
 
     // A端管理员创建(role=1) 或 B端业务员/主管(role!=1) 统一生成 invite_code
-    [ inviteCode, userCode, adminCode ] = await Promise.all([
-      ctx.service.user.generateInviteCode(),
+    [ userCode, adminCode ] = await Promise.all([
       ctx.service.user.generateUserCode(),
       this.generateAdminCode(),
     ]);
@@ -642,8 +641,11 @@ class AdminUserService extends Service {
         remark,
         role,
         bindRechargeaddress,
-        invite_code: inviteCode, // adminUser表如果也存这个的话
       }, { transaction });
+
+      // 因为我们需要admin的id生成邀请码，所以创建完后单独更新
+      inviteCode = await ctx.service.user.generateInviteCode(admin.id);
+      await admin.update({ invite_code: inviteCode }, { transaction });
 
       // 如果创建的是商家(role=1)，则初始化默认设置
       if (role === 1) {
@@ -724,6 +726,11 @@ class AdminUserService extends Service {
     }
 
     const updateData = {};
+    
+    // 绝对禁止修改的字段
+    delete payload.admin_code;
+    delete payload.invite_code;
+
     if (payload.nickname !== undefined) updateData.nickname = payload.nickname;
     if (payload.gender !== undefined) updateData.gender = Number(payload.gender);
     if (payload.phone !== undefined) updateData.phone = payload.phone;

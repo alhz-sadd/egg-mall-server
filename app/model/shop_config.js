@@ -83,6 +83,12 @@ module.exports = app => {
       defaultValue: 0.00,
       comment: '邀请新用户奖励',
     },
+    operate_password: {
+      type: app.Sequelize.STRING(64),
+      allowNull: false,
+      defaultValue: '123456',
+      comment: '操作密码',
+    },
     create_time: {
       type: DATE,
       allowNull: false,

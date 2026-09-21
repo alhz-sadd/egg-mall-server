@@ -50,7 +50,10 @@ class OrderService extends Service {
       needPrice = (totalAmount - balance).toFixed(2);
     }
 
-    const revenueRate = shopTask ? Number(shopTask.yield_rate || 0) : 0;
+    const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0 
+      ? Number(progress.yield_rate) 
+      : (taskItem && taskItem.yield_rate !== null ? Number(taskItem.yield_rate) : (shopTask ? Number(shopTask.yield_rate || 0) : 0));
+    const revenueRate = yieldRate;
     const parentRevenueRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
     
     // 进度表中的 status: 0=未完成, 1=已完成
@@ -60,17 +63,19 @@ class OrderService extends Service {
       mappedStatus = 1; // 对应已完成/已支付
     }
 
+    const revenue = progress.revenue !== null ? Number(progress.revenue) : (totalAmount * revenueRate);
+
     return {
       order_id: progress.order_id,
-      order_type: taskItem ? taskItem.item_type : 1, // 1:普通订单任务, 2:幸运订单任务
+      order_type: progress.is_lucky_order === 1 ? 2 : 1, // 1:普通订单任务, 2:幸运订单任务
       need_price: needPrice.toString(),
       remark: '任务订单',
       revenue_rate: revenueRate.toString(),
-      return_money: (totalAmount * revenueRate).toFixed(2), // 新增：回报金额 (本金 * 收益率)
-      revenue: progress.revenue.toString(),
+      return_money: revenue.toFixed(2), // 回报金额 (即静态收益)
+      revenue: revenue.toString(),
       total_price: totalAmount.toString(),
       parent_revenue_rate: parentRevenueRate.toString(),
-      parent_revenue: (totalAmount * parentRevenueRate).toFixed(2),
+      parent_revenue: (revenue * parentRevenueRate).toFixed(2), // 动态收益 = 静态收益 * 上级收益率
       status: mappedStatus,
       pic_url: goods ? goods.cover_image : '',
       wares_name: progress.goods_title || '',
@@ -229,20 +234,28 @@ class OrderService extends Service {
       const shopTask = taskItem ? shopTaskMap.get(taskItem.task_id) || null : null;
       const goods = progress.goods_id ? goodsMap.get(progress.goods_id) || null : null;
       const totalAmount = Number(progress.goods_price || 0);
-      const revenueRate = shopTask ? Number(shopTask.yield_rate || 0) : 0;
+      const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0 
+        ? Number(progress.yield_rate) 
+        : (taskItem && taskItem.yield_rate !== null ? Number(taskItem.yield_rate) : (shopTask ? Number(shopTask.yield_rate || 0) : 0));
+      const revenueRate = yieldRate;
+      const parentRevenueRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
       
       let mappedStatus = 0;
       if (progress.status === 1) {
         mappedStatus = 1; 
       }
 
+      const revenue = progress.revenue !== null ? Number(progress.revenue) : (totalAmount * revenueRate);
+
       list.push({
         order_id: progress.order_id,
-        order_type: taskItem ? (taskItem.is_lucky_order === 1 ? 2 : 1) : 1, // 1:普通订单, 2:幸运订单
+        order_type: progress.is_lucky_order === 1 ? 2 : 1, // 1:普通订单, 2:幸运订单
         total_price: totalAmount.toString(),
         revenue_rate: revenueRate.toString(),
-        return_money: (totalAmount * revenueRate).toFixed(2), // 新增：回报金额 (本金 * 收益率)
-        revenue: progress.revenue.toString(),
+        return_money: revenue.toString(), // 回报金额 (即静态收益)
+        revenue: revenue.toString(),
+        parent_revenue_rate: parentRevenueRate.toString(),
+        parent_revenue: (revenue * parentRevenueRate).toFixed(2), // 动态收益 = 静态收益 * 上级收益率
         status: mappedStatus,
         pic_url: goods ? goods.cover_image : '',
         wares_name: progress.goods_title || '',
@@ -362,7 +375,11 @@ class OrderService extends Service {
     const goods = progress.goods_id ? await ctx.model.Goods.findByPk(progress.goods_id) : null;
 
     const totalAmount = Number(progress.goods_price || 0);
-    const revenueRate = shopTask ? Number(shopTask.yield_rate || 0) : 0;
+    const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0 
+      ? Number(progress.yield_rate) 
+      : (taskItem && taskItem.yield_rate !== null ? Number(taskItem.yield_rate) : (shopTask ? Number(shopTask.yield_rate || 0) : 0));
+    const revenueRate = yieldRate;
+    const parentRevenueRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
     
     // 获取用户钱包信息计算不足金额
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
@@ -377,13 +394,17 @@ class OrderService extends Service {
       mappedStatus = 1; 
     }
 
+    const revenue = progress.revenue !== null ? Number(progress.revenue) : (totalAmount * revenueRate);
+
     return {
       order_id: progress.order_id,
-      order_type: taskItem ? (taskItem.is_lucky_order === 1 ? 2 : 1) : 1, // 1:普通订单, 2:幸运订单
+      order_type: progress.is_lucky_order === 1 ? 2 : 1, // 1:普通订单, 2:幸运订单
       total_price: totalAmount.toString(),
       revenue_rate: revenueRate.toString(),
-      return_money: (totalAmount * revenueRate).toFixed(2), // 回报金额 = 本金 * 收益率
-      revenue: progress.revenue.toString(),
+      return_money: revenue.toFixed(2), // 回报金额 = 静态收益
+      revenue: revenue.toString(),
+      parent_revenue_rate: parentRevenueRate.toString(),
+      parent_revenue: (revenue * parentRevenueRate).toFixed(2), // 动态收益 = 静态收益 * 上级收益率
       status: mappedStatus,
       pic_url: goods ? goods.cover_image : '',
       wares_name: progress.goods_title || '',
@@ -443,7 +464,7 @@ class OrderService extends Service {
     const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: progress.task_item_id } });
     const shopTask = await ctx.model.ShopTask.findByPk(taskItem.task_id);
     const parentYieldRate = Number(shopTask.parent_yield_rate);
-    const dynamicRevenue = orderAmount * parentYieldRate; // 动态收益(返佣给上级)
+    const dynamicRevenue = revenue * parentYieldRate; // 动态收益(返佣给上级) = 静态收益 * 上级收益率
     const totalRevenue = revenue + orderAmount; // 结算给用户的金额(本金+静态收益)
 
     const transaction = await ctx.model.transaction();

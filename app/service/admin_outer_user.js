@@ -168,21 +168,23 @@ class AdminOuterUserService extends Service {
     const { ctx } = this;
     const { username, password, nickname, phone, shop_id, user_type, created_by } = payload;
 
-    // 生成唯一的邀请码
-    const invite_code = await ctx.service.user.generateInviteCode();
     const hashedPassword = await ctx.genHash(password);
 
-    return await ctx.model.SysUser.create({
+    const user = await ctx.model.SysUser.create({
       username,
       password: hashedPassword,
       nickname,
       phone,
       shop_id,
       user_type,
-      invite_code,
       create_user_id: created_by,
       status: 1,
     });
+
+    const invite_code = await ctx.service.user.generateInviteCode(user.user_id);
+    await user.update({ invite_code });
+
+    return user;
   }
 
   // 更新员工信息
@@ -190,7 +192,13 @@ class AdminOuterUserService extends Service {
     const { ctx } = this;
     const user = await ctx.model.SysUser.findByPk(id);
     if (!user) ctx.throw(404, '员工不存在');
-    await user.update(payload);
+    
+    // 过滤掉 user_id 和 invite_code，确保不可修改
+    const updateData = { ...payload };
+    delete updateData.user_id;
+    delete updateData.invite_code;
+
+    await user.update(updateData);
     return user;
   }
 

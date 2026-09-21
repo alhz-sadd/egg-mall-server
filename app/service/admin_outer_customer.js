@@ -576,8 +576,6 @@ class AdminOuterCustomerService extends Service {
     const rootSalesmanUserId = salesmanUser.user_id;
     const targetShopId = salesmanUser.shop_id || operatorShopId;
 
-    // 生成新表邀请码
-    const personalInviteCode = await ctx.service.user.generateInviteCode();
     const hashedPassword = await ctx.genHash(password);
 
     // 开启事务
@@ -591,13 +589,16 @@ class AdminOuterCustomerService extends Service {
         user_type: 4, // C端用户
         shop_id: null, // C端用户的shop_id保存在customer_relation，主表可留空
         status: 1,
-        invite_code: personalInviteCode,
         inviter_user_id: null,
         last_login_ip: ip,
         is_recharged: 0,
         is_real_user: 1, // 真实注册用户
         create_user_id: operatorId, // 记录创建人
       }, { transaction });
+
+      // 根据新生成的 user_id 生成基于ID的邀请码
+      const personalInviteCode = await ctx.service.user.generateInviteCode(sysUser.user_id);
+      await sysUser.update({ invite_code: personalInviteCode }, { transaction });
 
       // 2. 创建新表钱包 UserWallet
       await ctx.model.UserWallet.create({
@@ -683,6 +684,11 @@ class AdminOuterCustomerService extends Service {
         sysUserUpdate.is_real_user = is_real_user === true || is_real_user === 'true' || is_real_user === 1 || is_real_user === '1' ? 1 : 0;
         operResult.push(`真实用户状态修改为: ${sysUserUpdate.is_real_user}`);
       }
+      
+      // 过滤敏感字段，防止越权修改
+      delete sysUserUpdate.user_id;
+      delete sysUserUpdate.invite_code;
+
       if (Object.keys(sysUserUpdate).length > 0) {
         await user.update(sysUserUpdate, { transaction });
       }

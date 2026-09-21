@@ -76,7 +76,14 @@ class AdminOuterOrderService extends Service {
     const limit = parseInt(page_size);
     const offset = (parseInt(page) - 1) * limit;
 
-    const where = { is_deleted: 0 };
+    // 基础条件：未删除，且只有被触发过（分配了订单号）的子项才算作真实订单展示给B端
+    const where = { 
+      is_deleted: 0,
+      order_id: {
+        [Op.not]: null,
+        [Op.ne]: ''
+      }
+    };
 
     if (order_id) {
       where.order_id = { [Op.like]: `%${order_id}%` };
@@ -116,7 +123,7 @@ class AdminOuterOrderService extends Service {
       where,
       limit,
       offset,
-      order: [[ 'create_time', 'DESC' ]],
+      order: [[ 'id', 'DESC' ]], // 确保最新生成的订单排在最前面
     });
 
     // 查询用户名映射
@@ -178,14 +185,18 @@ class AdminOuterOrderService extends Service {
       list = rows.map(row => {
         const data = row.toJSON();
         data.username = userMap[data.user_id] || '未知用户';
+        
+        // 补充订单类型：1普通订单任务，2幸运订单任务
+        data.order_type = data.is_lucky_order === 1 ? 2 : 1;
+
         // 静态佣金(收益) 对应表中的 revenue
         data.static_commission = data.revenue;
         
-        // 预期动态佣金计算：商品价格 * 上级收益率
+        // 预期动态佣金计算：静态收益(revenue) * 上级收益率
         const taskId = itemToTaskMap[data.task_item_id];
         const parentYieldRate = taskId ? (taskRateMap[taskId] || 0) : 0;
-        const goodsPrice = parseFloat(data.goods_price || 0);
-        const expectedDynamicCommission = (goodsPrice * parentYieldRate).toFixed(5);
+        const revenue = parseFloat(data.revenue || 0);
+        const expectedDynamicCommission = (revenue * parentYieldRate).toFixed(5);
 
         // 动态佣金(收益)：优先使用流水表中实际发出的金额(针对已完成)，若无则展示计算得出的预期金额
         data.dynamic_commission = dynamicMap[data.id] || expectedDynamicCommission;

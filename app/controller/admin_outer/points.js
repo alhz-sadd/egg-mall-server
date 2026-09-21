@@ -114,7 +114,7 @@ class AdminOuterPointsController extends Controller {
     const { ctx } = this;
     const { shop_id } = ctx.state.adminOuter || {};
     const operator_id = ctx.state.adminOuter ? ctx.state.adminOuter.user_id : null;
-    const { target_c_user_id, user_id, give_amount, amount, remark, balance_type, type } = ctx.request.body;
+    const { target_c_user_id, user_id, give_amount, amount, remark, balance_type, type, operate_password } = ctx.request.body;
 
     const final_user_id = user_id || target_c_user_id;
     const final_amount = amount || give_amount;
@@ -130,6 +130,13 @@ class AdminOuterPointsController extends Controller {
 
     ctx.assert(final_user_id, 422, '目标C端用户ID不能为空');
     ctx.assert(final_amount && Number(final_amount) > 0, 422, '加款金额必须大于0');
+    ctx.assert(operate_password, 422, '操作密码不能为空');
+
+    // 校验操作密码
+    const shopConfig = await ctx.model.ShopConfig.findOne({ where: { shop_id } });
+    if (!shopConfig || shopConfig.operate_password !== operate_password) {
+      ctx.throw(400, '操作密码错误');
+    }
 
     // 校验该用户是否属于本店
     const relation = await ctx.model.CustomerRelation.findOne({
@@ -287,11 +294,18 @@ class AdminOuterPointsController extends Controller {
   async deductCreate() {
     const { ctx } = this;
     const { shop_id } = ctx.state.adminOuter || {};
-    const { user_id, amount, remark } = ctx.request.body;
+    const { user_id, amount, remark, operate_password } = ctx.request.body;
     const operator_id = ctx.state.adminOuter ? ctx.state.adminOuter.user_id : null;
 
     ctx.assert(user_id, 422, '目标C端用户ID不能为空');
     ctx.assert(amount && Number(amount) > 0, 422, '扣款金额必须大于0');
+    ctx.assert(operate_password, 422, '操作密码不能为空');
+
+    // 校验操作密码
+    const shopConfig = await ctx.model.ShopConfig.findOne({ where: { shop_id } });
+    if (!shopConfig || shopConfig.operate_password !== operate_password) {
+      ctx.throw(400, '操作密码错误');
+    }
 
     // 校验该用户是否属于本店
     const relation = await ctx.model.CustomerRelation.findOne({

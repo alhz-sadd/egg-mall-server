@@ -77,7 +77,7 @@ class AdminOuterRechargeController extends Controller {
   async auditSuccess() {
     const { ctx } = this;
     const { id } = ctx.params;
-    const { audit_type } = ctx.request.body;
+    const { audit_type, operate_password } = ctx.request.body;
     const adminOuter = ctx.state.adminOuter;
 
     if (!adminOuter || !adminOuter.shop_id) {
@@ -86,6 +86,16 @@ class AdminOuterRechargeController extends Controller {
 
     if (!audit_type) {
       ctx.throw(400, '审核类型不能为空');
+    }
+
+    if (!operate_password) {
+      ctx.throw(400, '操作密码不能为空');
+    }
+
+    // 校验操作密码
+    const shopConfig = await ctx.model.ShopConfig.findOne({ where: { shop_id: adminOuter.shop_id } });
+    if (!shopConfig || shopConfig.operate_password !== operate_password) {
+      ctx.throw(400, '操作密码错误');
     }
 
     const recharge = await ctx.model.UserRecharge.findOne({
@@ -214,7 +224,7 @@ class AdminOuterRechargeController extends Controller {
   async auditFail() {
     const { ctx } = this;
     const { id } = ctx.params;
-    const { reject_reason } = ctx.request.body;
+    const { reject_reason, operate_password } = ctx.request.body;
     const adminOuter = ctx.state.adminOuter;
 
     if (!adminOuter || !adminOuter.shop_id) {
@@ -223,6 +233,16 @@ class AdminOuterRechargeController extends Controller {
 
     if (!reject_reason) {
       ctx.throw(400, '驳回原因不能为空');
+    }
+
+    if (!operate_password) {
+      ctx.throw(400, '操作密码不能为空');
+    }
+
+    // 校验操作密码
+    const shopConfig = await ctx.model.ShopConfig.findOne({ where: { shop_id: adminOuter.shop_id } });
+    if (!shopConfig || shopConfig.operate_password !== operate_password) {
+      ctx.throw(400, '操作密码错误');
     }
 
     const recharge = await ctx.model.UserRecharge.findOne({

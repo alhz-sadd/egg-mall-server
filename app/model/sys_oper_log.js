@@ -79,6 +79,12 @@ module.exports = app => {
       allowNull: true,
       comment: '错误消息',
     },
+    cost_time: {
+      type: BIGINT,
+      allowNull: true,
+      defaultValue: 0,
+      comment: '请求消耗时间(毫秒)',
+    },
     oper_time: {
       type: DATE,
       allowNull: false,

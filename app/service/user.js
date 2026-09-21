@@ -151,9 +151,6 @@ class UserService extends Service {
     // 密码加密
     const hashedPassword = await ctx.genHash(user_password);
 
-    // 生成邀请码
-    const personalInviteCode = await this.generateInviteCode();
-
     const userData = {
       username: user_phone,
       password: hashedPassword,
@@ -161,7 +158,6 @@ class UserService extends Service {
       phone: user_phone,
       nickname: user_phone,
       inviter_user_id: inviterUserId,
-      invite_code: personalInviteCode,
       user_type: 4, // C端用户
       shop_id: shopId,
       status: 1,
@@ -175,8 +171,14 @@ class UserService extends Service {
     // 使用事务创建用户和关联关系
     const transaction = await ctx.model.transaction();
     try {
-      // 创建用户
+      // 创建用户，不包含邀请码
       const user = await ctx.model.SysUser.create(userData, { transaction });
+
+      // 根据新生成的 user_id 生成基于ID的邀请码
+      const personalInviteCode = await this.generateInviteCode(user.user_id);
+      
+      // 更新邀请码
+      await user.update({ invite_code: personalInviteCode }, { transaction });
 
       // 创建关联关系
       if (shopId) {
@@ -278,20 +280,69 @@ class UserService extends Service {
 
   /**
    * 生成唯一邀请码
-   * 格式：6位随机数字，例如 105963
-   * 循环生成直到唯一为止
+   * 规则：用户ID (user_id) + 2位随机纯数字
+   * 由于用户ID是唯一的，加上2位随机数能保证绝大概率唯一。
+   * 如果遇到碰撞（极小概率），重新生成后2位。
+   * @param {string|number} userId 用户的 user_id
    * @return {string} 邀请码
    */
-  async generateInviteCode() {
+  async generateInviteCode(userId) {
     const { ctx } = this;
     let code;
     let exists = true;
+    
+    // 如果没有传入 userId，则降级使用原来的随机生成逻辑 (用于非C端或尚未生成ID的场景)
+    if (!userId) {
+      return await this._generateRandomInviteCode();
+    }
+
+    const baseStr = String(userId);
+
     while (exists) {
-      code = String(Math.floor(Math.random() * 900000) + 100000);
+      // 随机生成2位数字 (00-99)
+      const randomSuffix = String(Math.floor(Math.random() * 100)).padStart(2, '0');
+      code = baseStr + randomSuffix;
+
       const user = await ctx.model.SysUser.findOne({ where: { invite_code: code } });
       if (!user) {
         exists = false;
       }
+    }
+    return code;
+  }
+
+  /**
+   * 内部方法：随机生成邀请码（兜底方案）
+   * @return {string} 邀请码
+   */
+  async _generateRandomInviteCode() {
+    const { ctx } = this;
+    const chars = '0123456789';
+    let code;
+    let exists = true;
+    let length = 6;
+    let attempts = 0;
+
+    while (exists) {
+      if (attempts >= 10) {
+        length++;
+        attempts = 0;
+      }
+
+      code = '';
+      for (let i = 0; i < length; i++) {
+        if (i === 0) {
+          code += '123456789'.charAt(Math.floor(Math.random() * 9));
+        } else {
+          code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+      }
+
+      const user = await ctx.model.SysUser.findOne({ where: { invite_code: code } });
+      if (!user) {
+        exists = false;
+      }
+      attempts++;
     }
     return code;
   }

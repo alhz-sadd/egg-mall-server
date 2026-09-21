@@ -473,6 +473,10 @@ class AdminOuterTaskController extends Controller {
       order: [['id', 'DESC']]
     });
 
+    if (currentTaskUser && currentTaskUser.status === 1) {
+      ctx.throw(400, '用户当前任务正在执行中，无法切换模板，请先关闭当前任务或等待任务完成');
+    }
+
     // 用户只能绑定一个任务模板。切换新的模板后，需要删除之前绑定的任务及子项，确保只有一条规则
     const transaction = await ctx.model.transaction();
     let bindRecord;
@@ -491,13 +495,11 @@ class AdminOuterTaskController extends Controller {
         force: true
       });
 
-      // 继承之前的任务状态（如果之前是执行中则保持执行中，否则保持未开启）
-      const newStatus = currentTaskUser && currentTaskUser.status === 1 ? 1 : 0;
-
+      // 绑定新的模板，状态默认为未开启 (0)
       bindRecord = await ctx.model.ShopTaskUser.create({
         user_id,
         task_id,
-        status: newStatus,
+        status: 0,
         task_status: 0,
       }, { transaction });
 

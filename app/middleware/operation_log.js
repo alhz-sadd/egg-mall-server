@@ -12,14 +12,14 @@ module.exports = () => {
 
     await next();
 
-    // 仅记录管理端写操作
+    // 记录管理端和C端的写操作
     if (!ctx.service.sysLog.shouldLog(method, url)) {
       return;
     }
 
     try {
       const cost = Date.now() - start;
-      const admin = ctx.state.admin || ctx.state.adminInner || ctx.state.adminOuter || {};
+      const admin = ctx.state.admin || ctx.state.adminInner || ctx.state.adminOuter || ctx.state.user || {};
       const params = ctx.service.sysLog.filterSensitiveParams(
         ctx.service.sysLog.resolveRequestParams(ctx),
       );
@@ -27,7 +27,7 @@ module.exports = () => {
 
       await ctx.service.sysLog.recordOperationLog({
         userId: admin.adminInnerId || admin.adminOuterId || admin.adminId || admin.user_id || admin.userId || null,
-        username: admin.username || null,
+        username: admin.username || admin.account || null,
         title,
         businessType,
         operUrl: url,
@@ -38,6 +38,7 @@ module.exports = () => {
         operLocation: ctx.service.sysLog.resolveIpLocation(ip),
         status: ctx.status >= 200 && ctx.status < 400 ? 0 : 1,
         errorMsg: ctx.status >= 400 ? (ctx.body && ctx.body.message) : null,
+        costTime: cost,
       });
     } catch (err) {
       ctx.logger.error('[operationLog] 记录操作日志失败：', err.message);

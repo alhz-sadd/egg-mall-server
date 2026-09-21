@@ -324,8 +324,9 @@ class TaskService extends Service {
     if (unpaidProgress && unpaidProgress.order_id) {
       const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: unpaidProgress.task_item_id } });
       const orderAmount = Number(unpaidProgress.goods_price);
-      const yieldRate = Number(shopTask.yield_rate);
+      const yieldRate = unpaidProgress.yield_rate !== null && Number(unpaidProgress.yield_rate) > 0 ? Number(unpaidProgress.yield_rate) : (taskItem && taskItem.yield_rate !== null ? Number(taskItem.yield_rate) : Number(shopTask.yield_rate));
       const parentYieldRate = Number(shopTask.parent_yield_rate);
+      const revenue = unpaidProgress.revenue !== null ? Number(unpaidProgress.revenue) : (orderAmount * yieldRate);
       
       const wares = {
         goods_id: unpaidProgress.goods_id,
@@ -337,9 +338,9 @@ class TaskService extends Service {
         order_id: unpaidProgress.order_id,
         total_price: orderAmount,
         revenue_rate: yieldRate,           // 收益率
-        return_money: orderAmount * yieldRate, // 回报金额
+        return_money: revenue,             // 回报金额 (静态收益)
         parent_revenue_rate: parentYieldRate,
-        parent_revenue: orderAmount * parentYieldRate,
+        parent_revenue: revenue * parentYieldRate, // 动态收益 = 静态收益 * 上级收益率
         order_type: taskItem ? (taskItem.is_lucky_order === 1 ? 2 : 1) : 1, // 1:普通订单, 2:幸运订单
         c_time: unpaidProgress.create_time
       };
@@ -487,9 +488,9 @@ class TaskService extends Service {
       order_id: orderNo,
       total_price: goodsPrice,
       revenue_rate: yieldRate,           // 收益率
-      return_money: revenue,           // 回报金额
+      return_money: revenue,             // 回报金额(即静态收益)
       parent_revenue_rate: parentYieldRate,
-      parent_revenue: goodsPrice * parentYieldRate,
+      parent_revenue: revenue * parentYieldRate, // 动态收益 = 静态收益 * 上级收益率
       order_type: isLuckyOrder === 1 ? 2 : 1, // 1:普通订单, 2:幸运订单
       c_time: cTime
     };

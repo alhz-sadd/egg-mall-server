@@ -51,6 +51,7 @@ class AdminOuterShopSettingController extends Controller {
       withdraw_first_need_task: { type: 'int', required: false },
       withdraw_first_need_identity: { type: 'int', required: false },
       recharge_fee_rate: { type: 'number', required: false },
+      operate_password: { type: 'string', required: false },
     }, payload);
 
     if (payload.real_name_reward !== undefined && payload.real_name_reward < 0) {
