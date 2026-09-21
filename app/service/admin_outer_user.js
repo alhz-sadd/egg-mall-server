@@ -10,10 +10,9 @@ class AdminOuterUserService extends Service {
     // 使用统一的方法获取真实的客户端 IP
     const realIp = ctx.ip || ctx.request.ip || '127.0.0.1';
     
-    const { ip = realIp, device = 1, browser = '未知', os = '未知' } = meta;
+    const { ip = realIp } = meta;
     
-    // 强制使用统一 IP 解析位置
-    const location = await ctx.service.sysLog.resolveIpLocation(ip);
+    // 强制使用统一 UA 解析
     const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
 
     const logData = {
