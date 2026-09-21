@@ -167,7 +167,7 @@ class SysLogService extends Service {
    */
   resolveIpLocation(ip) {
     if (!ip) return '未知';
-    if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.')) {
+    if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
       return '本地';
     }
     try {
@@ -178,17 +178,42 @@ class SysLogService extends Service {
       
       let region = '未知';
       if (typeof result === 'string') {
-        region = result;
-      } else if (result.region) {
-        region = result.region;
-      } else if (result.country || result.province || result.city) {
-        region = [ result.country, result.province, result.city ].filter(Boolean).join(' ');
+        region = result.split('|').filter(item => item && item !== '0').join(' ');
+      } else {
+        const { country, province, city, isp } = result;
+        const parts = [];
+        
+        // 1. 处理国家：如果是国内且有省份，省略"中国"字样，使展示更精简
+        if (country && country !== '0') {
+          if (country === '中国' && (province || city)) {
+            // 省略
+          } else {
+            parts.push(country);
+          }
+        }
+        
+        // 2. 处理省份
+        if (province && province !== '0') {
+          parts.push(province);
+        }
+        
+        // 3. 处理城市 (去重，避免出现 "上海市 上海市")
+        if (city && city !== '0') {
+          if (!province || (!province.includes(city) && !city.includes(province))) {
+            parts.push(city);
+          }
+        }
+        
+        // 4. 处理ISP运营商
+        if (isp && isp !== '0') {
+          parts.push(isp);
+        }
+        
+        if (parts.length > 0) {
+          region = parts.join(' ');
+        }
       }
       
-      // ip2region 的默认输出通常是 "国家|区域|省份|城市|ISP"，把 `|0|` 或者空的部分去掉，让显示更好看
-      if (region !== '未知') {
-        region = region.replace(/\|0\|/g, '|').replace(/\|/g, ' ').trim();
-      }
       return region;
     } catch (err) {
       this.ctx.logger.error('ip2region 解析失败:', err);
@@ -268,50 +293,52 @@ class SysLogService extends Service {
     let os = '未知';
     let deviceType = 4; // 1:PC, 2:Android, 3:iOS, 4:未知
 
-    // 解析浏览器
-    if (userAgent.includes('MicroMessenger')) {
-      browser = '微信内置浏览器';
-    } else if (userAgent.includes('QQ/')) {
-      browser = 'QQ内置浏览器';
-    } else if (userAgent.includes('UCBrowser')) {
-      browser = 'UC浏览器';
-    } else if (userAgent.includes('Edge')) {
-      browser = 'Edge浏览器';
-    } else if (userAgent.includes('Firefox') || userAgent.includes('FxiOS')) {
-      browser = 'Firefox';
-    } else if (userAgent.includes('Chrome') || userAgent.includes('CriOS')) {
-      browser = 'Chrome';
-    } else if (userAgent.includes('Safari') && userAgent.includes('Version')) {
-      browser = 'Safari';
-    } else if (userAgent.includes('Trident') || userAgent.includes('MSIE')) {
-      browser = 'IE浏览器';
-    } else {
-      browser = '其他浏览器';
-    }
+    try {
+      const UAParser = require('ua-parser-js');
+      const parser = new UAParser(userAgent);
+      const result = parser.getResult();
 
-    // 解析操作系统和设备类型
-    if (userAgent.includes('Windows NT') || userAgent.includes('Macintosh') || userAgent.includes('Windows') || (userAgent.includes('Linux') && !userAgent.includes('Android'))) {
-      deviceType = 1; // PC
-      if (userAgent.includes('Windows NT 10.0')) os = 'Windows 10/11';
-      else if (userAgent.includes('Windows NT 6.2')) os = 'Windows 8';
-      else if (userAgent.includes('Windows NT 6.1')) os = 'Windows 7';
-      else if (userAgent.includes('Mac OS X')) os = 'macOS';
-      else if (userAgent.includes('Linux')) os = 'Linux';
-      else os = 'Windows';
-    } else if (userAgent.includes('Android')) {
-      deviceType = 2; // Android
-      os = 'Android';
-    } else if (userAgent.includes('iPhone') || userAgent.includes('iPad') || userAgent.includes('iPod')) {
-      deviceType = 3; // iOS
-      if (userAgent.includes('iPhone')) os = 'iOS (iPhone)';
-      else if (userAgent.includes('iPad')) os = 'iOS (iPad)';
-      else os = 'iOS';
-    } else {
-      deviceType = 4; // 未知设备
-      os = '其他操作系统';
-    }
+      // 获取浏览器
+      if (result.browser.name) {
+        browser = result.browser.name;
+        if (result.browser.version) {
+          // 只保留主版本号，比如 Chrome 120
+          browser += ' ' + result.browser.version.split('.')[0];
+        }
+      }
 
-    return { browser, os, deviceType };
+      // 获取操作系统
+      if (result.os.name) {
+        os = result.os.name;
+        if (result.os.version) {
+          os += ' ' + result.os.version;
+        }
+      }
+
+      // 微信和一些特殊浏览器的补丁
+      if (userAgent.includes('MicroMessenger')) {
+        browser = '微信内置浏览器';
+      }
+
+      // 判断设备类型
+      const deviceName = result.device.type || ''; // console, mobile, tablet, smarttv, wearable, embedded
+      const osName = result.os.name || '';
+
+      if (deviceName === 'mobile' || deviceName === 'tablet') {
+        if (osName === 'iOS' || osName === 'Mac OS') {
+          deviceType = 3; // iOS
+        } else if (osName === 'Android') {
+          deviceType = 2; // Android
+        }
+      } else if (!deviceName && (osName.includes('Windows') || osName === 'Mac OS' || osName === 'Linux')) {
+        deviceType = 1; // PC
+      }
+      
+      return { browser, os, deviceType };
+    } catch (e) {
+      this.ctx.logger.error('ua-parser-js 解析失败:', e);
+      return { browser: '未知', os: '未知', deviceType: 4 };
+    }
   }
 
   /**
@@ -345,16 +372,20 @@ class SysLogService extends Service {
       let browser = data.browser;
       let os = data.os;
 
-      // 如果前端未传或传了空，服务端通过 UA 兜底解析
-      if (!browser || !os || !deviceType || browser === '' || os === '') {
-        const parsedUa = this.resolveUserAgent(uaStr);
-        browser = browser || parsedUa.browser;
-        os = os || parsedUa.os;
-        
-        // 修正 deviceType，如果原来传了字符串，已经被转换为数字了
-        if (deviceType === 4 || !deviceType) {
-          deviceType = parsedUa.deviceType;
-        }
+      // 解析 UA 兜底
+      const parsedUa = this.resolveUserAgent(uaStr);
+      
+      // 如果前端未传或传了空，使用 UA 解析结果
+      if (!browser || browser === '' || browser === '未知') {
+        browser = parsedUa.browser;
+      }
+      if (!os || os === '' || os === '未知') {
+        os = parsedUa.os;
+      }
+      
+      // 修正 deviceType，如果原来传了字符串，已经被转换为数字了
+      if (deviceType === 4 || !deviceType) {
+        deviceType = parsedUa.deviceType;
       }
 
       await ctx.model.UserLoginLog.create({
