@@ -323,10 +323,11 @@ class SysLogService extends Service {
 
       // 判断设备类型
       const deviceName = (result.device && result.device.type) ? result.device.type : ''; 
-      const osName = (result.os && result.os.name) ? result.os.name : '';
+      const osName = (result.os && result.os.name) ? result.os.name : os;
 
-      if (deviceName === 'mobile' || deviceName === 'tablet') {
-        if (osName === 'iOS' || osName === 'Mac OS') {
+      // 修正设备类型的判断逻辑
+      if (deviceName === 'mobile' || deviceName === 'tablet' || osName === 'iOS' || osName === 'Android' || userAgent.toLowerCase().includes('iphone')) {
+        if (osName === 'iOS' || osName === 'Mac OS' || userAgent.toLowerCase().includes('iphone')) {
           deviceType = 3; // iOS
         } else if (osName === 'Android') {
           deviceType = 2; // Android
@@ -347,13 +348,32 @@ class SysLogService extends Service {
       if (browser === '未知') {
         if (uaLower.includes('micromessenger')) browser = '微信内置浏览器';
         else if (uaLower.includes('edg/')) browser = 'Edge';
-        else if (uaLower.includes('chrome/')) browser = 'Chrome';
-        else if (uaLower.includes('safari/') && !uaLower.includes('chrome/')) browser = 'Safari';
-        else if (uaLower.includes('firefox/')) browser = 'Firefox';
+        else if (uaLower.includes('chrome') && !uaLower.includes('safari')) browser = 'Chrome';
+        else if (uaLower.includes('safari') && !uaLower.includes('chrome')) browser = 'Safari';
+        else if (uaLower.includes('firefox')) browser = 'Firefox';
         else if (uaLower.includes('postman')) browser = 'Postman';
+        else if (uaLower.includes('apifox')) browser = 'Apifox';
         else if (uaLower.includes('axios')) browser = 'Axios';
         else if (uaLower.includes('curl')) browser = 'cURL';
-        else if (uaLower.includes('apifox')) browser = 'Apifox';
+      }
+      
+      // 再次修正：即使是 fallback 出来的系统，也要再赋值一次 deviceType
+      if (deviceType === 4) {
+        const osLower = os.toLowerCase();
+        if (osLower.includes('ios') || osLower.includes('mac os') || osLower.includes('macos')) {
+          // 在 ua-parser-js 中，有时 iPhone 的 OS 会被识别为 Mac OS，或者 fallback 到了 Mac OS
+          // 进一步通过 UA 判断是否是移动端
+          if (uaLower.includes('iphone') || uaLower.includes('ipad') || uaLower.includes('mobile')) {
+            deviceType = 3; // iOS
+            os = 'iOS'; // 强制修正 OS 为 iOS
+          } else {
+            deviceType = 1; // PC (Mac)
+          }
+        } else if (osLower.includes('android')) {
+          deviceType = 2; // Android
+        } else if (osLower.includes('windows') || osLower.includes('linux')) {
+          deviceType = 1; // PC
+        }
       }
 
       return { browser, os, deviceType };
@@ -436,8 +456,8 @@ class SysLogService extends Service {
       const ip = data.ip || data.login_ip || ctx.ip;
       let location = data.location || data.login_location;
 
-      // 如果未传入 location，或者 location 是空的，则通过 ip 解析地理位置
-      if ((!location || location === '') && ip) {
+      // 如果未传入 location，或者 location 是空的，或者是'未知'，则通过 ip 解析地理位置
+      if ((!location || location === '' || location === '未知') && ip) {
         if (ctx.app.utils && ctx.app.utils.ip && ctx.app.utils.ip.getIpLocation) {
           location = ctx.app.utils.ip.getIpLocation(ip);
         } else {
@@ -498,6 +518,13 @@ class SysLogService extends Service {
         return;
       }
 
+      const operIp = data.operIp || data.oper_ip || ctx.ip;
+      let operLocation = data.operLocation || data.oper_location;
+      
+      if ((!operLocation || operLocation === '' || operLocation === '未知') && operIp) {
+        operLocation = this.resolveIpLocation(operIp);
+      }
+
       await OperModel.create({
         user_id: data.userId || data.user_id,
         username: data.username,
@@ -506,8 +533,8 @@ class SysLogService extends Service {
         method: data.method || data.operUrl || data.oper_url,
         request_method: data.requestMethod || data.request_method,
         oper_url: data.operUrl || data.oper_url,
-        oper_ip: data.operIp || data.oper_ip || ctx.ip,
-        oper_location: data.operLocation || data.oper_location,
+        oper_ip: operIp,
+        oper_location: operLocation,
         oper_param: typeof data.operParam === 'object' ? JSON.stringify(data.operParam) : data.operParam,
         json_result: typeof data.jsonResult === 'object' ? JSON.stringify(data.jsonResult) : data.jsonResult,
         status: data.status !== undefined ? data.status : 0,
