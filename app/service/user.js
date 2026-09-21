@@ -379,7 +379,7 @@ class UserService extends Service {
     const startTime = Date.now();
 
     const logNo = `LL${Date.now()}${Math.floor(Math.random() * 10000)}`;
-    const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
+    const parsedUa = ctx.service.sysLog.resolveUserAgent(meta.userAgent);
 
     const user = await ctx.model.SysUser.findOne({ where: { username: user_phone } });
     if (!user) {
@@ -388,9 +388,11 @@ class UserService extends Service {
         user_id: 0,
         username: user_phone,
         login_ip: ip,
-        device_type: device || parsedUa.deviceType, // 默认未知
-        browser: browser || parsedUa.browser,
-        os: os || parsedUa.os,
+        login_location: await ctx.service.sysLog.resolveIpLocation(ip),
+        user_agent: meta.userAgent,
+        device_type: parsedUa.deviceType, // 默认未知
+        browser: parsedUa.browser,
+        os: parsedUa.os,
         login_type: 3, // 默认C端H5
         login_result: 0, // 失败
         remark: '登录失败：用户不存在',
@@ -405,9 +407,11 @@ class UserService extends Service {
         user_id: user.user_id,
         username: user.username || user_phone,
         login_ip: ip,
-        device_type: device || parsedUa.deviceType,
-        browser: browser || parsedUa.browser,
-        os: os || parsedUa.os,
+        login_location: await ctx.service.sysLog.resolveIpLocation(ip),
+        user_agent: meta.userAgent,
+        device_type: parsedUa.deviceType,
+        browser: parsedUa.browser,
+        os: parsedUa.os,
         login_type: 3,
         login_result: 0,
         remark: '登录失败：密码错误',
@@ -421,9 +425,11 @@ class UserService extends Service {
         user_id: user.user_id,
         username: user.username || user_phone,
         login_ip: ip,
-        device_type: device || parsedUa.deviceType,
-        browser: browser || parsedUa.browser,
-        os: os || parsedUa.os,
+        login_location: await ctx.service.sysLog.resolveIpLocation(ip),
+        user_agent: meta.userAgent,
+        device_type: parsedUa.deviceType,
+        browser: parsedUa.browser,
+        os: parsedUa.os,
         login_type: 3,
         login_result: 0,
         remark: '登录失败：账号已禁用',
@@ -454,9 +460,11 @@ class UserService extends Service {
       user_id: user.user_id,
       username: user.username || user_phone,
       login_ip: ip,
-      device_type: device || parsedUa.deviceType,
-      browser: browser || parsedUa.browser,
-      os: os || parsedUa.os,
+      login_location: await ctx.service.sysLog.resolveIpLocation(ip),
+      user_agent: meta.userAgent,
+      device_type: parsedUa.deviceType,
+      browser: parsedUa.browser,
+      os: parsedUa.os,
       login_type: 3,
       login_result: 1, // 成功
       remark: '登录成功',

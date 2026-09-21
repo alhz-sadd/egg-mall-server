@@ -8,60 +8,6 @@ const Controller = require('egg').Controller;
  */
 class UserController extends Controller {
   /**
-   * 解析用户代理信息，获取设备、浏览器和操作系统
-   * @param {string} userAgent 用户代理字符串
-   * @return {Object} 设备、浏览器和操作系统信息
-   */
-  parseUserAgent(userAgent) {
-    if (!userAgent) {
-      return { device: '未知设备', browser: '未知浏览器', os: '未知系统' };
-    }
-    const ua = userAgent.toLowerCase();
-    let device = 'PC';
-    if (/mobile|android|iphone|ipad|ipod/.test(ua)) {
-      device = 'Mobile';
-    }
-
-    let browser = '其他浏览器';
-    if (/chrome/.test(ua) && !/edge/.test(ua)) browser = 'Chrome';
-    else if (/firefox/.test(ua)) browser = 'Firefox';
-    else if (/safari/.test(ua) && !/chrome/.test(ua)) browser = 'Safari';
-    else if (/edge/.test(ua)) browser = 'Edge';
-    else if (/msie|trident/.test(ua)) browser = 'IE';
-
-    let os = '其他系统';
-    if (/windows nt 10/.test(ua)) os = 'Windows 10';
-    else if (/windows nt 6.3/.test(ua)) os = 'Windows 8.1';
-    else if (/windows nt 6.2/.test(ua)) os = 'Windows 8';
-    else if (/windows nt 6.1/.test(ua)) os = 'Windows 7';
-    else if (/windows nt/.test(ua)) os = 'Windows';
-    else if (/macintosh|mac os x/.test(ua)) os = 'macOS';
-    else if (/iphone|ipad|ipod/.test(ua)) os = 'iOS';
-    else if (/android/.test(ua)) os = 'Android';
-    else if (/linux/.test(ua)) os = 'Linux';
-
-    return { device, browser, os };
-  }
-
-  /**
-   * 获取登录环境元信息
-   * @return {Object} 登录环境信息
-   */
-  getLoginMeta() {
-    const { ctx } = this;
-    const ip = ctx.ip || ctx.request.ip || '127.0.0.1';
-    const userAgent = ctx.get('user-agent') || '';
-    const { device, browser, os } = this.parseUserAgent(userAgent);
-
-    return {
-      ip,
-      device,
-      browser,
-      os,
-    };
-  }
-
-  /**
    * @summary 用户注册
    * @description 使用手机号、密码、确认密码、邀请码进行注册
    * @router post /api/mobile/users/register
@@ -119,7 +65,10 @@ class UserController extends Controller {
     ctx.assert(loginPhone, 422, '手机号不能为空');
     ctx.assert(loginPassword, 422, '密码不能为空');
 
-    const meta = this.getLoginMeta();
+    const meta = {
+      ip: ctx.ip || ctx.request.ip || '127.0.0.1',
+      userAgent: ctx.get('user-agent') || ''
+    };
     const result = await service.user.login({ user_phone: loginPhone, user_password: loginPassword }, meta);
 
     ctx.body = {
