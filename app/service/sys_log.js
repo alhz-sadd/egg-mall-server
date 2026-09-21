@@ -174,9 +174,9 @@ class SysLogService extends Service {
       const IP2Region = require('ip2region').default;
       const searcher = new IP2Region();
       const result = searcher.search(ip);
-      if (!result) return '未知';
+      if (!result) return '无法解析';
       
-      let region = '未知';
+      let region = '无法解析';
       if (typeof result === 'string') {
         region = result.split('|').filter(item => item && item !== '0').join(' ');
       } else {
@@ -214,10 +214,10 @@ class SysLogService extends Service {
         }
       }
       
-      return region;
+      return region || '无法解析';
     } catch (err) {
       this.ctx.logger.error('ip2region 解析失败:', err);
-      return '未知';
+      return '解析失败';
     }
   }
 
@@ -595,8 +595,8 @@ class SysLogService extends Service {
         const data = item.toJSON();
         
         let loc = data.login_location;
-        // 如果是未知或者为空或者甚至是带有不可见字符的未知，都重新解析
-        if (!loc || loc.trim() === '' || loc.includes('未知')) {
+        // 如果是未知、无法解析、解析失败或者为空或者甚至带有不可见字符的未知，都重新解析
+        if (!loc || loc.trim() === '' || loc.includes('未知') || loc.includes('无法解析') || loc.includes('解析失败')) {
           loc = await this.resolveIpLocation(data.login_ip);
         }
 
