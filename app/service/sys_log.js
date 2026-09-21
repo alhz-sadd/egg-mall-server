@@ -473,10 +473,10 @@ class SysLogService extends Service {
       const parsedUa = this.resolveUserAgent(uaStr);
       
       // 如果前端未传或传了空，或者传了 '未知'，使用 UA 解析结果
-      if (!browser || browser === '' || browser === '未知') {
+      if (!browser || browser === '' || browser.includes('未知') || browser.includes('鏈煡')) {
         browser = parsedUa.browser;
       }
-      if (!os || os === '' || os === '未知') {
+      if (!os || os === '' || os.includes('未知') || os.includes('鏈煡')) {
         os = parsedUa.os;
       }
       
@@ -600,6 +600,20 @@ class SysLogService extends Service {
           loc = await this.resolveIpLocation(data.login_ip);
         }
 
+        let os = data.os;
+        let browser = data.browser;
+        let device_type = data.device_type;
+        
+        // 动态修复历史乱码数据：如果包含乱码，就重新解析 UA
+        if (!os || os.includes('未知') || os.includes('鏈煡') || !browser || browser.includes('未知') || browser.includes('鏈煡')) {
+          const parsedUa = this.resolveUserAgent(data.user_agent || '');
+          os = parsedUa.os;
+          browser = parsedUa.browser;
+          if (device_type === 4 || !device_type) {
+            device_type = parsedUa.deviceType;
+          }
+        }
+
         list.push({
           id: data.id,
           log_no: data.log_no,
@@ -607,9 +621,9 @@ class SysLogService extends Service {
           username: data.username,
           login_ip: data.login_ip,
           login_location: loc,
-          device_type: data.device_type,
-          browser: data.browser,
-          os: data.os,
+          device_type: device_type,
+          browser: browser,
+          os: os,
           login_type: data.login_type,
           login_result: data.login_result,
           login_time: this.formatDate(data.login_time),
