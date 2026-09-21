@@ -596,7 +596,7 @@ class SysLogService extends Service {
         
         let loc = data.login_location;
         // 如果是未知、无法解析、解析失败或者为空或者甚至带有不可见字符的未知，都重新解析
-        if (!loc || loc.trim() === '' || loc.includes('未知') || loc.includes('无法解析') || loc.includes('解析失败')) {
+        if (!loc || loc.trim() === '' || loc.includes('未知') || loc.includes('无法解析') || loc.includes('解析失败') || loc.includes('鏈煡')) {
           loc = await this.resolveIpLocation(data.login_ip);
         }
 
