@@ -388,7 +388,7 @@ class UserService extends Service {
         user_id: 0,
         username: user_phone,
         login_ip: ip,
-        login_location: await ctx.service.sysLog.resolveIpLocation(ip),
+        login_location: '', // 传空由底层通用方法解析
         user_agent: meta.userAgent,
         device_type: parsedUa.deviceType, // 默认未知
         browser: parsedUa.browser,
@@ -407,7 +407,7 @@ class UserService extends Service {
         user_id: user.user_id,
         username: user.username || user_phone,
         login_ip: ip,
-        login_location: await ctx.service.sysLog.resolveIpLocation(ip),
+        login_location: '',
         user_agent: meta.userAgent,
         device_type: parsedUa.deviceType,
         browser: parsedUa.browser,
@@ -425,7 +425,7 @@ class UserService extends Service {
         user_id: user.user_id,
         username: user.username || user_phone,
         login_ip: ip,
-        login_location: await ctx.service.sysLog.resolveIpLocation(ip),
+        login_location: '',
         user_agent: meta.userAgent,
         device_type: parsedUa.deviceType,
         browser: parsedUa.browser,
@@ -460,7 +460,7 @@ class UserService extends Service {
       user_id: user.user_id,
       username: user.username || user_phone,
       login_ip: ip,
-      login_location: await ctx.service.sysLog.resolveIpLocation(ip),
+      login_location: '',
       user_agent: meta.userAgent,
       device_type: parsedUa.deviceType,
       browser: parsedUa.browser,
@@ -483,7 +483,8 @@ class UserService extends Service {
   async recordLoginLog(data) {
     const { ctx } = this;
     try {
-      await ctx.model.UserLoginLog.create(data);
+      // 统一调用 sysLog 服务的通用日志记录，确保设备类型和IP解析逻辑一致
+      await ctx.service.sysLog.recordLoginLog(data);
     } catch (err) {
       ctx.logger.error('[UserService] 记录用户登录日志失败：', err.message);
     }

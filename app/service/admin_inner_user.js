@@ -25,7 +25,7 @@ class AdminInnerUserService extends Service {
     const logData = {
       username,
       ip,
-      location,
+      location: '',
       device_type: parsedUa.deviceType,
       browser: parsedUa.browser,
       os: parsedUa.os,

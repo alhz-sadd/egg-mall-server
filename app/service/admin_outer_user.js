@@ -17,9 +17,10 @@ class AdminOuterUserService extends Service {
     const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
 
     const logData = {
+      user_id: null,
       username,
       ip,
-      location,
+      location: '',
       device_type: parsedUa.deviceType,
       browser: parsedUa.browser,
       os: parsedUa.os,
