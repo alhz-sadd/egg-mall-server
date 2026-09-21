@@ -593,13 +593,19 @@ class SysLogService extends Service {
       const list = [];
       for (const item of rows) {
         const data = item.toJSON();
+        
+        let loc = data.login_location;
+        if (!loc || loc === '' || loc === '未知') {
+          loc = await this.resolveIpLocation(data.login_ip);
+        }
+
         list.push({
           id: data.id,
           log_no: data.log_no,
           user_id: data.user_id,
           username: data.username,
           login_ip: data.login_ip,
-          login_location: data.login_location || await this.resolveIpLocation(data.login_ip),
+          login_location: loc,
           device_type: data.device_type,
           browser: data.browser,
           os: data.os,
@@ -719,13 +725,19 @@ class SysLogService extends Service {
     const list = [];
     for (const item of rows) {
       const data = item.toJSON();
+      
+      let loc = data.login_location;
+      if (!loc || loc === '' || loc === '未知') {
+        loc = await this.resolveIpLocation(data.login_ip);
+      }
+
       list.push({
         id: data.id,
         log_no: data.log_no,
         user_id: data.admin_id,
         username: data.username,
         login_ip: data.login_ip,
-        login_location: data.login_location || await this.resolveIpLocation(data.login_ip),
+        login_location: loc,
         device_type: data.device_type,
         browser: data.browser,
         os: data.os,
