@@ -8,22 +8,19 @@
 module.exports = () => {
   return async function operationLog(ctx, next) {
     const start = Date.now();
-    const { method, url, ip } = ctx;
-
     await next();
 
     // 记录管理端和C端的写操作
-    if (!ctx.service.sysLog.shouldLog(method, url)) {
+    if (!ctx.service.sysLog.shouldLog(ctx.method, ctx.url)) {
       return;
     }
 
     try {
       const cost = Date.now() - start;
-      const admin = ctx.state.admin || ctx.state.adminInner || ctx.state.adminOuter || ctx.state.user || {};
       const params = ctx.service.sysLog.filterSensitiveParams(
         ctx.service.sysLog.resolveRequestParams(ctx),
       );
-      const { businessType, title } = ctx.service.sysLog.resolveBusinessType(method, url);
+      const { businessType, title } = ctx.service.sysLog.resolveBusinessType(ctx.method, ctx.url);
       const businessTypeInfo = { businessType, title };
       const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
 

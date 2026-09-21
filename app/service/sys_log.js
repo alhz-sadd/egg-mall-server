@@ -350,6 +350,10 @@ class SysLogService extends Service {
         else if (uaLower.includes('chrome/')) browser = 'Chrome';
         else if (uaLower.includes('safari/') && !uaLower.includes('chrome/')) browser = 'Safari';
         else if (uaLower.includes('firefox/')) browser = 'Firefox';
+        else if (uaLower.includes('postman')) browser = 'Postman';
+        else if (uaLower.includes('axios')) browser = 'Axios';
+        else if (uaLower.includes('curl')) browser = 'cURL';
+        else if (uaLower.includes('apifox')) browser = 'Apifox';
       }
 
       return { browser, os, deviceType };
@@ -448,7 +452,7 @@ class SysLogService extends Service {
       // 解析 UA 兜底
       const parsedUa = this.resolveUserAgent(uaStr);
       
-      // 如果前端未传或传了空，使用 UA 解析结果
+      // 如果前端未传或传了空，或者传了 '未知'，使用 UA 解析结果
       if (!browser || browser === '' || browser === '未知') {
         browser = parsedUa.browser;
       }
