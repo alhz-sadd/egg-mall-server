@@ -18,8 +18,6 @@ class CommonAuthController extends Controller {
       ip: realIp,
       userAgent: ctx.get('user-agent'),
       device: 1, // 默认PC
-      browser: '未知',
-      os: '未知',
     };
     
     const result = await userService.login(ctx.request.body, meta);
