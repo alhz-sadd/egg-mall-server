@@ -16,7 +16,7 @@ class AdminUserService extends Service {
   async login(payload, meta) {
     const { ctx } = this;
     const { username, password, googleCode } = payload;
-    const { ip, location, device, browser, os } = meta;
+    const { ip, location, device } = meta;
 
     const startTime = Date.now();
 

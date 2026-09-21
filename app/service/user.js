@@ -369,13 +369,13 @@ class UserService extends Service {
   /**
    * 用户登录
    * @param {Object} payload 登录参数
-   * @param {Object} meta 登录环境信息 { ip, device, browser, os }
+   * @param {Object} meta 登录环境信息 { ip, device }
    * @return {Object} 用户信息及 JWT Token
    */
   async login(payload, meta = {}) {
     const { ctx, app } = this;
     const { user_phone, user_password } = payload;
-    const { ip, device, browser, os } = meta;
+    const { ip, device } = meta;
     const startTime = Date.now();
 
     const logNo = `LL${Date.now()}${Math.floor(Math.random() * 10000)}`;
