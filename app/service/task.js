@@ -328,10 +328,23 @@ class TaskService extends Service {
       const parentYieldRate = Number(shopTask.parent_yield_rate);
       const revenue = unpaidProgress.revenue !== null ? Number(unpaidProgress.revenue) : (orderAmount * yieldRate);
       
+      let picUrl = '';
+      if (unpaidProgress.goods_id) {
+        const unpaidGoods = await ctx.model.Goods.findOne({ where: { goods_id: unpaidProgress.goods_id } });
+        if (unpaidGoods) {
+          if (unpaidGoods.images && Array.isArray(unpaidGoods.images) && unpaidGoods.images.length > 0) {
+            picUrl = unpaidGoods.images[0];
+          } else if (unpaidGoods.cover_image) {
+            picUrl = unpaidGoods.cover_image;
+          }
+        }
+      }
+
       const wares = {
         goods_id: unpaidProgress.goods_id,
         wares_name: unpaidProgress.goods_title,
-        total_price: orderAmount
+        total_price: orderAmount,
+        pic_url: picUrl
       };
       
       const order = {
@@ -477,11 +490,20 @@ class TaskService extends Service {
       update_time: cTime
     });
 
+    let picUrl = '';
+    if (waresModel) {
+      if (waresModel.images && Array.isArray(waresModel.images) && waresModel.images.length > 0) {
+        picUrl = waresModel.images[0];
+      } else if (waresModel.cover_image) {
+        picUrl = waresModel.cover_image;
+      }
+    }
+
     const wares = {
       goods_id: waresModel.goods_id,
       wares_name: waresModel.goods_name,
       total_price: goodsPrice,
-      pic_url: waresModel.cover_image
+      pic_url: picUrl
     };
 
     const order = {

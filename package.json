@@ -19,6 +19,7 @@
     "autod": "autod"
   },
   "dependencies": {
+    "axios": "^1.20.0",
     "dayjs": "^1.11.10",
     "dotenv": "^18.0.1",
     "egg": "^3.17.0",
@@ -31,6 +32,7 @@
     "egg-sequelize": "^6.0.0",
     "egg-swagger-doc": "^2.3.2",
     "egg-validate": "^2.0.2",
+    "form-data": "^4.0.6",
     "google-translate-api-x": "^10.7.3",
     "ip2region": "^2.3.0",
     "lodash": "^4.17.21",
@@ -39,7 +41,8 @@
     "speakeasy": "^2.0.0",
     "translate-google": "^1.5.0",
     "ua-parser-js": "^2.0.10",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "autod": "^3.1.2",

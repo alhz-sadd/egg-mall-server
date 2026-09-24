@@ -40,6 +40,14 @@ class OrderService extends Service {
     const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: progress.task_item_id } });
     const shopTask = taskItem ? await ctx.model.ShopTask.findByPk(taskItem.task_id) : null;
     const goods = progress.goods_id ? await ctx.model.Goods.findByPk(progress.goods_id) : null;
+    let picUrl = '';
+    if (goods) {
+      if (goods.images && Array.isArray(goods.images) && goods.images.length > 0) {
+        picUrl = goods.images[0];
+      } else if (goods.cover_image) {
+        picUrl = goods.cover_image;
+      }
+    }
 
     const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
     let needPrice = 0;
@@ -77,7 +85,7 @@ class OrderService extends Service {
       parent_revenue_rate: parentRevenueRate.toString(),
       parent_revenue: (revenue * parentRevenueRate).toFixed(2), // 动态收益 = 静态收益 * 上级收益率
       status: mappedStatus,
-      pic_url: goods ? goods.cover_image : '',
+      pic_url: picUrl,
       wares_name: progress.goods_title || '',
       c_time: progress.create_time ? new Date(progress.create_time).toISOString() : null,
       u_time: progress.update_time ? new Date(progress.update_time).toISOString() : null,
@@ -233,6 +241,15 @@ class OrderService extends Service {
       const taskItem = taskItemMap.get(progress.task_item_id) || null;
       const shopTask = taskItem ? shopTaskMap.get(taskItem.task_id) || null : null;
       const goods = progress.goods_id ? goodsMap.get(progress.goods_id) || null : null;
+      let picUrl = '';
+      if (goods) {
+        if (goods.images && Array.isArray(goods.images) && goods.images.length > 0) {
+          picUrl = goods.images[0];
+        } else if (goods.cover_image) {
+          picUrl = goods.cover_image;
+        }
+      }
+      
       const totalAmount = Number(progress.goods_price || 0);
       const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0 
         ? Number(progress.yield_rate) 
@@ -257,7 +274,7 @@ class OrderService extends Service {
         parent_revenue_rate: parentRevenueRate.toString(),
         parent_revenue: (revenue * parentRevenueRate).toFixed(2), // 动态收益 = 静态收益 * 上级收益率
         status: mappedStatus,
-        pic_url: goods ? goods.cover_image : '',
+        pic_url: picUrl,
         wares_name: progress.goods_title || '',
         c_time: progress.create_time ? new Date(progress.create_time).toISOString() : null,
       });
@@ -373,6 +390,14 @@ class OrderService extends Service {
     const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: progress.task_item_id } });
     const shopTask = taskItem ? await ctx.model.ShopTask.findByPk(taskItem.task_id) : null;
     const goods = progress.goods_id ? await ctx.model.Goods.findByPk(progress.goods_id) : null;
+    let picUrl = '';
+    if (goods) {
+      if (goods.images && Array.isArray(goods.images) && goods.images.length > 0) {
+        picUrl = goods.images[0];
+      } else if (goods.cover_image) {
+        picUrl = goods.cover_image;
+      }
+    }
 
     const totalAmount = Number(progress.goods_price || 0);
     const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0 
@@ -406,7 +431,7 @@ class OrderService extends Service {
       parent_revenue_rate: parentRevenueRate.toString(),
       parent_revenue: (revenue * parentRevenueRate).toFixed(2), // 动态收益 = 静态收益 * 上级收益率
       status: mappedStatus,
-      pic_url: goods ? goods.cover_image : '',
+      pic_url: picUrl,
       wares_name: progress.goods_title || '',
       c_time: progress.create_time ? new Date(progress.create_time).toISOString() : null,
       need_price: needPrice.toString() // 不足金额 = 商品价格 - 用户余额

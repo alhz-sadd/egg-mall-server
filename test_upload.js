@@ -1,29 +1,26 @@
-const mm = require('egg-mock');
-require('dotenv').config();
+const axios = require('axios');
+const FormData = require('form-data');
 const fs = require('fs');
-const path = require('path');
+const jwt = require('jsonwebtoken');
 
 async function testUpload() {
-  const app = mm.app();
-  await app.ready();
+  const token = jwt.sign({ adminInnerId: 1, username: 'admin', type: 'admin_inner' }, 'your_jwt_secret_change_in_production');
+  const form = new FormData();
+  // Strip quotes if any
+  let imagePath = '"C:\\Users\\ROG\\Desktop\\商品\\2\\1\\1.jpg"'.replace(/^"|"$/g, '');
+  form.append('file', fs.createReadStream(imagePath));
   
-  const token = app.mockContext().app.jwt.sign({ id: 1056, user_id: 1056 }, app.config.jwt.secret);
-  
-  app.mockCsrf();
-  
-  const fakeImgPath = path.join(__dirname, 'test.jpg');
-  fs.writeFileSync(fakeImgPath, 'fake image data');
-  
-  const res = await app.httpRequest()
-    .post('/api/mobile/upload/image')
-    .set('Authorization', `Bearer ${token}`)
-    .attach('file', fakeImgPath)
-    .expect(200);
-    
-  console.log(res.body);
-  
-  fs.unlinkSync(fakeImgPath);
-  await app.close();
+  try {
+    const res = await axios.post('http://127.0.0.1:7001/api/admin-inner/upload/image', form, {
+      headers: {
+        ...form.getHeaders(),
+        Authorization: 'Bearer ' + token
+      }
+    });
+    console.log(res.data);
+  } catch(e) {
+    console.error(e.response ? e.response.data : e.message);
+  }
 }
 
-testUpload().catch(console.error);
+testUpload();
