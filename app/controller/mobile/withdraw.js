@@ -77,6 +77,44 @@ class MobileWithdrawController extends Controller {
       where: { shop_id: relation.shop_id },
     });
 
+    // 检查用户任务状态
+    const Op = this.app.Sequelize.Op;
+    
+    // 1. 是否有进行中的任务 (task_status 为 0 或 1)
+    const activeTask = await ctx.model.ShopTaskUser.findOne({
+      where: {
+        user_id: userId,
+        task_status: { [Op.in]: [0, 1] }
+      }
+    });
+
+    if (activeTask) {
+      // 只要用户开启任务，就不允许提现
+      ctx.body = {
+        code: 4001,
+        message: '您的任务未完成，完成整个任务模板后才可提现'
+      };
+      return;
+    }
+
+    // 2. 如果没有进行中的任务，但店铺设置了提现需要完成任务
+    if (shopConfig && shopConfig.withdraw_first_need_task === 1) {
+      const completedTask = await ctx.model.ShopTaskUser.findOne({
+        where: {
+          user_id: userId,
+          task_status: 2
+        }
+      });
+
+      if (!completedTask) {
+        ctx.body = {
+          code: 4001,
+          message: '请先完成任务模板后再进行提现'
+        };
+        return;
+      }
+    }
+
     let fee = 0;
     if (shopConfig) {
       if (payload.amount < shopConfig.withdraw_min_amount) {

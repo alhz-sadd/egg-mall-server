@@ -324,6 +324,9 @@ class AdminOuterAuthController extends CommonAuthController {
       shop_id: shop.shop_id,
     });
 
+    const inviteCode = await ctx.service.user.generateInviteCode(user.user_id);
+    await user.update({ invite_code: inviteCode });
+
     ctx.body = {
       code: 200,
       message: 'B端店长账号创建成功',

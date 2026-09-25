@@ -174,21 +174,40 @@ class AdminOuterUserService extends Service {
 
     const hashedPassword = await ctx.genHash(password);
 
-    const user = await ctx.model.SysUser.create({
-      username,
-      password: hashedPassword,
-      nickname,
-      phone,
-      shop_id,
-      user_type,
-      create_user_id: created_by,
-      status: 1,
-    });
+    const transaction = await ctx.model.transaction();
+    try {
+      const user = await ctx.model.SysUser.create({
+        username,
+        password: hashedPassword,
+        nickname,
+        phone,
+        shop_id,
+        user_type,
+        create_user_id: created_by,
+        status: 1,
+      }, { transaction });
 
-    const invite_code = await ctx.service.user.generateInviteCode(user.user_id);
-    await user.update({ invite_code });
+      const invite_code = await ctx.service.user.generateInviteCode(user.user_id);
+      await user.update({ invite_code }, { transaction });
 
-    return user;
+      // 如果创建的是业务员或店长，同步创建钱包
+      if (Number(user_type) === 2 || Number(user_type) === 3) {
+        await ctx.model.UserWallet.create({
+          user_id: user.user_id,
+          balance: 0,
+          static_income: 0,
+          dynamic_income: 0,
+          recharge_balance: 0,
+          voucher_balance: 0,
+        }, { transaction });
+      }
+
+      await transaction.commit();
+      return user;
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
   }
 
   // 更新员工信息

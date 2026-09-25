@@ -4,7 +4,7 @@ const FormData = require('form-data');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
 
-const EXCEL_PATH = 'c:\\Users\\ROG\\Desktop\\egg_mall_server\\.gf\\商品\\商品-家电.xlsx';
+const EXCEL_PATH = 'c:\\Users\\ROG\\Desktop\\egg_mall_server\\.gf\\商品\\5-时尚.xlsx';
 const API_BASE = 'http://127.0.0.1:7001';
 const JWT_SECRET = 'your_jwt_secret_change_in_production';
 

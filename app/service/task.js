@@ -424,11 +424,6 @@ class TaskService extends Service {
       goodsPrice = Number(waresModel.price);
     } else {
       // 智能匹配
-      let targetGoodsPriceMax = totalBalance;
-      if (isLuckyOrder === 1) {
-        targetGoodsPriceMax = totalBalance + appendAmount;
-      }
-
       const usedProgresses = await ctx.model.ShopTaskUserItemProgress.findAll({
         where: {
           shop_task_user_id: shopTaskUser.id,
@@ -439,36 +434,77 @@ class TaskService extends Service {
       });
       const usedGoodsIds = usedProgresses.map(p => p.goods_id);
 
-      let goodsWhere = {
-        status: 1,
-        is_deleted: 0,
-        price: { [Op.lte]: targetGoodsPriceMax }
-      };
+      if (isLuckyOrder === 1 && appendAmount > 0) {
+        // 幸运订单且有追加金额：搜索价格 >= (余额+追加金额) 的商品，取最接近的
+        const targetPrice = totalBalance + appendAmount;
+        
+        let goodsWhere = {
+          status: 1,
+          is_deleted: 0,
+          price: { [Op.gte]: targetPrice }
+        };
 
-      if (usedGoodsIds.length > 0) {
-        goodsWhere.goods_id = { [Op.notIn]: usedGoodsIds };
-      }
+        if (usedGoodsIds.length > 0) {
+          goodsWhere.goods_id = { [Op.notIn]: usedGoodsIds };
+        }
 
-      waresModel = await ctx.model.Goods.findOne({
-        where: goodsWhere,
-        order: Sequelize.literal('RAND()')
-      });
+        waresModel = await ctx.model.Goods.findOne({
+          where: goodsWhere,
+          order: [['price', 'ASC']] // 取大于等于目标价中最便宜的（最接近目标价）
+        });
 
-      if (!waresModel && usedGoodsIds.length > 0) {
-        delete goodsWhere.goods_id;
+        if (!waresModel && usedGoodsIds.length > 0) {
+          // 去重后没商品了，允许新一轮搜索
+          delete goodsWhere.goods_id;
+          waresModel = await ctx.model.Goods.findOne({
+            where: goodsWhere,
+            order: [['price', 'ASC']]
+          });
+        }
+
+        if (!waresModel) {
+          ctx.throw(500, `暂无匹配的商品可接取，未找到价格大于等于 ${targetPrice} 的商品，请联系客服添加商品`);
+        }
+
+        // 强行把商品价格修改为 余额 + 追加金额
+        goodsPrice = targetPrice;
+      } else {
+        // 普通订单：搜索 余额-100 到 余额 之间的商品
+        let targetGoodsPriceMax = totalBalance;
+        let targetGoodsPriceMin = Math.max(0, targetGoodsPriceMax - 100);
+
+        let goodsWhere = {
+          status: 1,
+          is_deleted: 0,
+          price: { 
+            [Op.gte]: targetGoodsPriceMin,
+            [Op.lte]: targetGoodsPriceMax 
+          }
+        };
+
+        if (usedGoodsIds.length > 0) {
+          goodsWhere.goods_id = { [Op.notIn]: usedGoodsIds };
+        }
+
         waresModel = await ctx.model.Goods.findOne({
           where: goodsWhere,
           order: Sequelize.literal('RAND()')
         });
-      }
 
-      if (!waresModel) {
-        ctx.throw(500, '暂无匹配的商品可接取，请稍后再试');
-      }
+        if (!waresModel && usedGoodsIds.length > 0) {
+          // 该档位去重后没商品了，说明都出现过了，允许新一轮搜索
+          delete goodsWhere.goods_id;
+          waresModel = await ctx.model.Goods.findOne({
+            where: goodsWhere,
+            order: Sequelize.literal('RAND()')
+          });
+        }
 
-      goodsPrice = Number(waresModel.price);
-      if (isLuckyOrder === 1) {
-        goodsPrice = targetGoodsPriceMax;
+        if (!waresModel) {
+          ctx.throw(500, `暂无匹配的商品可接取，未找到价格在 ${targetGoodsPriceMin} - ${targetGoodsPriceMax} 之间的商品，请联系客服添加商品`);
+        }
+
+        goodsPrice = Number(waresModel.price);
       }
     }
 

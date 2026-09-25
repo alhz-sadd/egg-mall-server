@@ -26,7 +26,7 @@ class AdminOuterPointsController extends Controller {
     }
 
     const where = {
-      biz_type: 8, // 8 为人工上分
+      biz_type: 7, // 7 为系统增加
       user_id: { [Op.in]: shopUserIds },
     };
 
@@ -119,14 +119,8 @@ class AdminOuterPointsController extends Controller {
     const final_user_id = user_id || target_c_user_id;
     const final_amount = amount || give_amount;
     const final_balance_type = balance_type || 2;
-    // type: 1=赠送客户，2=员工添加，3=通道充值
-    const biz_type_mapping = {
-      1: 8, // 原有的人工上分 (可以代表赠送客户)
-      2: 10, // 新增：员工添加
-      3: 11  // 新增：通道充值
-    };
-    // 默认使用 8 (人工上分)，如果前端传了合法的 type，就使用映射后的 biz_type
-    const actual_biz_type = type && biz_type_mapping[type] ? biz_type_mapping[type] : 8;
+    // 不再映射各种新的biz_type，只要是系统增加，统一为 7
+    const actual_biz_type = 7;
 
     ctx.assert(final_user_id, 422, '目标C端用户ID不能为空');
     ctx.assert(final_amount && Number(final_amount) > 0, 422, '加款金额必须大于0');
@@ -207,7 +201,7 @@ class AdminOuterPointsController extends Controller {
     }
 
     const where = {
-      biz_type: 9, // 9 为人工下分
+      biz_type: 6, // 6 为系统减少
       user_id: { [Op.in]: shopUserIds },
     };
 
@@ -347,7 +341,7 @@ class AdminOuterPointsController extends Controller {
         user_id,
         operator_id,
         log_no: `B_DD_${Date.now()}`,
-        biz_type: 9, // 人工下分
+        biz_type: 6, // 系统减少
         amount: -Number(amount),
         balance_type: 4, // 假设 4=扣款
         before_balance: Number(wallet.voucher_balance),

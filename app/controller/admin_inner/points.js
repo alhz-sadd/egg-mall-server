@@ -11,7 +11,7 @@ class AdminInnerPointsController extends Controller {
     const offset = (Number(page) - 1) * limit;
 
     const { Op } = ctx.app.Sequelize;
-    const where = { biz_type: 8 }; // 8 为人工上分
+    const where = { biz_type: 7 }; // 7 为系统增加
 
     if (user_id) where.user_id = user_id;
     if (start_time && end_time) {
@@ -103,7 +103,7 @@ class AdminInnerPointsController extends Controller {
         user_id,
         operator_id,
         log_no: `A_GV_${Date.now()}`,
-        biz_type: 8, // 人工上分
+        biz_type: 7, // 系统增加
         amount: Number(amount),
         balance_type: balance_type || 1, // 1=增送客户
         before_balance: Number(wallet.voucher_balance),
@@ -127,7 +127,7 @@ class AdminInnerPointsController extends Controller {
     const offset = (Number(page) - 1) * limit;
 
     const { Op } = ctx.app.Sequelize;
-    const where = { biz_type: 9 }; // 9 为人工下分
+    const where = { biz_type: 6 }; // 6 为系统减少
 
     if (user_id) where.user_id = user_id;
     if (start_time && end_time) {
@@ -235,7 +235,7 @@ class AdminInnerPointsController extends Controller {
         user_id,
         operator_id,
         log_no: `A_DD_${Date.now()}`,
-        biz_type: 9, // 人工下分
+        biz_type: 6, // 系统减少
         amount: -Number(amount),
         balance_type: 4, // 扣款
         before_balance: Number(wallet.voucher_balance),

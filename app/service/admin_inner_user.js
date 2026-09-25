@@ -275,6 +275,9 @@ class AdminInnerUserService extends Service {
       create_user_id: ctx.state.adminInner ? ctx.state.adminInner.adminInnerId : null,
     }, options);
 
+    const inviteCode = await ctx.service.user.generateInviteCode(user.user_id);
+    await user.update({ invite_code: inviteCode }, options);
+
     // 如果是创建店长 (2) 或 业务员 (3)，同步创建钱包
     if (Number(user_type) === 2 || Number(user_type) === 3) {
       await ctx.model.UserWallet.create({

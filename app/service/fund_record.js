@@ -66,7 +66,7 @@ class FundRecordService extends Service {
     // frontend filter mapping:
     // 0任务收益 -> biz_type 4
     // 1充值 -> biz_type 1
-    // 2团队收益 -> biz_type 5
+    // 2下级收益 -> biz_type 5
     // 3系统增加 -> biz_type 7
     // 4系统减少 -> biz_type 6
     // 5提现 -> biz_type 2, 3
@@ -78,6 +78,7 @@ class FundRecordService extends Service {
       else if (qType === '3') where.biz_type = 7;
       else if (qType === '4') where.biz_type = 6;
       else if (qType === '5') where.biz_type = { [Op.in]: [ 2, 3 ] };
+      else if (qType === '7') where.biz_type = { [Op.notIn]: [1, 2, 3, 4, 5, 6, 7] };
     }
 
     // 过滤是否只看进账 (is_income = 1 表示只看进账，即 amount > 0)
@@ -113,32 +114,33 @@ class FundRecordService extends Service {
 
       switch (log.biz_type) {
         case 4:
-          mappedType = 0;
+          mappedType = 0; // 任务收益
           if (!remark) remark = '静态收益';
           break;
         case 5:
-          mappedType = 2;
-          if (!remark) remark = '动态收益';
+          mappedType = 2; // 下级收益
+          if (!remark) remark = '下级收益';
           break;
         case 1:
-          mappedType = 1;
+          mappedType = 1; // 充值
           if (!remark) remark = '用户充值';
           break;
         case 7:
-          mappedType = 3;
+          mappedType = 3; // 系统增加
           if (!remark) remark = '系统人工增加';
           break;
         case 6:
-          mappedType = 4;
+          mappedType = 4; // 系统减少
           if (!remark) remark = '系统人工扣除';
           break;
         case 2:
         case 3:
-          mappedType = 5;
+          mappedType = 5; // 提现
           if (!remark) remark = log.biz_type === 2 ? '用户提现' : '提现驳回退回';
           break;
         default:
-          mappedType = 7;
+          mappedType = 7; // 其他
+          if (!remark) remark = '其他';
           break;
       }
 

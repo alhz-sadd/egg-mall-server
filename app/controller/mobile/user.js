@@ -594,6 +594,9 @@ class UserController extends Controller {
       nickname: username,
     });
 
+    const inviteCode = await ctx.service.user.generateInviteCode(user.user_id);
+    await user.update({ invite_code: inviteCode });
+
     // Get the shop created in dev/create-outer-admin
     const shop = await ctx.model.Shop.findOne({
       order: [[ 'shop_id', 'DESC' ]],

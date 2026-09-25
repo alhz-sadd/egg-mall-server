@@ -134,10 +134,12 @@ class AdminOuterCustomerService extends Service {
 
     let {
       page = 1, page_size = 10, keyword, username, phone, start_time, end_time,
-      user_id, parent_id, salesman_id, user_level, user_ip, has_recharge, is_virtual, is_real_user, status, sort,
+      user_id, uid, parent_id, salesman_id, user_level, user_ip, has_recharge, is_virtual, is_real_user, status, sort,
     } = query;
     page = parseInt(page) || 1;
     page_size = parseInt(page_size) || 10;
+
+    if (uid && !user_id) user_id = uid;
 
     // 基础过滤条件: 是C端用户(user_type=4)
     // 移除强行绑定 shop_id 的过滤，因为 sys_user 中 C 端用户的 shop_id 可能是 null（它记录在 customer_relation 中）
@@ -148,11 +150,16 @@ class AdminOuterCustomerService extends Service {
 
     // 搜索条件
     if (keyword) {
-      where[Op.or] = [
+      const orConditions = [
         { username: { [Op.like]: `%${keyword}%` } },
         { phone: { [Op.like]: `%${keyword}%` } },
         { nickname: { [Op.like]: `%${keyword}%` } },
       ];
+      // 如果 keyword 是纯数字，支持通过 ID 精确搜索
+      if (/^\d+$/.test(keyword)) {
+        orConditions.push({ user_id: Number(keyword) });
+      }
+      where[Op.or] = orConditions;
     } else {
       if (username) where.username = { [Op.like]: `%${username}%` };
       if (phone) where.phone = { [Op.like]: `%${phone}%` };
@@ -184,63 +191,82 @@ class AdminOuterCustomerService extends Service {
       if (end_time) where.create_time[Op.lte] = new Date(end_time);
     }
 
-    // 权限隔离逻辑
+    // 权限隔离逻辑及层级计算
+    let allowedUserIds = new Set();
+    let hasPermission = false;
+    let allRelations = [];
+
     if (currentUser.user_type === 3) { // 业务员
-      // 1. 查找业务员的直属客户
-      const directRelations = await ctx.model.CustomerRelation.findAll({
-        where: {
-          root_salesman_user_id: currentUser.user_id, // 修复：原来是 salesman_user_id
-          is_deleted: 0,
-        },
-        attributes: [ 'c_user_id' ],
+      allRelations = await ctx.model.CustomerRelation.findAll({
+        where: { root_salesman_user_id: currentUser.user_id, is_deleted: 0 },
+        attributes: [ 'c_user_id', 'parent_customer_user_id' ],
+        raw: true
       });
-
-      let currentLevelIds = directRelations.map(r => r.c_user_id);
-      const allDescendantIds = new Set(currentLevelIds);
-
-      // 2. 逐层向下查找，直至叶子节点
-      while (currentLevelIds.length > 0) {
-        const children = await ctx.model.CustomerRelation.findAll({
-          where: {
-            parent_customer_user_id: { [Op.in]: currentLevelIds },
-            is_deleted: 0,
-          },
-          attributes: [ 'c_user_id' ],
-        });
-
-        currentLevelIds = [];
-        for (const child of children) {
-          if (!allDescendantIds.has(child.c_user_id)) {
-            allDescendantIds.add(child.c_user_id);
-            currentLevelIds.push(child.c_user_id);
-          }
-        }
-      }
-
-      // 3. 将所有查到的用户ID加入查询条件
-      if (allDescendantIds.size > 0) {
-        where.user_id = {
-          [Op.in]: Array.from(allDescendantIds),
-        };
-      } else {
-        // 没有任何直推或衍生客户，直接返回空
-        return { list: [], total: 0 };
-      }
-    } else if (currentUser.user_type === 2) {
-      // 店长可以看当前 shop_id 的所有人
-      // 通过关联表 customer_relation 来过滤 shop_id
-      const shopRelations = await ctx.model.CustomerRelation.findAll({
+      hasPermission = true;
+    } else if (currentUser.user_type === 2) { // 店长
+      allRelations = await ctx.model.CustomerRelation.findAll({
         where: { shop_id: currentUser.shop_id, is_deleted: 0 },
-        attributes: [ 'c_user_id' ],
+        attributes: [ 'c_user_id', 'parent_customer_user_id' ],
+        raw: true
       });
-      const shopUserIds = shopRelations.map(r => r.c_user_id);
-      if (shopUserIds.length > 0) {
-        where.user_id = { [Op.in]: shopUserIds };
+      hasPermission = true;
+    }
+
+    if (!hasPermission) {
+      return { list: [], total: 0 };
+    }
+
+    // 构建层级映射
+    const parentMap = {};
+    allRelations.forEach(r => {
+      parentMap[r.c_user_id] = r.parent_customer_user_id;
+      allowedUserIds.add(r.c_user_id);
+    });
+
+    // 如果指定了 user_level 过滤 (1:直推, 2:间推, 3:三级及以上)
+    if (user_level) {
+      const targetLevel = Number(user_level);
+      const levelMatchedIds = new Set();
+
+      allRelations.forEach(r => {
+        let depth = 1;
+        let currentParent = r.parent_customer_user_id;
+        
+        // 当店长查看全局时，某个C端用户的上级可能也是C端用户，
+        // 而不是直接挂在业务员下，所以需要精确计算深度：
+        // 一直往上找，直到遇到 null（说明他是第一层）或者遇到业务员ID（不在 parentMap 的键里）
+        while (currentParent && parentMap[currentParent] !== undefined) {
+          depth++;
+          currentParent = parentMap[currentParent];
+          if (depth > 100) break; // 防止死循环
+        }
+        
+        if (targetLevel === 1 && depth === 1) {
+          levelMatchedIds.add(r.c_user_id);
+        } else if (targetLevel === 2 && depth === 2) {
+          levelMatchedIds.add(r.c_user_id);
+        } else if (targetLevel >= 3 && depth >= 3) {
+          levelMatchedIds.add(r.c_user_id);
+        }
+      });
+      
+      // 取交集
+      allowedUserIds = new Set([...allowedUserIds].filter(x => levelMatchedIds.has(x)));
+    }
+
+    // 3. 将所有查到的用户ID加入查询条件，同时兼顾前面传入的精确 user_id
+    if (allowedUserIds.size > 0) {
+      if (where.user_id) {
+        if (!allowedUserIds.has(Number(where.user_id))) {
+          return { list: [], total: 0 }; // 查询的用户不在权限/层级范围内
+        }
       } else {
-        return { list: [], total: 0 };
+        where.user_id = {
+          [Op.in]: Array.from(allowedUserIds),
+        };
       }
     } else {
-      // 其他类型（异常情况），兜底不返回数据
+      // 没有任何符合条件的客户，直接返回空
       return { list: [], total: 0 };
     }
 
@@ -262,7 +288,37 @@ class AdminOuterCustomerService extends Service {
     // 处理关联表条件：parent_id, salesman_id, user_level, has_recharge
     const relationWhere = {};
     if (parent_id) relationWhere.parent_customer_user_id = parent_id;
-    if (salesman_id) relationWhere.root_salesman_user_id = salesman_id;
+    
+    if (salesman_id) {
+      // 无论输入什么，都尝试去匹配 user_id 或名称
+      const orConditions = [
+        { nickname: { [Op.like]: `%${salesman_id}%` } },
+        { username: { [Op.like]: `%${salesman_id}%` } }
+      ];
+      
+      if (/^\d+$/.test(salesman_id)) {
+        orConditions.push({ user_id: Number(salesman_id) });
+      }
+
+      // 先根据条件去 sys_user 表查出对应的 user_id 集合
+      const matchedSalesmen = await ctx.model.SysUser.findAll({
+        where: {
+          user_type: 3, // 业务员
+          [Op.or]: orConditions
+        },
+        attributes: ['user_id'],
+        raw: true
+      });
+      
+      if (matchedSalesmen.length > 0) {
+        const matchedIds = matchedSalesmen.map(s => s.user_id);
+        relationWhere.root_salesman_user_id = { [Op.in]: matchedIds };
+      } else {
+        // 如果没匹配到任何业务员，则给一个不可能查出数据的条件（例如 -1）
+        relationWhere.root_salesman_user_id = -1;
+      }
+    }
+
     if (Object.keys(relationWhere).length > 0) {
       include.push({
         model: ctx.model.CustomerRelation,
@@ -306,14 +362,14 @@ class AdminOuterCustomerService extends Service {
     const extraUserMap = {}; // 用于存放额外查询出的业务员/上级客户名称
     const firstRechargeMap = {}; // 存放首充信息
     const rechargeCountMap = {}; // 记录用户的充值总次数
-    const loginLogMap = {}; // 记录用户的最新登录信息
+    let loginLogMapResult = {}; // 记录用户的最新登录信息
     const withdrawCountMap = {}; // 新增：记录用户的提现次数
     const withdrawAmountMap = {}; // 新增：记录用户的提现金额
     const parentIncomeAmountMap = {}; // 新增：记录给上级贡献的佣金
 
     if (userIds.length > 0) {
       // 查询每个用户的最新登录日志
-      const loginLogMap = await ctx.service.sysLog.getLatestLoginInfoMap(userIds);
+      loginLogMapResult = await ctx.service.sysLog.getLatestLoginInfoMap(userIds);
 
       const wallets = await ctx.model.UserWallet.findAll({
         where: { user_id: { [Op.in]: userIds } },
@@ -450,7 +506,7 @@ class AdminOuterCustomerService extends Service {
       const w = walletMap[row.user_id] || {};
       const r = relationMap[row.user_id] || {};
 
-      let calculatedLevel = 4;
+      let calculatedLevel = 1;
       if (row.user_type === 4) {
         let currentId = row.user_id;
         while (true) {
@@ -460,9 +516,17 @@ class AdminOuterCustomerService extends Service {
             rel = await ctx.model.CustomerRelation.findOne({ where: { c_user_id: currentId, is_deleted: 0 } });
             if (rel) relationMap[currentId] = rel; // 缓存一下
           }
-          if (!rel || !rel.parent_customer_user_id) break;
+          
+          // 如果没有上级了，或者查不到关系了，说明到顶了，跳出循环
+          if (!rel || !rel.parent_customer_user_id) {
+            break;
+          }
+          
           calculatedLevel++;
           currentId = rel.parent_customer_user_id;
+          
+          // 防止死循环的保护
+          if (calculatedLevel > 100) break;
         }
       } else {
         calculatedLevel = row.user_type;
@@ -484,13 +548,21 @@ class AdminOuterCustomerService extends Service {
       }
 
       const firstRechargeInfo = firstRechargeMap[row.user_id] || {};
-      const latestLoginInfo = loginLogMap[row.user_id] || {};
+      const latestLoginInfo = loginLogMapResult[row.user_id] || {};
 
       return {
         ...row.toJSON(),
 
         // 注册IP归属地
         register_location: await ctx.service.user.resolveIpLocation(row.register_ip),
+
+        // 登录信息 (从最新登录日志获取)
+        login_ip: latestLoginInfo.login_ip || row.last_login_ip,
+        login_location: latestLoginInfo.login_location || '未知',
+        login_time: latestLoginInfo.login_time || row.last_login_time,
+        device_type: latestLoginInfo.device_type,
+        browser: latestLoginInfo.browser,
+        os: latestLoginInfo.os,
 
         // 真实钱包表查询出的可用资产
         voucher_balance: Number(w.balance || w.voucher_balance || 0).toFixed(2),

@@ -10,7 +10,7 @@ class AdminOuterRechargeController extends Controller {
   async index() {
     const { ctx, app } = this;
     const { Op } = app.Sequelize;
-    const { page = 1, page_size = 10, order_no, status, user_id } = ctx.query;
+    const { page = 1, page_size = 10, order_no, status, user_id, sales_user_id, channel_code, audit_type, start_time, end_time } = ctx.query;
     const adminOuter = ctx.state.adminOuter;
 
     if (!adminOuter || !adminOuter.shop_id) {
@@ -24,6 +24,9 @@ class AdminOuterRechargeController extends Controller {
     // 业务员只能看自己的
     if (adminOuter.user_type === 4) {
       where.sales_user_id = adminOuter.user_id;
+    } else if (sales_user_id) {
+      // 如果不是业务员，且传了业务员ID，则根据传的业务员ID过滤
+      where.sales_user_id = sales_user_id;
     }
 
     if (order_no) {
@@ -34,6 +37,23 @@ class AdminOuterRechargeController extends Controller {
     }
     if (user_id) {
       where.user_id = user_id;
+    }
+    if (channel_code) {
+      where.channel_code = channel_code;
+    }
+    if (audit_type !== undefined && audit_type !== '') {
+      where.audit_type = parseInt(audit_type);
+    }
+    
+    // 时间范围查询 (基于 create_time)
+    if (start_time || end_time) {
+      where.create_time = {};
+      if (start_time) {
+        where.create_time[Op.gte] = new Date(start_time);
+      }
+      if (end_time) {
+        where.create_time[Op.lte] = new Date(end_time);
+      }
     }
 
     const limit = parseInt(page_size);
@@ -58,11 +78,21 @@ class AdminOuterRechargeController extends Controller {
       ],
     });
 
+    // 格式化金额字段，去除多余的0
+    const formattedList = result.rows.map(row => {
+      const item = row.toJSON();
+      if (item.amount) item.amount = Number(item.amount);
+      if (item.fee_rate) item.fee_rate = Number(item.fee_rate);
+      if (item.fee) item.fee = Number(item.fee);
+      if (item.user_receive_amount) item.user_receive_amount = Number(item.user_receive_amount);
+      return item;
+    });
+
     ctx.body = {
       code: 200,
       message: '获取成功',
       data: {
-        list: result.rows,
+        list: formattedList,
         total: result.count,
         page: parseInt(page),
         page_size: limit,
@@ -229,10 +259,6 @@ class AdminOuterRechargeController extends Controller {
 
     if (!adminOuter || !adminOuter.shop_id) {
       ctx.throw(401, '未授权或未绑定店铺');
-    }
-
-    if (!reject_reason) {
-      ctx.throw(400, '驳回原因不能为空');
     }
 
     if (!operate_password) {

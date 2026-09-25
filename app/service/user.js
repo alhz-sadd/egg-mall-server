@@ -180,6 +180,16 @@ class UserService extends Service {
       // 更新邀请码
       await user.update({ invite_code: personalInviteCode }, { transaction });
 
+      // 为新注册用户创建钱包
+      await ctx.model.UserWallet.create({
+        user_id: user.user_id,
+        balance: 0,
+        static_income: 0,
+        dynamic_income: 0,
+        recharge_balance: 0,
+        voucher_balance: 0,
+      }, { transaction });
+
       // 创建关联关系
       if (shopId) {
         await ctx.model.CustomerRelation.create({
@@ -918,14 +928,13 @@ class UserService extends Service {
       }
     });
 
-    // 计算 statistics.total_invite_income: 当前用户作为上级收到的所有下级贡献的佣金总和
-    const totalInviteIncomeStatsResult = await ctx.model.UserWalletLog.sum('amount', {
-      where: {
-        user_id: userId, // 当前团队用户是佣金接收者
-        biz_type: 5,     // 动态收益发放
-      },
+    // 计算 statistics.total_invite_income: 查当前用户的钱包中的 dynamic_income，这是最实时准确的
+    const currentUserWallet = await ctx.model.UserWallet.findOne({
+      where: { user_id: userId },
+      attributes: ['dynamic_income'],
+      raw: true
     });
-    const totalInviteIncome = totalInviteIncomeStatsResult || 0;
+    const totalInviteIncome = currentUserWallet ? Number(currentUserWallet.dynamic_income || 0) : 0;
 
     // 计算 list 中每个下级贡献的佣金总和 (user_invite_income)
     const subordinateIds = rows.map(item => item.user_id);

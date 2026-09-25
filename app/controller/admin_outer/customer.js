@@ -364,7 +364,7 @@ class AdminOuterCustomerController extends Controller {
       await ctx.model.UserWalletLog.create({
         user_id: userId,
         log_no,
-        biz_type: Number(change_type) === 1 ? 8 : 9, // 8: 人工上分, 9: 人工下分
+        biz_type: Number(change_type) === 1 ? 7 : 6, // 7: 系统增加, 6: 系统减少
         amount: Number(change_type) === 1 ? Number(amount) : -Number(amount),
         balance_type: 2, // 员工添加/扣除
         before_balance,

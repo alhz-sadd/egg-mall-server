@@ -19,11 +19,18 @@ class InviteController extends Controller {
     // 获取用户信息（为了拿 invite_code）
     const user = await ctx.model.SysUser.findOne({
       where: { user_id: userId, is_deleted: 0 },
-      attributes: [ 'invite_code' ],
+      attributes: [ 'user_id', 'invite_code' ],
     });
 
     if (!user) {
       ctx.throw(404, '用户不存在');
+    }
+
+    let inviteCode = user.invite_code;
+    if (!inviteCode) {
+      // 如果没有邀请码，则生成并保存
+      inviteCode = await ctx.service.user.generateInviteCode(userId);
+      await user.update({ invite_code: inviteCode });
     }
 
     // 获取所有下级产生的动态佣金总和
@@ -41,7 +48,7 @@ class InviteController extends Controller {
       code: 200,
       message: 'success',
       data: {
-        invite_code: user.invite_code || '',
+        invite_code: inviteCode,
         total_invite_income: totalIncome,
       },
     };
