@@ -124,7 +124,7 @@ const BUSINESS_RULES = [
   { method: 'DELETE', pattern: /^\/api\/admin-outer\/sales-address\/[^\/]+(\?|$)/, businessType: 2, title: '删除收款地址' },
 
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/config(\?|$)/, businessType: 1, title: '修改系统配置' },
-  
+
   { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/menu\/delete(\?|$)/, businessType: 2, title: '删除系统菜单' },
   { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/menu(\?|$)/, businessType: 0, title: '新增系统菜单' },
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/menu\/[^\/]+(\?|$)/, businessType: 1, title: '修改系统菜单' },
@@ -171,52 +171,43 @@ class SysLogService extends Service {
       return '本地';
     }
     try {
-      const IP2Region = require('ip2region').default;
-      const searcher = new IP2Region();
-      const result = searcher.search(ip);
+      const geoip = require('geoip-lite');
+      const result = geoip.lookup(ip);
       if (!result) return '无法解析';
-      
-      let region = '无法解析';
-      if (typeof result === 'string') {
-        region = result.split('|').filter(item => item && item !== '0').join(' ');
-      } else {
-        const { country, province, city, isp } = result;
-        const parts = [];
-        
-        // 1. 处理国家：如果是国内且有省份，省略"中国"字样，使展示更精简
-        if (country && country !== '0') {
-          if (country === '中国' && (province || city)) {
-            // 省略
+
+      const parts = [];
+
+      // 1. 处理国家
+      if (result.country) {
+        try {
+          const regionNames = new Intl.DisplayNames([ 'zh-CN' ], { type: 'region' });
+          const countryName = regionNames.of(result.country);
+          if (countryName === '中国' && (result.region || result.city)) {
+            // 省略"中国"使展示更精简
           } else {
-            parts.push(country);
+            parts.push(countryName || result.country);
           }
-        }
-        
-        // 2. 处理省份
-        if (province && province !== '0') {
-          parts.push(province);
-        }
-        
-        // 3. 处理城市 (去重，避免出现 "上海市 上海市")
-        if (city && city !== '0') {
-          if (!province || (!province.includes(city) && !city.includes(province))) {
-            parts.push(city);
-          }
-        }
-        
-        // 4. 处理ISP运营商
-        if (isp && isp !== '0') {
-          parts.push(isp);
-        }
-        
-        if (parts.length > 0) {
-          region = parts.join(' ');
+        } catch (e) {
+          parts.push(result.country);
         }
       }
-      
-      return region || '无法解析';
+
+      // 2. 处理省份和城市
+      if (result.region) {
+        parts.push(result.region);
+      }
+
+      if (result.city) {
+        parts.push(result.city);
+      }
+
+      if (parts.length > 0) {
+        return parts.join(' ');
+      }
+
+      return '无法解析';
     } catch (err) {
-      this.ctx.logger.error('ip2region 解析失败:', err);
+      this.ctx.logger.error('geoip-lite 解析失败:', err);
       return '解析失败';
     }
   }
@@ -290,7 +281,7 @@ class SysLogService extends Service {
    */
   resolveUserAgent(userAgent) {
     if (!userAgent) return { browser: '未知', os: '未知', deviceType: 4 }; // 默认 4:未知
-    
+
     let browser = '未知';
     let os = '未知';
     let deviceType = 4; // 1:PC, 2:Android, 3:iOS, 4:未知
@@ -322,7 +313,7 @@ class SysLogService extends Service {
       }
 
       // 判断设备类型
-      const deviceName = (result.device && result.device.type) ? result.device.type : ''; 
+      const deviceName = (result.device && result.device.type) ? result.device.type : '';
       const osName = (result.os && result.os.name) ? result.os.name : os;
 
       // 修正设备类型的判断逻辑
@@ -335,7 +326,7 @@ class SysLogService extends Service {
       } else if (!deviceName && (osName.includes('Windows') || osName === 'Mac OS' || osName === 'Linux')) {
         deviceType = 1; // PC
       }
-      
+
       // 添加基础正则后备机制
       const uaLower = userAgent.toLowerCase();
       if (os === '未知') {
@@ -356,7 +347,7 @@ class SysLogService extends Service {
         else if (uaLower.includes('axios')) browser = 'Axios';
         else if (uaLower.includes('curl')) browser = 'cURL';
       }
-      
+
       // 再次修正：即使是 fallback 出来的系统，也要再赋值一次 deviceType
       if (deviceType === 4) {
         const osLower = os.toLowerCase();
@@ -391,9 +382,9 @@ class SysLogService extends Service {
   async getLatestLoginInfoMap(userIds) {
     if (!userIds || userIds.length === 0) return {};
     const { ctx } = this;
-    
+
     const map = {};
-    await Promise.all(userIds.map(async (uid) => {
+    await Promise.all(userIds.map(async uid => {
       // 1. 从登录日志表查询最新的一条记录
       const log = await ctx.model.UserLoginLog.findOne({
         where: { user_id: uid },
@@ -418,7 +409,7 @@ class SysLogService extends Service {
         // 2. 如果没有任何日志，兜底从 sys_user 主表获取
         const user = await ctx.model.SysUser.findOne({
           where: { user_id: uid },
-          attributes: ['user_id', 'last_login_ip', 'last_login_time'],
+          attributes: [ 'user_id', 'last_login_ip', 'last_login_time' ],
           raw: true,
         });
         if (user) {
@@ -432,10 +423,9 @@ class SysLogService extends Service {
         }
       }
     }));
-    
+
     return map;
   }
-
 
 
   /**
@@ -471,7 +461,7 @@ class SysLogService extends Service {
 
       // 解析 UA 兜底
       const parsedUa = this.resolveUserAgent(uaStr);
-      
+
       // 如果前端未传或传了空，或者传了 '未知'，使用 UA 解析结果
       if (!browser || browser === '' || browser.includes('未知') || browser.includes('鏈煡')) {
         browser = parsedUa.browser;
@@ -479,7 +469,7 @@ class SysLogService extends Service {
       if (!os || os === '' || os.includes('未知') || os.includes('鏈煡')) {
         os = parsedUa.os;
       }
-      
+
       // 修正 deviceType，如果原来传了字符串，已经被转换为数字了
       if (deviceType === 4 || !deviceType) {
         deviceType = parsedUa.deviceType;
@@ -493,8 +483,8 @@ class SysLogService extends Service {
         login_location: location,
         user_agent: uaStr,
         device_type: deviceType,
-        browser: browser,
-        os: os,
+        browser,
+        os,
         login_type: data.login_type, // 1:A端 2:B端 3:C端
         login_result: data.login_result !== undefined ? data.login_result : 1,
         remark: data.remark || data.msg,
@@ -520,7 +510,7 @@ class SysLogService extends Service {
 
       const operIp = data.operIp || data.oper_ip || ctx.ip;
       let operLocation = data.operLocation || data.oper_location;
-      
+
       if ((!operLocation || operLocation === '' || operLocation === '未知') && operIp) {
         operLocation = this.resolveIpLocation(operIp);
       }
@@ -590,53 +580,53 @@ class SysLogService extends Service {
       limit: Number(page_size),
     });
 
-      const list = [];
-      for (const item of rows) {
-        const data = item.toJSON();
-        
-        let loc = data.login_location;
-        // 如果是未知、无法解析、解析失败或者为空或者甚至带有不可见字符的未知，都重新解析
-        if (!loc || loc.trim() === '' || loc.includes('未知') || loc.includes('无法解析') || loc.includes('解析失败') || loc.includes('鏈煡')) {
-          loc = await this.resolveIpLocation(data.login_ip);
-        }
+    const list = [];
+    for (const item of rows) {
+      const data = item.toJSON();
 
-        let os = data.os;
-        let browser = data.browser;
-        let device_type = data.device_type;
-        
-        // 动态修复历史乱码数据：如果包含乱码，就重新解析 UA
-        if (!os || os.includes('未知') || os.includes('鏈煡') || !browser || browser.includes('未知') || browser.includes('鏈煡')) {
-          const parsedUa = this.resolveUserAgent(data.user_agent || '');
-          os = parsedUa.os;
-          browser = parsedUa.browser;
-          if (device_type === 4 || !device_type) {
-            device_type = parsedUa.deviceType;
-          }
-        }
-
-        list.push({
-          id: data.id,
-          log_no: data.log_no,
-          user_id: data.user_id,
-          username: data.username,
-          login_ip: data.login_ip,
-          login_location: loc,
-          device_type: device_type,
-          browser: browser,
-          os: os,
-          login_type: data.login_type,
-          login_result: data.login_result,
-          login_time: this.formatDate(data.login_time),
-          nickname: data.user ? data.user.nickname : null,
-        });
+      let loc = data.login_location;
+      // 如果是未知、无法解析、解析失败或者为空或者甚至带有不可见字符的未知，都重新解析
+      if (!loc || loc.trim() === '' || loc.includes('未知') || loc.includes('无法解析') || loc.includes('解析失败') || loc.includes('鏈煡')) {
+        loc = await this.resolveIpLocation(data.login_ip);
       }
 
-      return {
-        total: count,
-        list,
-        page: Number(page),
-        page_size: Number(page_size),
-      };
+      let os = data.os;
+      let browser = data.browser;
+      let device_type = data.device_type;
+
+      // 动态修复历史乱码数据：如果包含乱码，就重新解析 UA
+      if (!os || os.includes('未知') || os.includes('鏈煡') || !browser || browser.includes('未知') || browser.includes('鏈煡')) {
+        const parsedUa = this.resolveUserAgent(data.user_agent || '');
+        os = parsedUa.os;
+        browser = parsedUa.browser;
+        if (device_type === 4 || !device_type) {
+          device_type = parsedUa.deviceType;
+        }
+      }
+
+      list.push({
+        id: data.id,
+        log_no: data.log_no,
+        user_id: data.user_id,
+        username: data.username,
+        login_ip: data.login_ip,
+        login_location: loc,
+        device_type,
+        browser,
+        os,
+        login_type: data.login_type,
+        login_result: data.login_result,
+        login_time: this.formatDate(data.login_time),
+        nickname: data.user ? data.user.nickname : null,
+      });
+    }
+
+    return {
+      total: count,
+      list,
+      page: Number(page),
+      page_size: Number(page_size),
+    };
   }
 
   /**
@@ -712,8 +702,8 @@ class SysLogService extends Service {
         if (shop_id) {
           // A端想要查看指定店铺的登录日志 (只看该店铺的 B 端用户：店长 2 和 业务员 3)
           const shopUsers = await ctx.model.SysUser.findAll({
-            where: { shop_id: Number(shop_id), user_type: { [Op.in]: [2, 3] } },
-            attributes: ['user_id']
+            where: { shop_id: Number(shop_id), user_type: { [Op.in]: [ 2, 3 ] } },
+            attributes: [ 'user_id' ],
           });
           where.admin_id = { [Op.in]: shopUsers.map(u => u.user_id) };
         } else {
@@ -723,8 +713,8 @@ class SysLogService extends Service {
       } else { // B端
         // B端只能看本店子账号的登录日志
         const shopUsers = await ctx.model.SysUser.findAll({
-          where: { shop_id: adminUser.shop_id, user_type: { [Op.in]: [2, 3] } },
-          attributes: ['user_id']
+          where: { shop_id: adminUser.shop_id, user_type: { [Op.in]: [ 2, 3 ] } },
+          attributes: [ 'user_id' ],
         });
         where.admin_id = { [Op.in]: shopUsers.map(u => u.user_id) };
       }
@@ -740,7 +730,7 @@ class SysLogService extends Service {
     const list = [];
     for (const item of rows) {
       const data = item.toJSON();
-      
+
       let loc = data.login_location;
       if (!loc || loc === '' || loc === '未知') {
         loc = await this.resolveIpLocation(data.login_ip);
@@ -892,8 +882,8 @@ class SysLogService extends Service {
         if (shop_id) {
           // A端想要查看指定店铺的日志
           const shopUsers = await ctx.model.SysUser.findAll({
-            where: { shop_id: Number(shop_id), user_type: { [Op.in]: [2, 3] } },
-            attributes: ['user_id']
+            where: { shop_id: Number(shop_id), user_type: { [Op.in]: [ 2, 3 ] } },
+            attributes: [ 'user_id' ],
           });
           where.admin_id = { [Op.in]: shopUsers.map(u => u.user_id) };
         } else {
@@ -903,8 +893,8 @@ class SysLogService extends Service {
       } else { // B端
         // B端只能看本店的
         const shopUsers = await ctx.model.SysUser.findAll({
-          where: { shop_id: adminUser.shop_id, user_type: { [Op.in]: [2, 3] } },
-          attributes: ['user_id']
+          where: { shop_id: adminUser.shop_id, user_type: { [Op.in]: [ 2, 3 ] } },
+          attributes: [ 'user_id' ],
         });
         where.admin_id = { [Op.in]: shopUsers.map(u => u.user_id) };
       }
