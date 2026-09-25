@@ -33,7 +33,6 @@
     "egg-swagger-doc": "^2.3.2",
     "egg-validate": "^2.0.2",
     "form-data": "^4.0.6",
-    "geoip-lite": "^2.0.3",
     "google-translate-api-x": "^10.7.3",
     "lodash": "^4.17.21",
     "mysql2": "^3.9.0",
