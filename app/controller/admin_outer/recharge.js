@@ -84,6 +84,7 @@ class AdminOuterRechargeController extends Controller {
       if (item.amount) item.amount = Number(item.amount);
       if (item.fee_rate) item.fee_rate = Number(item.fee_rate);
       if (item.fee) item.fee = Number(item.fee);
+      if (item.system_receive_amount) item.system_receive_amount = Number(item.system_receive_amount);
       if (item.user_receive_amount) item.user_receive_amount = Number(item.user_receive_amount);
       return item;
     });

@@ -110,11 +110,21 @@ class MobileRechargeController extends Controller {
       order: [[ 'create_time', 'DESC' ]],
     });
 
+    const formattedList = result.rows.map(row => {
+      const item = row.toJSON();
+      if (item.amount) item.amount = Number(item.amount);
+      if (item.fee_rate) item.fee_rate = Number(item.fee_rate);
+      if (item.fee) item.fee = Number(item.fee);
+      if (item.system_receive_amount) item.system_receive_amount = Number(item.system_receive_amount);
+      if (item.user_receive_amount) item.user_receive_amount = Number(item.user_receive_amount);
+      return item;
+    });
+
     ctx.body = {
       code: 200,
       message: '获取成功',
       data: {
-        list: result.rows,
+        list: formattedList,
         total: result.count,
         page: parseInt(page),
         page_size: limit,
