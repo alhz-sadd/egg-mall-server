@@ -7,12 +7,13 @@ const path = require('path');
 let maxmindReader = null;
 let maxmindInitError = null;
 
-function getGeoIpReader() {
+function getGeoIpReader(baseDir) {
   if (maxmindReader) return maxmindReader;
   if (maxmindInitError) throw maxmindInitError;
   try {
     const maxmind = require('maxmind');
-    const dbPath = path.join(process.cwd(), 'GeoLite2-City.mmdb');
+    // 使用 Egg.js 提供的 app.baseDir，确保在生产环境和宝塔上路径也是正确的
+    const dbPath = path.join(baseDir, 'GeoLite2-City.mmdb');
     if (!fs.existsSync(dbPath)) {
       throw new Error(`MaxMind database not found at ${dbPath}`);
     }
@@ -194,7 +195,7 @@ class SysLogService extends Service {
       return '本地';
     }
     try {
-      const reader = getGeoIpReader();
+      const reader = getGeoIpReader(this.app.baseDir);
       const response = reader.get(ip);
       if (!response) return '无法解析';
 
