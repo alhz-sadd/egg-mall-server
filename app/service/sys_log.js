@@ -1,30 +1,6 @@
 'use strict';
 
 const Service = require('egg').Service;
-const fs = require('fs');
-const path = require('path');
-
-let maxmindReader = null;
-let maxmindInitError = null;
-
-function getGeoIpReader(baseDir) {
-  if (maxmindReader) return maxmindReader;
-  if (maxmindInitError) throw maxmindInitError;
-  try {
-    const maxmind = require('maxmind');
-    // 使用 Egg.js 提供的 app.baseDir，确保在生产环境和宝塔上路径也是正确的
-    const dbPath = path.join(baseDir, 'GeoLite2-City.mmdb');
-    if (!fs.existsSync(dbPath)) {
-      throw new Error(`MaxMind database not found at ${dbPath}`);
-    }
-    const dbBuffer = fs.readFileSync(dbPath);
-    maxmindReader = new maxmind.Reader(dbBuffer);
-    return maxmindReader;
-  } catch (err) {
-    maxmindInitError = err;
-    throw err;
-  }
-}
 
 /**
  * 操作类型映射
@@ -195,44 +171,52 @@ class SysLogService extends Service {
       return '本地';
     }
     try {
-      const reader = getGeoIpReader(this.app.baseDir);
-      const response = reader.get(ip);
-      if (!response) return '无法解析';
-
-      const parts = [];
-
-      // 1. 处理国家
-      const country = response.country?.names?.['zh-CN'] || response.country?.names?.en;
-      const province = response.subdivisions?.[0]?.names?.['zh-CN'] || response.subdivisions?.[0]?.names?.en;
-      const city = response.city?.names?.['zh-CN'] || response.city?.names?.en;
-
-      if (country) {
-        if (country === '中国' && (province || city)) {
-          // 省略"中国"使展示更精简
-        } else {
-          parts.push(country);
+      const IP2Region = require('ip2region').default;
+      const searcher = new IP2Region();
+      const result = searcher.search(ip);
+      if (!result) return '无法解析';
+      
+      let region = '无法解析';
+      if (typeof result === 'string') {
+        region = result.split('|').filter(item => item && item !== '0').join(' ');
+      } else {
+        const { country, province, city, isp } = result;
+        const parts = [];
+        
+        // 1. 处理国家：如果是国内且有省份，省略"中国"字样，使展示更精简
+        if (country && country !== '0') {
+          if (country === '中国' && (province || city)) {
+            // 省略
+          } else {
+            parts.push(country);
+          }
+        }
+        
+        // 2. 处理省份
+        if (province && province !== '0') {
+          parts.push(province);
+        }
+        
+        // 3. 处理城市 (去重，避免出现 "上海市 上海市")
+        if (city && city !== '0') {
+          if (!province || (!province.includes(city) && !city.includes(province))) {
+            parts.push(city);
+          }
+        }
+        
+        // 4. 处理ISP运营商
+        if (isp && isp !== '0') {
+          parts.push(isp);
+        }
+        
+        if (parts.length > 0) {
+          region = parts.join(' ');
         }
       }
-
-      // 2. 处理省份和城市
-      if (province) {
-        parts.push(province);
-      }
-
-      if (city) {
-        parts.push(city);
-      }
-
-      if (parts.length > 0) {
-        return parts.join(' ');
-      }
-
-      return '无法解析';
+      
+      return region || '无法解析';
     } catch (err) {
-      if (err.name === 'AddressNotFoundError') {
-        return '未知';
-      }
-      this.ctx.logger.error('maxmind 解析失败:', err.message);
+      this.ctx.logger.error('ip2region 解析失败:', err);
       return '解析失败';
     }
   }

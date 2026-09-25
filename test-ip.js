@@ -1,55 +1,38 @@
-const fs = require('fs');
-const path = require('path');
-const maxmind = require('maxmind');
+const IP2Region = require('ip2region').default;
+const searcher = new IP2Region();
+const result = searcher.search('104.28.69.135');
+console.log('Result:', result);
 
-const dbPath = path.join(process.cwd(), 'GeoLite2-City.mmdb');
-if (!fs.existsSync(dbPath)) {
-  console.error(`Please download GeoLite2-City.mmdb from MaxMind and place it at ${dbPath}`);
-  process.exit(1);
-}
-
-const dbBuffer = fs.readFileSync(dbPath);
-const reader = new maxmind.Reader(dbBuffer);
-
-const ip = '104.28.69.135'; // 替换为你想测试的 IP
-try {
-  const response = reader.get(ip);
-  console.log('Result:', JSON.stringify(response, null, 2));
-
-  let region = '无法解析';
+let region = '未知';
+if (typeof result === 'string') {
+  region = result.split('|').filter(item => item && item !== '0').join(' ');
+} else {
+  const { country, province, city, isp } = result;
   const parts = [];
-
-  if (response) {
-    const country = response.country?.names?.['zh-CN'] || response.country?.names?.en;
-    const province = response.subdivisions?.[0]?.names?.['zh-CN'] || response.subdivisions?.[0]?.names?.en;
-    const city = response.city?.names?.['zh-CN'] || response.city?.names?.en;
-    
-    if (country) {
-      if (country === '中国' && (province || city)) {
-        // 省略
-      } else {
-        parts.push(country);
-      }
+  
+  if (country && country !== '0') {
+    if (country === '中国' && (province || city)) {
+    } else {
+      parts.push(country);
     }
-    
-    if (province) {
-      parts.push(province);
-    }
-    
-    if (city) {
+  }
+  
+  if (province && province !== '0') {
+    parts.push(province);
+  }
+  
+  if (city && city !== '0') {
+    if (!province || (!province.includes(city) && !city.includes(province))) {
       parts.push(city);
     }
-    
-    if (parts.length > 0) {
-      region = parts.join(' ');
-    }
   }
-
-  console.log('Region:', region);
-} catch (err) {
-  if (err.name === 'AddressNotFoundError') {
-    console.log('Region: 未知 (未在数据库中找到)');
-  } else {
-    console.error('Error:', err.message);
+  
+  if (isp && isp !== '0') {
+    parts.push(isp);
+  }
+  
+  if (parts.length > 0) {
+    region = parts.join(' ');
   }
 }
+console.log('Region:', region);
