@@ -1,6 +1,29 @@
 'use strict';
 
 const Service = require('egg').Service;
+const fs = require('fs');
+const path = require('path');
+
+let maxmindReader = null;
+let maxmindInitError = null;
+
+function getGeoIpReader() {
+  if (maxmindReader) return maxmindReader;
+  if (maxmindInitError) throw maxmindInitError;
+  try {
+    const { Reader } = require('@maxmind/geoip2-node');
+    const dbPath = path.join(process.cwd(), 'GeoLite2-City.mmdb');
+    if (!fs.existsSync(dbPath)) {
+      throw new Error(`MaxMind database not found at ${dbPath}`);
+    }
+    const dbBuffer = fs.readFileSync(dbPath);
+    maxmindReader = Reader.openBuffer(dbBuffer);
+    return maxmindReader;
+  } catch (err) {
+    maxmindInitError = err;
+    throw err;
+  }
+}
 
 /**
  * 操作类型映射
@@ -171,34 +194,32 @@ class SysLogService extends Service {
       return '本地';
     }
     try {
-      const geoip = require('geoip-lite');
-      const result = geoip.lookup(ip);
-      if (!result) return '无法解析';
+      const reader = getGeoIpReader();
+      const response = reader.city(ip);
+      if (!response) return '无法解析';
 
       const parts = [];
 
       // 1. 处理国家
-      if (result.country) {
-        try {
-          const regionNames = new Intl.DisplayNames([ 'zh-CN' ], { type: 'region' });
-          const countryName = regionNames.of(result.country);
-          if (countryName === '中国' && (result.region || result.city)) {
-            // 省略"中国"使展示更精简
-          } else {
-            parts.push(countryName || result.country);
-          }
-        } catch (e) {
-          parts.push(result.country);
+      const country = response.country?.names?.['zh-CN'] || response.country?.names?.en;
+      const province = response.subdivisions?.[0]?.names?.['zh-CN'] || response.subdivisions?.[0]?.names?.en;
+      const city = response.city?.names?.['zh-CN'] || response.city?.names?.en;
+
+      if (country) {
+        if (country === '中国' && (province || city)) {
+          // 省略"中国"使展示更精简
+        } else {
+          parts.push(country);
         }
       }
 
       // 2. 处理省份和城市
-      if (result.region) {
-        parts.push(result.region);
+      if (province) {
+        parts.push(province);
       }
 
-      if (result.city) {
-        parts.push(result.city);
+      if (city) {
+        parts.push(city);
       }
 
       if (parts.length > 0) {
@@ -207,7 +228,10 @@ class SysLogService extends Service {
 
       return '无法解析';
     } catch (err) {
-      this.ctx.logger.error('geoip-lite 解析失败:', err);
+      if (err.name === 'AddressNotFoundError') {
+        return '未知';
+      }
+      this.ctx.logger.error('@maxmind/geoip2-node 解析失败:', err.message);
       return '解析失败';
     }
   }

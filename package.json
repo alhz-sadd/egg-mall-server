@@ -19,6 +19,7 @@
     "autod": "autod"
   },
   "dependencies": {
+    "@maxmind/geoip2-node": "^3.5.0",
     "axios": "^1.20.0",
     "dayjs": "^1.11.10",
     "dotenv": "^18.0.1",
