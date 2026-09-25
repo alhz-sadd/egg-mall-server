@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { Reader } = require('@maxmind/geoip2-node');
+const maxmind = require('maxmind');
 
 const dbPath = path.join(process.cwd(), 'GeoLite2-City.mmdb');
 if (!fs.existsSync(dbPath)) {
@@ -9,11 +9,11 @@ if (!fs.existsSync(dbPath)) {
 }
 
 const dbBuffer = fs.readFileSync(dbPath);
-const reader = Reader.openBuffer(dbBuffer);
+const reader = new maxmind.Reader(dbBuffer);
 
 const ip = '104.28.69.135'; // 替换为你想测试的 IP
 try {
-  const response = reader.city(ip);
+  const response = reader.get(ip);
   console.log('Result:', JSON.stringify(response, null, 2));
 
   let region = '无法解析';

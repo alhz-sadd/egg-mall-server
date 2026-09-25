@@ -11,13 +11,13 @@ function getGeoIpReader() {
   if (maxmindReader) return maxmindReader;
   if (maxmindInitError) throw maxmindInitError;
   try {
-    const { Reader } = require('@maxmind/geoip2-node');
+    const maxmind = require('maxmind');
     const dbPath = path.join(process.cwd(), 'GeoLite2-City.mmdb');
     if (!fs.existsSync(dbPath)) {
       throw new Error(`MaxMind database not found at ${dbPath}`);
     }
     const dbBuffer = fs.readFileSync(dbPath);
-    maxmindReader = Reader.openBuffer(dbBuffer);
+    maxmindReader = new maxmind.Reader(dbBuffer);
     return maxmindReader;
   } catch (err) {
     maxmindInitError = err;
@@ -195,7 +195,7 @@ class SysLogService extends Service {
     }
     try {
       const reader = getGeoIpReader();
-      const response = reader.city(ip);
+      const response = reader.get(ip);
       if (!response) return '无法解析';
 
       const parts = [];
@@ -231,7 +231,7 @@ class SysLogService extends Service {
       if (err.name === 'AddressNotFoundError') {
         return '未知';
       }
-      this.ctx.logger.error('@maxmind/geoip2-node 解析失败:', err.message);
+      this.ctx.logger.error('maxmind 解析失败:', err.message);
       return '解析失败';
     }
   }

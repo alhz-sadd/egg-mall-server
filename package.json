@@ -19,7 +19,6 @@
     "autod": "autod"
   },
   "dependencies": {
-    "@maxmind/geoip2-node": "^3.5.0",
     "axios": "^1.20.0",
     "dayjs": "^1.11.10",
     "dotenv": "^18.0.1",
@@ -36,6 +35,7 @@
     "form-data": "^4.0.6",
     "google-translate-api-x": "^10.7.3",
     "lodash": "^4.17.21",
+    "maxmind": "^5.0.7",
     "mysql2": "^3.9.0",
     "qrcode": "^1.5.4",
     "speakeasy": "^2.0.0",
