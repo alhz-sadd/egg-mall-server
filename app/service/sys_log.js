@@ -167,12 +167,28 @@ class SysLogService extends Service {
    */
   resolveIpLocation(ip) {
     if (!ip) return '未知';
+    
+    // 如果包含多个IP（例如 x-forwarded-for），取第一个
+    if (typeof ip === 'string' && ip.includes(',')) {
+      ip = ip.split(',')[0].trim();
+    }
+    
+    // 兼容 IPv6 映射的 IPv4
+    if (ip.startsWith('::ffff:')) {
+      ip = ip.substring(7);
+    }
+    
     if (ip === '127.0.0.1' || ip === '::1' || ip === 'localhost' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
       return '本地';
     }
+    
     try {
-      const IP2Region = require('ip2region').default;
-      const searcher = new IP2Region();
+      // 避免每次都读取文件导致 EMFILE 或内存溢出，将其缓存为类静态属性或全局变量
+      if (!this.app.ip2regionSearcher) {
+        const IP2Region = require('ip2region').default;
+        this.app.ip2regionSearcher = new IP2Region();
+      }
+      const searcher = this.app.ip2regionSearcher;
       const result = searcher.search(ip);
       if (!result) return '无法解析';
       
