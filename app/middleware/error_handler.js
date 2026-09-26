@@ -63,7 +63,7 @@ module.exports = () => {
         body.stack = err.stack;
       }
 
-      ctx.status = status;
+      ctx.status = 200;
       ctx.body = body;
     }
   };
