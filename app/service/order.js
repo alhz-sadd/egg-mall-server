@@ -47,24 +47,24 @@ class OrderService extends Service {
       }
     }
 
-    const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
-    let needPrice = 0;
-    const totalAmount = Number(progress.goods_price || 0);
-    
-    const userBalance = wallet ? Number(wallet.balance || 0) : 0;
-    const staticIncome = wallet ? Number(wallet.static_income || 0) : 0;
-    const dynamicIncome = wallet ? Number(wallet.dynamic_income || 0) : 0;
-    const totalBalance = userBalance + staticIncome + dynamicIncome;
-
-    if (totalAmount > totalBalance) {
-      needPrice = (totalAmount - totalBalance).toFixed(2);
-    }
-
     const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0 
       ? Number(progress.yield_rate) 
       : (taskItem && taskItem.yield_rate !== null ? Number(taskItem.yield_rate) : (shopTask ? Number(shopTask.yield_rate || 0) : 0));
     const revenueRate = yieldRate;
     const parentRevenueRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
+    
+    // 获取用户钱包信息计算不足金额
+    const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
+    const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
+    const staticIncome = userWallet ? Number(userWallet.static_income || 0) : 0;
+    const dynamicIncome = userWallet ? Number(userWallet.dynamic_income || 0) : 0;
+    const totalBalance = userBalance + staticIncome + dynamicIncome;
+    
+    let needPrice = 0;
+    const totalAmount = Number(progress.goods_price || 0);
+    if (totalAmount > totalBalance) {
+      needPrice = Number((totalAmount - totalBalance).toFixed(2));
+    }
     
     // 进度表中的 status: 0=未完成, 1=已完成
     // 映射到前端期望的 status: 0=待支付, 1=已完成
@@ -492,8 +492,8 @@ class OrderService extends Service {
 
     // 4. 获取对应的任务配置和上级信息 (用于计算动态返佣)
     const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: progress.task_item_id } });
-    const shopTask = await ctx.model.ShopTask.findByPk(taskItem.task_id);
-    const parentYieldRate = Number(shopTask.parent_yield_rate);
+    const shopTask = taskItem ? await ctx.model.ShopTask.findByPk(taskItem.task_id) : null;
+    const parentYieldRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
     const dynamicRevenue = revenue * parentYieldRate; // 动态收益(返佣给上级) = 静态收益 * 上级收益率
     const totalRevenue = revenue + orderAmount; // 结算给用户的金额(本金+静态收益)
 
@@ -516,8 +516,8 @@ class OrderService extends Service {
       // voucher_balance 增加 orderAmount + revenue
       // balance 总余额净变动为 +revenue
       
-      const currentRechargeBalance = Number(userWallet.recharge_balance || 0);
-      const currentVoucherBalance = Number(userWallet.voucher_balance || 0);
+      const currentRechargeBalance = userWallet ? Number(userWallet.recharge_balance || 0) : 0;
+      const currentVoucherBalance = userWallet ? Number(userWallet.voucher_balance || 0) : 0;
       
       let deductRecharge = 0;
       let deductVoucher = 0;
@@ -536,27 +536,30 @@ class OrderService extends Service {
       
       const voucherNetChange = (orderAmount + revenue) - deductVoucher;
 
-      await ctx.model.UserWallet.update({
-        balance: ctx.app.Sequelize.literal(`balance + ${revenue}`),
-        recharge_balance: ctx.app.Sequelize.literal(`recharge_balance - ${deductRecharge}`),
-        voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${voucherNetChange}`),
-        static_income: ctx.app.Sequelize.literal(`static_income + ${revenue}`)
-      }, {
-        where: { user_id: dbUserId },
-        transaction
-      });
+          if (userWallet) {
+            await ctx.model.UserWallet.update({
+              balance: ctx.app.Sequelize.literal(`balance + ${revenue}`),
+              recharge_balance: ctx.app.Sequelize.literal(`recharge_balance - ${deductRecharge}`),
+              voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${voucherNetChange}`),
+              static_income: ctx.app.Sequelize.literal(`static_income + ${revenue}`)
+            }, {
+              where: { user_id: dbUserId },
+              transaction
+            });
+          }
 
       // 6.1 记录用户的静态收益资金流水 (biz_type: 4)
       const fundRecordService = ctx.service.fundRecord;
       if (revenue > 0) {
+        const logNo = (fundRecordService && fundRecordService.generateTempOrderNo) ? fundRecordService.generateTempOrderNo('40') : ('40' + Date.now());
         await ctx.model.UserWalletLog.create({
           user_id: dbUserId,
-          log_no: fundRecordService.generateTempOrderNo('40'),
+          log_no: logNo,
           biz_type: 4, // 静态收益发放
           amount: revenue,
           balance_type: 1, // 默认或根据需要调整
-          before_balance: Number(userWallet.balance),
-          after_balance: Number(userWallet.balance) + revenue,
+          before_balance: userWallet ? Number(userWallet.balance || 0) : 0,
+          after_balance: (userWallet ? Number(userWallet.balance || 0) : 0) + revenue,
           related_order_id: progress.id, // 使用进度表ID作为关联
           remark: '任务订单静态收益',
           create_time: new Date()
@@ -567,7 +570,7 @@ class OrderService extends Service {
       if (revenue > 0) {
         await ctx.model.UserTaskIncomeLog.create({
           user_id: dbUserId,
-          task_id: taskItem.task_id,
+          task_id: taskItem ? taskItem.task_id : 0,
           task_item_id: progress.task_item_id,
           order_id: progress.id, // 关联的进度(订单)ID
           income_type: 1, // 1=订单任务收益
@@ -614,9 +617,10 @@ class OrderService extends Service {
           });
 
           // 7.1 记录上级的动态收益资金流水 (biz_type: 5)
+          const logNo = (fundRecordService && fundRecordService.generateTempOrderNo) ? fundRecordService.generateTempOrderNo('50') : ('50' + Date.now());
           await ctx.model.UserWalletLog.create({
             user_id: userObj.inviter_user_id,
-            log_no: fundRecordService.generateTempOrderNo('50'),
+            log_no: logNo,
             biz_type: 5, // 动态收益发放
             amount: dynamicRevenue,
             balance_type: 1,

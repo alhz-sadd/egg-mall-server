@@ -337,8 +337,17 @@ class TaskService extends Service {
     if (unpaidProgress && unpaidProgress.order_id) {
       const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: unpaidProgress.task_item_id } });
       const orderAmount = Number(unpaidProgress.goods_price);
-      const yieldRate = unpaidProgress.yield_rate !== null && Number(unpaidProgress.yield_rate) > 0 ? Number(unpaidProgress.yield_rate) : (taskItem && taskItem.yield_rate !== null ? Number(taskItem.yield_rate) : Number(shopTask.yield_rate));
-      const parentYieldRate = Number(shopTask.parent_yield_rate);
+      
+      let yieldRate = 0;
+      if (unpaidProgress.yield_rate !== null && Number(unpaidProgress.yield_rate) > 0) {
+        yieldRate = Number(unpaidProgress.yield_rate);
+      } else if (taskItem && taskItem.yield_rate !== null) {
+        yieldRate = Number(taskItem.yield_rate);
+      } else if (shopTask && shopTask.yield_rate !== null) {
+        yieldRate = Number(shopTask.yield_rate);
+      }
+      
+      const parentYieldRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
       const revenue = unpaidProgress.revenue !== null ? Number(unpaidProgress.revenue) : (orderAmount * yieldRate);
       
       let picUrl = '';
@@ -406,25 +415,33 @@ class TaskService extends Service {
     }
 
     // 6. 选取商品
-    const isLuckyOrder = nextProgress.is_lucky_order !== null ? nextProgress.is_lucky_order : currentItem.is_lucky_order;
-    const appendAmount = nextProgress.append_amount !== null ? Number(nextProgress.append_amount) : Number(currentItem.append_amount);
-    const ruleType = nextProgress.rule_type !== null ? nextProgress.rule_type : currentItem.rule_type;
-    const yieldRate = nextProgress.yield_rate !== null && Number(nextProgress.yield_rate) > 0 ? Number(nextProgress.yield_rate) : Number(shopTask.yield_rate);
+    const isLuckyOrder = nextProgress.is_lucky_order !== null ? nextProgress.is_lucky_order : (currentItem ? currentItem.is_lucky_order : 0);
+    const appendAmount = nextProgress.append_amount !== null ? Number(nextProgress.append_amount) : (currentItem ? Number(currentItem.append_amount || 0) : 0);
+    const ruleType = nextProgress.rule_type !== null ? nextProgress.rule_type : (currentItem ? currentItem.rule_type : 1);
+    
+    let yieldRate = 0;
+    if (nextProgress.yield_rate !== null && Number(nextProgress.yield_rate) > 0) {
+      yieldRate = Number(nextProgress.yield_rate);
+    } else if (currentItem && currentItem.yield_rate !== null) {
+      yieldRate = Number(currentItem.yield_rate);
+    } else if (shopTask && shopTask.yield_rate !== null) {
+      yieldRate = Number(shopTask.yield_rate);
+    }
 
     let waresModel = null;
     let goodsPrice = 0;
 
     if (ruleType === 2) {
       // 手动匹配
-      const goodsId = nextProgress.goods_id || currentItem.goods_id;
+      const goodsId = nextProgress.goods_id || (currentItem ? currentItem.goods_id : 0);
       if (goodsId) {
         waresModel = await ctx.model.GoodsTask.findOne({ where: { id: goodsId, is_deleted: 0 } });
       }
       
       if (!waresModel) {
         // 如果找不到商品，但手动匹配配置了价格和名称，也可以直接用
-        const title = nextProgress.goods_title || currentItem.goods_title || '未知商品';
-        const price = nextProgress.goods_price !== null ? Number(nextProgress.goods_price) : Number(currentItem.goods_price);
+        const title = nextProgress.goods_title || (currentItem ? currentItem.goods_title : '') || '未知商品';
+        const price = nextProgress.goods_price !== null ? Number(nextProgress.goods_price) : (currentItem ? Number(currentItem.goods_price || 0) : 0);
         waresModel = {
           id: goodsId || 0,
           goods_name: title,
@@ -532,7 +549,7 @@ class TaskService extends Service {
     const orderNo = 'T' + Date.now() + Math.floor(Math.random() * 1000);
     const cTime = new Date();
     
-    const parentYieldRate = Number(shopTask.parent_yield_rate);
+    const parentYieldRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
     const revenue = goodsPrice * yieldRate;
 
     await nextProgress.update({
