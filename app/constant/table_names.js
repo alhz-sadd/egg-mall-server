@@ -23,7 +23,6 @@ module.exports = {
   // --- 商店相关1 ---
   SHOP: 'shop', // 商店主表
   SHOP_CONFIG: 'shop_config', // 商店配置表
-  SHOP_GOODS: 'shop_goods', // 商店商品表
   SHOP_TASK: 'shop_task', // 商店任务表
   SHOP_TASK_ITEM: 'shop_task_item', // 商店任务项表
   SHOP_TASK_USER: 'shop_task_user', // 用户任务表
@@ -36,6 +35,7 @@ module.exports = {
   // --- 商品相关 ---
   GOODS: 'goods', // 商品表
   GOODS_CATEGORY: 'goods_category', // 商品分类表
+  GOODS_TASK: 'goods_task', // 任务商品表
 
   // --- 支付与充提相关 ---
   // --- 系统配置与日志 ---

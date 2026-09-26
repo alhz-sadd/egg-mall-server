@@ -267,7 +267,6 @@ class ShopService extends Service {
         'shop_config',
         'shop_vip_level',
         'shop_pay_channel',
-        'shop_goods',
         'shop_task', // 注意：这里是数据库表名，如果模型名不同需确认
         'customer_relation',
         'user_recharge',

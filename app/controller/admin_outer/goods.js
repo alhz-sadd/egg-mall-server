@@ -21,9 +21,7 @@ class AdminOuterGoodsController extends Controller {
     const where = {
       is_deleted: 0,
       status: 1, // 只获取上架的商品
-      // 实际上目前 shop_goods 表里没有 shop_id 字段，商品可能是平台公共的。
       // 如果您的业务逻辑是所有店铺共享一套商品池，则不需要加 shop_id 过滤。
-      // 如果后续 shop_goods 增加了 shop_id，请在这里加上 where.shop_id = adminOuter.shop_id
     };
 
     if (keyword) {

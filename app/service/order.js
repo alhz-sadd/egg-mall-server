@@ -39,23 +39,25 @@ class OrderService extends Service {
 
     const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: progress.task_item_id } });
     const shopTask = taskItem ? await ctx.model.ShopTask.findByPk(taskItem.task_id) : null;
-    const goods = progress.goods_id ? await ctx.model.Goods.findByPk(progress.goods_id) : null;
+    const goods = progress.goods_id ? await ctx.model.GoodsTask.findOne({ where: { id: progress.goods_id } }) : null;
     let picUrl = '';
     if (goods) {
-      if (goods.images && Array.isArray(goods.images) && goods.images.length > 0) {
-        picUrl = goods.images[0];
-      } else if (goods.cover_image) {
-        picUrl = goods.cover_image;
+      if (goods.goods_images && Array.isArray(goods.goods_images) && goods.goods_images.length > 0) {
+        picUrl = goods.goods_images[0];
       }
     }
 
     const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
     let needPrice = 0;
     const totalAmount = Number(progress.goods_price || 0);
-    const balance = Number(wallet ? wallet.balance : 0);
+    
+    const userBalance = wallet ? Number(wallet.balance || 0) : 0;
+    const staticIncome = wallet ? Number(wallet.static_income || 0) : 0;
+    const dynamicIncome = wallet ? Number(wallet.dynamic_income || 0) : 0;
+    const totalBalance = userBalance + staticIncome + dynamicIncome;
 
-    if (totalAmount > balance) {
-      needPrice = (totalAmount - balance).toFixed(2);
+    if (totalAmount > totalBalance) {
+      needPrice = (totalAmount - totalBalance).toFixed(2);
     }
 
     const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0 
@@ -224,12 +226,12 @@ class OrderService extends Service {
     // 并行批量查询所需的关联数据
     const [taskItemsList, goodsList] = await Promise.all([
       taskItemIds.length > 0 ? ctx.model.ShopTaskItem.findAll({ where: { item_id: taskItemIds } }) : [],
-      goodsIds.length > 0 ? ctx.model.Goods.findAll({ where: { goods_id: goodsIds } }) : []
+      goodsIds.length > 0 ? ctx.model.GoodsTask.findAll({ where: { id: goodsIds } }) : []
     ]);
 
     // 构建映射字典 (Map)，提高查找效率 O(1)
     const taskItemMap = new Map(taskItemsList.map(item => [item.item_id, item]));
-    const goodsMap = new Map(goodsList.map(g => [g.goods_id, g]));
+    const goodsMap = new Map(goodsList.map(g => [g.id, g]));
 
     // 收集所需的 task_id 再次批量查询 ShopTask
     const taskIds = [...new Set(taskItemsList.map(item => item.task_id).filter(id => id))];
@@ -243,10 +245,8 @@ class OrderService extends Service {
       const goods = progress.goods_id ? goodsMap.get(progress.goods_id) || null : null;
       let picUrl = '';
       if (goods) {
-        if (goods.images && Array.isArray(goods.images) && goods.images.length > 0) {
-          picUrl = goods.images[0];
-        } else if (goods.cover_image) {
-          picUrl = goods.cover_image;
+        if (goods.goods_images && Array.isArray(goods.goods_images) && goods.goods_images.length > 0) {
+          picUrl = goods.goods_images[0];
         }
       }
       
@@ -389,13 +389,11 @@ class OrderService extends Service {
 
     const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: progress.task_item_id } });
     const shopTask = taskItem ? await ctx.model.ShopTask.findByPk(taskItem.task_id) : null;
-    const goods = progress.goods_id ? await ctx.model.Goods.findByPk(progress.goods_id) : null;
+    const goods = progress.goods_id ? await ctx.model.GoodsTask.findOne({ where: { id: progress.goods_id } }) : null;
     let picUrl = '';
     if (goods) {
-      if (goods.images && Array.isArray(goods.images) && goods.images.length > 0) {
-        picUrl = goods.images[0];
-      } else if (goods.cover_image) {
-        picUrl = goods.cover_image;
+      if (goods.goods_images && Array.isArray(goods.goods_images) && goods.goods_images.length > 0) {
+        picUrl = goods.goods_images[0];
       }
     }
 
@@ -409,9 +407,13 @@ class OrderService extends Service {
     // 获取用户钱包信息计算不足金额
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
     const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
+    const staticIncome = userWallet ? Number(userWallet.static_income || 0) : 0;
+    const dynamicIncome = userWallet ? Number(userWallet.dynamic_income || 0) : 0;
+    const totalBalance = userBalance + staticIncome + dynamicIncome;
+    
     let needPrice = 0;
-    if (totalAmount > userBalance) {
-      needPrice = Number((totalAmount - userBalance).toFixed(2));
+    if (totalAmount > totalBalance) {
+      needPrice = Number((totalAmount - totalBalance).toFixed(2));
     }
 
     let mappedStatus = 0;
@@ -475,8 +477,11 @@ class OrderService extends Service {
     // 3. 校验余额是否足够扣除
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
     
-    // 支付订单，用 balance 总余额就可以
-    const actualBalance = userWallet ? Number(userWallet.balance || 0) : 0;
+    // 支付订单，使用所有非冻结资产（余额 + 静态收益 + 动态收益）
+    const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
+    const staticIncome = userWallet ? Number(userWallet.static_income || 0) : 0;
+    const dynamicIncome = userWallet ? Number(userWallet.dynamic_income || 0) : 0;
+    const actualBalance = userBalance + staticIncome + dynamicIncome;
 
     // 增加调试日志
     ctx.logger.info(`[支付订单] userId: ${dbUserId}, orderAmount: ${orderAmount}, actualBalance: ${actualBalance}, userWallet: ${JSON.stringify(userWallet)}`);

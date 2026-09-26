@@ -323,13 +323,8 @@ class MerchantController extends Controller {
       total_recharge_count = count || 0;
     }
 
-    // 店铺商品数量
+    // 店铺商品数量 (已废弃 shop_goods)
     let product_count = 0;
-    if (ctx.model.ShopGoods) {
-      product_count = await ctx.model.ShopGoods.count({
-        where: { shop_id: shopId },
-      });
-    }
 
     // 任务数量
     let task_count = 0;

@@ -132,7 +132,14 @@ class UserController extends Controller {
 
     // 补充用户余额
     const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
-    user.balance = wallet ? wallet.balance : 0;
+    if (wallet) {
+      const userBalance = Number(wallet.balance || 0);
+      const staticIncome = Number(wallet.static_income || 0);
+      const dynamicIncome = Number(wallet.dynamic_income || 0);
+      user.balance = userBalance + staticIncome + dynamicIncome;
+    } else {
+      user.balance = 0;
+    }
 
     ctx.body = {
       code: 200,

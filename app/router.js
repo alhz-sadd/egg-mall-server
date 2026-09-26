@@ -265,6 +265,13 @@ module.exports = app => {
   router.put('/api/admin-inner/goods/:id', adminInnerAuth, controller.adminInner.goods.update);
   router.delete('/api/admin-inner/goods/:id', adminInnerAuth, controller.adminInner.goods.destroy);
 
+  // admin-inner 任务商品 (单独独立的表 goods_task)
+  router.get('/api/admin-inner/goods-task', adminInnerAuth, controller.adminInner.goodsTask.index);
+  router.get('/api/admin-inner/goods-task/:id', adminInnerAuth, controller.adminInner.goodsTask.show);
+  router.post('/api/admin-inner/goods-task', adminInnerAuth, controller.adminInner.goodsTask.create);
+  router.put('/api/admin-inner/goods-task/:id', adminInnerAuth, controller.adminInner.goodsTask.update);
+  router.delete('/api/admin-inner/goods-task/:id', adminInnerAuth, controller.adminInner.goodsTask.destroy);
+
   // admin-inner 员工
   router.get('/api/admin-inner/employees', adminInnerAuth, controller.adminInner.employee.index);
   router.get('/api/admin-inner/employees/:id', adminInnerAuth, controller.adminInner.employee.show);

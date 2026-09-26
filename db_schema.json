@@ -706,89 +706,6 @@
     ]
   },
   {
-    "table": "shop_goods",
-    "columns": [
-      {
-        "field": "goods_id",
-        "type": "bigint(20)",
-        "key": "PRI",
-        "comment": ""
-      },
-      {
-        "field": "shop_id",
-        "type": "bigint(20)",
-        "key": "",
-        "comment": ""
-      },
-      {
-        "field": "goods_name",
-        "type": "varchar(255)",
-        "key": "",
-        "comment": ""
-      },
-      {
-        "field": "goods_type",
-        "type": "tinyint(4)",
-        "key": "MUL",
-        "comment": "1普通商品 2任务商品"
-      },
-      {
-        "field": "price",
-        "type": "decimal(16,2)",
-        "key": "",
-        "comment": ""
-      },
-      {
-        "field": "cover_image",
-        "type": "varchar(255)",
-        "key": "",
-        "comment": ""
-      },
-      {
-        "field": "redirect_url",
-        "type": "varchar(500)",
-        "key": "",
-        "comment": ""
-      },
-      {
-        "field": "status",
-        "type": "tinyint(4)",
-        "key": "MUL",
-        "comment": ""
-      },
-      {
-        "field": "create_time",
-        "type": "datetime",
-        "key": "",
-        "comment": ""
-      },
-      {
-        "field": "update_time",
-        "type": "datetime",
-        "key": "",
-        "comment": ""
-      },
-      {
-        "field": "category_id",
-        "type": "bigint(20)",
-        "key": "MUL",
-        "comment": "关联 goods_category.category_id"
-      },
-      {
-        "field": "is_deleted",
-        "type": "tinyint(4)",
-        "key": "",
-        "comment": "软删除：0正常，1删除"
-      },
-      {
-        "field": "goods_no",
-        "type": "varchar(64)",
-        "key": "MUL",
-        "comment": "商品编码"
-      }
-    ]
-  },
-  {
     "table": "shop_pay_channel",
     "columns": [
       {
@@ -2792,6 +2709,59 @@
         "type": "datetime",
         "key": "",
         "comment": ""
+      }
+    ]
+  },
+  {
+    "table": "goods_task",
+    "columns": [
+      {
+        "field": "id",
+        "type": "bigint(20)",
+        "key": "PRI",
+        "comment": "主键自增"
+      },
+      {
+        "field": "goods_name",
+        "type": "varchar(255)",
+        "key": "",
+        "comment": "商品名称"
+      },
+      {
+        "field": "goods_price",
+        "type": "decimal(12,2)",
+        "key": "",
+        "comment": "商品价格"
+      },
+      {
+        "field": "goods_images",
+        "type": "text",
+        "key": "",
+        "comment": "多张图JSON数组"
+      },
+      {
+        "field": "status",
+        "type": "tinyint(4)",
+        "key": "MUL",
+        "comment": "0下架/禁用，1上架/启用"
+      },
+      {
+        "field": "create_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "创建时间"
+      },
+      {
+        "field": "update_time",
+        "type": "datetime",
+        "key": "",
+        "comment": "更新时间"
+      },
+      {
+        "field": "is_deleted",
+        "type": "tinyint(4)",
+        "key": "",
+        "comment": "软删除 0正常 1删除"
       }
     ]
   }

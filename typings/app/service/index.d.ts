@@ -22,6 +22,7 @@ import ExportCustomerService = require('../../../app/service/customer_service');
 import ExportDashboard = require('../../../app/service/dashboard');
 import ExportFundRecord = require('../../../app/service/fund_record');
 import ExportGoods = require('../../../app/service/goods');
+import ExportGoodsTask = require('../../../app/service/goods_task');
 import ExportH5Config = require('../../../app/service/h5_config');
 import ExportH5Service = require('../../../app/service/h5_service');
 import ExportNotice = require('../../../app/service/notice');
@@ -68,6 +69,7 @@ declare module 'egg' {
     dashboard: AutoInstanceType<typeof ExportDashboard>;
     fundRecord: AutoInstanceType<typeof ExportFundRecord>;
     goods: AutoInstanceType<typeof ExportGoods>;
+    goodsTask: AutoInstanceType<typeof ExportGoodsTask>;
     h5Config: AutoInstanceType<typeof ExportH5Config>;
     h5Service: AutoInstanceType<typeof ExportH5Service>;
     notice: AutoInstanceType<typeof ExportNotice>;

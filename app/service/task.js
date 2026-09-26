@@ -239,9 +239,17 @@ class TaskService extends Service {
       }
     }
 
+    let hasMoney = 0;
+    if (userWallet) {
+      const balance = Number(userWallet.balance || 0);
+      const staticIncome = Number(userWallet.static_income || 0);
+      const dynamicIncome = Number(userWallet.dynamic_income || 0);
+      hasMoney = balance + staticIncome + dynamicIncome;
+    }
+
     return {
       freeze_voucher_balance: userWallet ? Number(userWallet.freeze_voucher_balance || 0).toFixed(2) : '0.00', // 冻结金额
-      has_money: userWallet ? Number(userWallet.balance).toFixed(2) : '0.00',
+      has_money: hasMoney.toFixed(2),
       num: sumNum, // 当前任务总数量
       over_num: overNum || 0,
       revenue_today: todayIncomeVal.toFixed(2), // 今日收益
@@ -265,10 +273,15 @@ class TaskService extends Service {
     }
     
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
-    const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
     
-    // 任务门槛和商品匹配，都使用总余额 balance
-    const totalBalance = userBalance;
+    // 任务门槛和商品匹配，使用用户所有非冻结资产
+    // balance 包含了 voucher_balance(代金) 和 recharge_balance(充值)
+    // 所以总非冻结资产 = balance + static_income(静态收益) + dynamic_income(动态收益)
+    const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
+    const staticIncome = userWallet ? Number(userWallet.static_income || 0) : 0;
+    const dynamicIncome = userWallet ? Number(userWallet.dynamic_income || 0) : 0;
+    
+    const totalBalance = userBalance + staticIncome + dynamicIncome;
 
     // 2. 检查是否有开启的任务
     const shopTaskUser = await ctx.model.ShopTaskUser.findOne({
@@ -330,12 +343,10 @@ class TaskService extends Service {
       
       let picUrl = '';
       if (unpaidProgress.goods_id) {
-        const unpaidGoods = await ctx.model.Goods.findOne({ where: { goods_id: unpaidProgress.goods_id } });
+        const unpaidGoods = await ctx.model.GoodsTask.findOne({ where: { id: unpaidProgress.goods_id } });
         if (unpaidGoods) {
-          if (unpaidGoods.images && Array.isArray(unpaidGoods.images) && unpaidGoods.images.length > 0) {
-            picUrl = unpaidGoods.images[0];
-          } else if (unpaidGoods.cover_image) {
-            picUrl = unpaidGoods.cover_image;
+          if (unpaidGoods.goods_images && Array.isArray(unpaidGoods.goods_images) && unpaidGoods.goods_images.length > 0) {
+            picUrl = unpaidGoods.goods_images[0];
           }
         }
       }
@@ -407,7 +418,7 @@ class TaskService extends Service {
       // 手动匹配
       const goodsId = nextProgress.goods_id || currentItem.goods_id;
       if (goodsId) {
-        waresModel = await ctx.model.Goods.findOne({ where: { goods_id: goodsId, is_deleted: 0 } });
+        waresModel = await ctx.model.GoodsTask.findOne({ where: { id: goodsId, is_deleted: 0 } });
       }
       
       if (!waresModel) {
@@ -415,13 +426,13 @@ class TaskService extends Service {
         const title = nextProgress.goods_title || currentItem.goods_title || '未知商品';
         const price = nextProgress.goods_price !== null ? Number(nextProgress.goods_price) : Number(currentItem.goods_price);
         waresModel = {
-          goods_id: goodsId || 0,
+          id: goodsId || 0,
           goods_name: title,
-          price: price,
-          cover_image: ''
+          goods_price: price,
+          goods_images: []
         };
       }
-      goodsPrice = Number(waresModel.price);
+      goodsPrice = Number(waresModel.goods_price);
     } else {
       // 智能匹配
       const usedProgresses = await ctx.model.ShopTaskUserItemProgress.findAll({
@@ -441,24 +452,24 @@ class TaskService extends Service {
         let goodsWhere = {
           status: 1,
           is_deleted: 0,
-          price: { [Op.gte]: targetPrice }
+          goods_price: { [Op.gte]: targetPrice }
         };
 
         if (usedGoodsIds.length > 0) {
-          goodsWhere.goods_id = { [Op.notIn]: usedGoodsIds };
+          goodsWhere.id = { [Op.notIn]: usedGoodsIds };
         }
 
-        waresModel = await ctx.model.Goods.findOne({
+        waresModel = await ctx.model.GoodsTask.findOne({
           where: goodsWhere,
-          order: [['price', 'ASC']] // 取大于等于目标价中最便宜的（最接近目标价）
+          order: [['goods_price', 'ASC']] // 取大于等于目标价中最便宜的（最接近目标价）
         });
 
         if (!waresModel && usedGoodsIds.length > 0) {
           // 去重后没商品了，允许新一轮搜索
-          delete goodsWhere.goods_id;
-          waresModel = await ctx.model.Goods.findOne({
+          delete goodsWhere.id;
+          waresModel = await ctx.model.GoodsTask.findOne({
             where: goodsWhere,
-            order: [['price', 'ASC']]
+            order: [['goods_price', 'ASC']]
           });
         }
 
@@ -469,42 +480,51 @@ class TaskService extends Service {
         // 强行把商品价格修改为 余额 + 追加金额
         goodsPrice = targetPrice;
       } else {
-        // 普通订单：搜索 余额-100 到 余额 之间的商品
-        let targetGoodsPriceMax = totalBalance;
-        let targetGoodsPriceMin = Math.max(0, targetGoodsPriceMax - 100);
+        // 普通订单：搜索 余额*最小使用率 到 余额*最大使用率 之间的商品
+        const balanceMinRate = shopTask.balance_min_rate !== null ? Number(shopTask.balance_min_rate) : 0;
+        const balanceMaxRate = shopTask.balance_max_rate !== null ? Number(shopTask.balance_max_rate) : 1;
+        
+        let targetGoodsPriceMin = totalBalance * balanceMinRate;
+        let targetGoodsPriceMax = totalBalance * balanceMaxRate;
+
+        if (targetGoodsPriceMin > targetGoodsPriceMax) {
+          const temp = targetGoodsPriceMin;
+          targetGoodsPriceMin = targetGoodsPriceMax;
+          targetGoodsPriceMax = temp;
+        }
 
         let goodsWhere = {
           status: 1,
           is_deleted: 0,
-          price: { 
+          goods_price: { 
             [Op.gte]: targetGoodsPriceMin,
             [Op.lte]: targetGoodsPriceMax 
           }
         };
 
         if (usedGoodsIds.length > 0) {
-          goodsWhere.goods_id = { [Op.notIn]: usedGoodsIds };
+          goodsWhere.id = { [Op.notIn]: usedGoodsIds };
         }
 
-        waresModel = await ctx.model.Goods.findOne({
+        waresModel = await ctx.model.GoodsTask.findOne({
           where: goodsWhere,
           order: Sequelize.literal('RAND()')
         });
 
         if (!waresModel && usedGoodsIds.length > 0) {
-          // 该档位去重后没商品了，说明都出现过了，允许新一轮搜索
-          delete goodsWhere.goods_id;
-          waresModel = await ctx.model.Goods.findOne({
+          // 该区间去重后没商品了，说明都出现过了，或者只有这一份商品，允许新一轮搜索
+          delete goodsWhere.id;
+          waresModel = await ctx.model.GoodsTask.findOne({
             where: goodsWhere,
             order: Sequelize.literal('RAND()')
           });
         }
 
         if (!waresModel) {
-          ctx.throw(500, `暂无匹配的商品可接取，未找到价格在 ${targetGoodsPriceMin} - ${targetGoodsPriceMax} 之间的商品，请联系客服添加商品`);
+          ctx.throw(500, `暂无匹配的商品可接取，未找到价格在 ${targetGoodsPriceMin.toFixed(2)} - ${targetGoodsPriceMax.toFixed(2)} 之间的商品，请联系客服添加商品`);
         }
 
-        goodsPrice = Number(waresModel.price);
+        goodsPrice = Number(waresModel.goods_price);
       }
     }
 
@@ -517,7 +537,7 @@ class TaskService extends Service {
 
     await nextProgress.update({
       order_id: orderNo,
-      goods_id: waresModel.goods_id,
+      goods_id: waresModel.id,
       goods_price: goodsPrice,
       goods_title: waresModel.goods_name,
       revenue: revenue,
@@ -528,15 +548,13 @@ class TaskService extends Service {
 
     let picUrl = '';
     if (waresModel) {
-      if (waresModel.images && Array.isArray(waresModel.images) && waresModel.images.length > 0) {
-        picUrl = waresModel.images[0];
-      } else if (waresModel.cover_image) {
-        picUrl = waresModel.cover_image;
+      if (waresModel.goods_images && Array.isArray(waresModel.goods_images) && waresModel.goods_images.length > 0) {
+        picUrl = waresModel.goods_images[0];
       }
     }
 
     const wares = {
-      goods_id: waresModel.goods_id,
+      goods_id: waresModel.id,
       wares_name: waresModel.goods_name,
       total_price: goodsPrice,
       pic_url: picUrl

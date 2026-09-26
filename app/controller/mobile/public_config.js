@@ -99,7 +99,7 @@ class PublicConfigController extends Controller {
     const limit = parseInt(pageSize, 10) || 10;
     const offset = (parseInt(page, 10) - 1) * limit;
 
-    const { count, rows } = await ctx.model.ShopGoods.findAndCountAll({
+    const { count, rows } = await ctx.model.Goods.findAndCountAll({
       where,
       attributes: [ 'goods_id', 'goods_name', 'cover_image', 'price', 'goods_type' ],
       order: orderClause,

@@ -11,6 +11,7 @@ import ExportAdminInnerCustomerService = require('../../../app/controller/admin_
 import ExportAdminInnerDashboard = require('../../../app/controller/admin_inner/dashboard');
 import ExportAdminInnerEmployee = require('../../../app/controller/admin_inner/employee');
 import ExportAdminInnerGoods = require('../../../app/controller/admin_inner/goods');
+import ExportAdminInnerGoodsTask = require('../../../app/controller/admin_inner/goods_task');
 import ExportAdminInnerH5Config = require('../../../app/controller/admin_inner/h5_config');
 import ExportAdminInnerH5Service = require('../../../app/controller/admin_inner/h5_service');
 import ExportAdminInnerLoginLog = require('../../../app/controller/admin_inner/login_log');
@@ -84,6 +85,7 @@ declare module 'egg' {
       dashboard: ExportAdminInnerDashboard;
       employee: ExportAdminInnerEmployee;
       goods: ExportAdminInnerGoods;
+      goodsTask: ExportAdminInnerGoodsTask;
       h5Config: ExportAdminInnerH5Config;
       h5Service: ExportAdminInnerH5Service;
       loginLog: ExportAdminInnerLoginLog;
