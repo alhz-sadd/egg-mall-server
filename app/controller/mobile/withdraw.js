@@ -80,11 +80,11 @@ class MobileWithdrawController extends Controller {
     // 检查用户任务状态
     const Op = this.app.Sequelize.Op;
     
-    // 1. 是否有进行中的任务 (task_status 为 0 或 1)
+    // 1. 是否有进行中的任务 (status 为 0 或 1)
     const activeTask = await ctx.model.ShopTaskUser.findOne({
       where: {
         user_id: userId,
-        task_status: { [Op.in]: [0, 1] }
+        status: { [Op.in]: [0, 1] }
       }
     });
 
@@ -102,7 +102,7 @@ class MobileWithdrawController extends Controller {
       const completedTask = await ctx.model.ShopTaskUser.findOne({
         where: {
           user_id: userId,
-          task_status: 2
+          status: 2
         }
       });
 
