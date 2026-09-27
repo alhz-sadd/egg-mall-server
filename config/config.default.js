@@ -52,7 +52,7 @@ module.exports = appInfo => {
     tmpdir: path.join(appInfo.baseDir, 'run/multipart-tmp'),
   };
   config.cluster = {
-    workers: 1, // 开启 4 个 worker 进程
+    workers: 2, // 开启 4 个 worker 进程
   };
   // OSS 配置
   config.oss = {
