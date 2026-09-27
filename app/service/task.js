@@ -438,18 +438,25 @@ class TaskService extends Service {
         waresModel = await ctx.model.GoodsTask.findOne({ where: { id: goodsId, is_deleted: 0 } });
       }
 
+      const configuredPrice = nextProgress.goods_price !== null ? Number(nextProgress.goods_price) : (currentItem ? Number(currentItem.goods_price || 0) : 0);
+
       if (!waresModel) {
         // 如果找不到商品，但手动匹配配置了价格和名称，也可以直接用
         const title = nextProgress.goods_title || (currentItem ? currentItem.goods_title : '') || '未知商品';
-        const price = nextProgress.goods_price !== null ? Number(nextProgress.goods_price) : (currentItem ? Number(currentItem.goods_price || 0) : 0);
         waresModel = {
           id: goodsId || 0,
           goods_name: title,
-          goods_price: price,
+          goods_price: configuredPrice,
           goods_images: [],
         };
       }
+      
       goodsPrice = Number(waresModel.goods_price);
+      
+      // 如果是幸运订单且是手动选择，商品价格要根据设置好的价格(configuredPrice)，而不是商品原价
+      if (isLuckyOrder === 1 && configuredPrice > 0) {
+        goodsPrice = configuredPrice;
+      }
     } else {
       // 智能匹配
       const usedProgresses = await ctx.model.ShopTaskUserItemProgress.findAll({
@@ -463,13 +470,19 @@ class TaskService extends Service {
       const usedGoodsIds = usedProgresses.map(p => p.goods_id);
 
       if (isLuckyOrder === 1 && appendAmount > 0) {
-        // 幸运订单且有追加金额：搜索价格 >= (余额+追加金额) 的商品，取最接近的
-        const targetPrice = totalBalance + appendAmount;
+        // 幸运订单且有追加金额：搜索价格在 (余额) 到 (余额+追加金额) 之间的商品，取价格最高的
+        const targetPriceMin = totalBalance;
+        const targetPriceMax = totalBalance + appendAmount;
+        
+        ctx.logger.info(`[TaskService.search] 幸运订单商品匹配 -> userId: ${userId}, 余额: ${totalBalance}, 追加金额: ${appendAmount}, 搜索区间: ${targetPriceMin} - ${targetPriceMax}`);
 
         const goodsWhere = {
           status: 1,
           is_deleted: 0,
-          goods_price: { [Op.gte]: targetPrice },
+          goods_price: {
+            [Op.gte]: targetPriceMin,
+            [Op.lte]: targetPriceMax,
+          },
         };
 
         if (usedGoodsIds.length > 0) {
@@ -478,7 +491,7 @@ class TaskService extends Service {
 
         waresModel = await ctx.model.GoodsTask.findOne({
           where: goodsWhere,
-          order: [[ 'goods_price', 'ASC' ]], // 取大于等于目标价中最便宜的（最接近目标价）
+          order: [[ 'goods_price', 'DESC' ]], // 取价格最高的一份商品
         });
 
         if (!waresModel && usedGoodsIds.length > 0) {
@@ -486,16 +499,16 @@ class TaskService extends Service {
           delete goodsWhere.id;
           waresModel = await ctx.model.GoodsTask.findOne({
             where: goodsWhere,
-            order: [[ 'goods_price', 'ASC' ]],
+            order: [[ 'goods_price', 'DESC' ]],
           });
         }
 
         if (!waresModel) {
-          ctx.throw(500, `暂无匹配的商品可接取，未找到价格大于等于 ${targetPrice} 的商品，请联系客服添加商品`);
+          ctx.throw(500, `暂无匹配的商品可接取，未找到价格在 ${targetPriceMin.toFixed(2)} - ${targetPriceMax.toFixed(2)} 之间的商品，请联系客服添加商品`);
         }
 
-        // 强行把商品价格修改为 余额 + 追加金额
-        goodsPrice = targetPrice;
+        // 强行把商品价格修改为 用户余额 + 加上追加的金额
+        goodsPrice = targetPriceMax;
       } else {
         // 普通订单：搜索 余额*最小使用率 到 余额*最大使用率 之间的商品
         const balanceMinRate = shopTask.balance_min_rate !== null ? Number(shopTask.balance_min_rate) : 0;
