@@ -348,7 +348,7 @@ class AdminOuterCustomerService extends Service {
     const { rows, count } = await ctx.model.SysUser.findAndCountAll({
       where,
       include: include.length > 0 ? include : undefined,
-      attributes: [ 'user_id', 'username', 'nickname', 'phone', 'avatar', 'status', 'create_time', 'remark', 'inviter_user_id', 'last_login_ip', 'last_login_time', 'is_real_user', 'user_type', 'vip_level' ],
+      attributes: [ 'user_id', 'username', 'nickname', 'phone', 'avatar', 'status', 'create_time', 'remark', 'inviter_user_id', 'last_login_ip', 'last_login_time', 'is_real_user', 'user_type', 'vip_level', 'withdrawal_status', 'temp_withdraw_status' ],
       order,
       limit: page_size,
       offset: (page - 1) * page_size,
@@ -578,8 +578,8 @@ class AdminOuterCustomerService extends Service {
         total_recharge_count: rechargeCountMap[row.user_id] || 0,
         first_recharge_amount: firstRechargeInfo.amount !== undefined ? Number(firstRechargeInfo.amount).toFixed(2) : null,
         first_recharge_time: firstRechargeInfo.time || null,
-        allow_withdraw: 1,
-        temp_withdraw_status: 1,
+        withdrawal_status: row.withdrawal_status, // 统一使用数据库字段名
+        temp_withdraw_status: row.temp_withdraw_status, // 统一使用数据库字段名
         total_withdraw_amount: (withdrawAmountMap[row.user_id] || 0).toFixed(2),
         total_withdraw_count: withdrawCountMap[row.user_id] || 0,
         
@@ -651,6 +651,8 @@ class AdminOuterCustomerService extends Service {
         is_recharged: 0,
         is_real_user: 1, // 真实注册用户
         create_user_id: operatorId, // 记录创建人
+        withdrawal_status: 1, // 默认可提现
+        temp_withdraw_status: 0, // 默认不开启临时提现
       }, { transaction });
 
       // 根据新生成的 user_id 生成基于ID的邀请码
@@ -742,12 +744,41 @@ class AdminOuterCustomerService extends Service {
         operResult.push(`真实用户状态修改为: ${sysUserUpdate.is_real_user}`);
       }
       
+      // 新增：支持修改 提现状态 (withdrawal_status) 和 临时提现状态 (temp_withdraw_status)
+      if (payload.withdrawal_status !== undefined) {
+        sysUserUpdate.withdrawal_status = payload.withdrawal_status === true || payload.withdrawal_status === 'true' || payload.withdrawal_status === 1 || payload.withdrawal_status === '1' ? 1 : 0;
+        operResult.push(`提现状态修改为: ${sysUserUpdate.withdrawal_status}`);
+      } else if (payload.allow_withdraw !== undefined) {
+        sysUserUpdate.withdrawal_status = payload.allow_withdraw === true || payload.allow_withdraw === 'true' || payload.allow_withdraw === 1 || payload.allow_withdraw === '1' ? 1 : 0;
+        operResult.push(`提现状态修改为: ${sysUserUpdate.withdrawal_status}`);
+      }
+      
+      if (payload.temp_withdraw_status !== undefined) {
+        sysUserUpdate.temp_withdraw_status = payload.temp_withdraw_status === true || payload.temp_withdraw_status === 'true' || payload.temp_withdraw_status === 1 || payload.temp_withdraw_status === '1' ? 1 : 0;
+        operResult.push(`临时提现状态修改为: ${sysUserUpdate.temp_withdraw_status}`);
+      }
+
       // 过滤敏感字段，防止越权修改
       delete sysUserUpdate.user_id;
       delete sysUserUpdate.invite_code;
 
       if (Object.keys(sysUserUpdate).length > 0) {
-        await user.update(sysUserUpdate, { transaction });
+        // 由于 Sequelize 的实例缓存机制，对于从缓存或关联查出来的模型，直接调用 user.update 有时不会触发真实 SQL，我们改用原生 query 强行写入数据库
+        const updateFields = [];
+        const replacements = { user_id: userId };
+        
+        for (const key in sysUserUpdate) {
+          updateFields.push(`${key} = :${key}`);
+          replacements[key] = sysUserUpdate[key];
+        }
+        
+        const sql = `UPDATE sys_user SET ${updateFields.join(', ')} WHERE user_id = :user_id`;
+        
+        await ctx.model.query(sql, {
+          replacements,
+          type: ctx.model.Sequelize.QueryTypes.UPDATE,
+          transaction,
+        });
       }
 
       // 4. 修改 customer_stat 的提现配置 (deprecated)

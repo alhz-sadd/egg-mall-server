@@ -87,6 +87,13 @@ class AdminOuterTaskController extends Controller {
     const taskJson = task.toJSON();
     const items = taskJson.items || [];
     
+    // 如果子项是普通订单或者没有独立设置收益率，将其回显为主任务的收益率
+    items.forEach(item => {
+      if (item.is_lucky_order === 0 || item.yield_rate === null || item.yield_rate === undefined) {
+        item.yield_rate = taskJson.yield_rate;
+      }
+    });
+    
     ctx.body = {
       code: 200,
       message: '获取成功',
@@ -253,6 +260,23 @@ class AdminOuterTaskController extends Controller {
       // 更新主任务信息
       updatedTask = await task.update(payload, { transaction });
 
+      // 如果更新了主任务的收益率，需要同步更新所有“普通订单”子项的收益率
+      if (payload.yield_rate !== undefined) {
+        await ctx.model.ShopTaskItem.update(
+          { yield_rate: payload.yield_rate },
+          { 
+            where: { 
+              task_id: id, 
+              [ctx.app.Sequelize.Op.or]: [
+                { is_lucky_order: 0 },
+                { yield_rate: null }
+              ]
+            }, 
+            transaction 
+          }
+        );
+      }
+
       await transaction.commit();
 
       ctx.body = {
@@ -345,6 +369,9 @@ class AdminOuterTaskController extends Controller {
       payload.goods_price = 0;
       payload.goods_title = '';
       payload.goods_id = null;
+    } else if (payload.yield_rate === null || payload.yield_rate === undefined) {
+      // 即使是幸运订单，如果没有单独设置收益率，也默认使用主任务的收益率
+      payload.yield_rate = item.task.yield_rate;
     }
 
     await item.update(payload);
@@ -421,6 +448,23 @@ class AdminOuterTaskController extends Controller {
 
     const updateData = { ...payload };
     delete updateData.user_id; // 不更新 user_id
+    
+    // 如果修改为普通订单，或者没有传单独的收益率，尝试同步为主任务的收益率
+    if (updateData.is_lucky_order === 0) {
+      // 尝试获取主任务收益率进行同步
+      const bindRecord = await ctx.model.ShopTaskUser.findByPk(itemProgress.shop_task_user_id);
+      if (bindRecord) {
+        const task = await ctx.model.ShopTask.findByPk(bindRecord.task_id);
+        if (task) {
+          updateData.yield_rate = task.yield_rate;
+        }
+      }
+      updateData.rule_type = null;
+      updateData.append_amount = 0;
+      updateData.goods_price = 0;
+      updateData.goods_title = '';
+      updateData.goods_id = null;
+    }
 
     await itemProgress.update(updateData);
 
@@ -517,7 +561,7 @@ class AdminOuterTaskController extends Controller {
           user_id,
           task_item_id: item.item_id,
           is_lucky_order: item.is_lucky_order,
-          yield_rate: item.yield_rate,
+          yield_rate: (item.is_lucky_order === 1 && item.yield_rate !== null) ? item.yield_rate : task.yield_rate,
           rule_type: item.rule_type,
           append_amount: item.append_amount,
           goods_price: item.goods_price,

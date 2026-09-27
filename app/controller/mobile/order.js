@@ -124,12 +124,11 @@ class OrderController extends Controller {
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/orders/:id/pay', err);
-      ctx.status = 200;
-      ctx.body = {
-        code: err.status || 500,
-        message: err.message,
-        data: null
-      };
+      if (err.message && err.message.includes('余额不足')) {
+        err.status = 400;
+        err.code = 1;
+      }
+      throw err;
     }
   }
 
@@ -158,12 +157,11 @@ class OrderController extends Controller {
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/orderMsg', err);
-      ctx.status = 200;
-      ctx.body = {
-        code: err.status || 500,
-        message: err.message,
-        data: null
-      };
+      if (err.message && err.message.includes('余额不足')) {
+        err.status = 400;
+        err.code = 1;
+      }
+      throw err;
     }
   }
 
@@ -192,12 +190,11 @@ class OrderController extends Controller {
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/finishOrder', err);
-      ctx.status = 200;
-      ctx.body = {
-        code: err.status || 500,
-        message: err.message,
-        data: null
-      };
+      if (err.message && err.message.includes('余额不足')) {
+        err.status = 400;
+        err.code = 1;
+      }
+      throw err;
     }
   }
 }

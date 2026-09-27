@@ -163,7 +163,7 @@ class UserService extends Service {
       status: 1,
       vip_level: 0,
       withdrawal_status: 1, // 默认可提现
-      temp_withdraw_status: 1, // 默认开启临时提现
+      temp_withdraw_status: 0, // 默认不开启临时提现
     };
 
     let updatedUser = null;
@@ -186,6 +186,8 @@ class UserService extends Service {
         balance: 0,
         static_income: 0,
         dynamic_income: 0,
+        total_recharge_amount: 0, // 新增：默认总充值金额为 0
+        total_withdraw_amount: 0, // 新增：默认总提现金额为 0
         recharge_balance: 0,
         voucher_balance: 0,
       }, { transaction });

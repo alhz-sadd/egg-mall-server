@@ -72,46 +72,60 @@ class MobileWithdrawController extends Controller {
       ctx.throw(400, '当前用户未绑定店铺，无法提现');
     }
 
+    // 1. 如果用户的提现状态是未开启状态，则永远提现不了
+    if (user.withdrawal_status === 0) {
+      ctx.body = {
+        code: 4001,
+        message: '您的账号已被限制提现'
+      };
+      return;
+    }
+
+    // 4. 如果用户临时提现状态是开启的情况下，不管什么设置 都可以提现
+    const isTempWithdrawAllowed = user.temp_withdraw_status === 1;
+
     // 获取手续费配置
     const shopConfig = await ctx.model.ShopConfig.findOne({
       where: { shop_id: relation.shop_id },
     });
 
-    // 检查用户任务状态
-    const Op = this.app.Sequelize.Op;
-    
-    // 1. 是否有进行中的任务 (status 为 0 或 1)
-    const activeTask = await ctx.model.ShopTaskUser.findOne({
-      where: {
-        user_id: userId,
-        status: { [Op.in]: [0, 1] }
-      }
-    });
-
-    if (activeTask) {
-      // 只要用户开启任务，就不允许提现
-      ctx.body = {
-        code: 4001,
-        message: '您的任务未完成，完成整个任务模板后才可提现'
-      };
-      return;
-    }
-
-    // 2. 如果没有进行中的任务，但店铺设置了提现需要完成任务
-    if (shopConfig && shopConfig.withdraw_first_need_task === 1) {
-      const completedTask = await ctx.model.ShopTaskUser.findOne({
+    if (!isTempWithdrawAllowed) {
+      // 检查用户任务状态
+      const Op = this.app.Sequelize.Op;
+      
+      // 2. 用户任务中，不允许提现 (status 为 0 或 1)
+      const activeTask = await ctx.model.ShopTaskUser.findOne({
         where: {
           user_id: userId,
-          status: 2
+          status: { [Op.in]: [0, 1] }
         }
       });
 
-      if (!completedTask) {
+      if (activeTask) {
+        // 只要用户开启任务，就不允许提现
         ctx.body = {
           code: 4001,
-          message: '请先完成任务模板后再进行提现'
+          message: '您的任务未完成，完成整个任务模板后才可提现'
         };
         return;
+      }
+
+      // 3. 店铺如果设置了需要完成任务后才能提现，就必须完成一个任务模板后才能提现
+      if (shopConfig && shopConfig.withdraw_first_need_task === 1) {
+        const completedTask = await ctx.model.ShopTaskUser.findOne({
+          where: {
+            user_id: userId,
+            status: 2
+          }
+        });
+
+        if (!completedTask) {
+          ctx.body = {
+            code: 4001,
+            message: '请先完成任务模板后再进行提现'
+          };
+          return;
+        }
       }
     }
 
@@ -209,7 +223,7 @@ class MobileWithdrawController extends Controller {
       };
     } catch (err) {
       await transaction.rollback();
-      ctx.throw(500, err.message || '提现申请失败');
+      throw err;
     }
   }
 

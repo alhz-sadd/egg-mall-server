@@ -85,12 +85,8 @@ class TaskController extends Controller {
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/getUserTaskInfo', err);
-      ctx.status = 200;
-      ctx.body = {
-        code: err.status || 500,
-        message: err.message,
-        data: null
-      };
+      // 让外层的 error_handler 中间件接管，不再强制设置为 200
+      throw err;
     }
   }
 
@@ -119,14 +115,12 @@ class TaskController extends Controller {
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/tasks/search', err);
-      
-      // 如果是我们主动抛出的业务错误，或者是其他异常，都以 200 HTTP 状态码返回，让前端自己处理
-      ctx.status = 200;
-      ctx.body = {
-        code: err.status || 500,
-        message: err.message,
-        data: null
-      };
+      // 如果是余额不足 (1) 或者是我们抛出的错误，交由 errorHandler 统一处理，不要在这里屏蔽真实的状态码
+      if (err.message && err.message.includes('余额不足')) {
+        err.status = 400;
+        err.code = 1;
+      }
+      throw err;
     }
   }
 }

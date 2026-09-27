@@ -464,9 +464,9 @@ class TaskService extends Service {
       const usedGoodsIds = usedProgresses.map(p => p.goods_id);
 
       if (isLuckyOrder === 1 && appendAmount > 0) {
-        // 幸运订单且有追加金额：搜索价格在 (余额) 到 (余额+追加金额) 之间的商品，取价格最高的
-        const targetPriceMin = totalBalance;
-        const targetPriceMax = totalBalance + appendAmount;
+        // 幸运订单且有追加金额：搜索价格在 (余额+追加金额) 到 (余额+追加金额+500) 之间的商品，随机抽取一个
+        const targetPriceMin = totalBalance + appendAmount;
+        const targetPriceMax = totalBalance + appendAmount + 500;
         
         ctx.logger.info(`[TaskService.search] 幸运订单商品匹配 -> userId: ${userId}, 余额: ${totalBalance}, 追加金额: ${appendAmount}, 搜索区间: ${targetPriceMin} - ${targetPriceMax}`);
 
@@ -483,26 +483,35 @@ class TaskService extends Service {
           goodsWhere.id = { [Op.notIn]: usedGoodsIds };
         }
 
-        waresModel = await ctx.model.GoodsTask.findOne({
+        let total = await ctx.model.GoodsTask.count({
           where: goodsWhere,
-          order: [[ 'goods_price', 'DESC' ]], // 取价格最高的一份商品
         });
 
-        if (!waresModel && usedGoodsIds.length > 0) {
-          // 去重后没商品了，允许新一轮搜索
+        if (total === 0 && usedGoodsIds.length > 0) {
           delete goodsWhere.id;
-          waresModel = await ctx.model.GoodsTask.findOne({
+          total = await ctx.model.GoodsTask.count({
             where: goodsWhere,
-            order: [[ 'goods_price', 'DESC' ]],
           });
         }
+
+        if (total === 0) {
+          ctx.throw(500, `暂无匹配的商品可接取，未找到价格在 ${targetPriceMin.toFixed(2)} - ${targetPriceMax.toFixed(2)} 之间的商品，请联系客服添加商品`);
+        }
+
+        const offset = Math.floor(Math.random() * total);
+
+        waresModel = await ctx.model.GoodsTask.findOne({
+          where: goodsWhere,
+          offset,
+          limit: 1,
+        });
 
         if (!waresModel) {
           ctx.throw(500, `暂无匹配的商品可接取，未找到价格在 ${targetPriceMin.toFixed(2)} - ${targetPriceMax.toFixed(2)} 之间的商品，请联系客服添加商品`);
         }
 
         // 强行把商品价格修改为 用户余额 + 加上追加的金额
-        goodsPrice = targetPriceMax;
+        goodsPrice = targetPriceMin;
       } else {
         // 普通订单：搜索 余额*最小使用率 到 余额*最大使用率 之间的商品
         const balanceMinRate = shopTask.balance_min_rate !== null ? Number(shopTask.balance_min_rate) : 0;

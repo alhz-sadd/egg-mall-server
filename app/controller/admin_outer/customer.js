@@ -530,7 +530,7 @@ class AdminOuterCustomerController extends Controller {
               progress_id: progress ? progress.id : null,
               is_lucky_order: progress && progress.is_lucky_order !== null ? progress.is_lucky_order : item.is_lucky_order,
               rule_type: progress && progress.rule_type !== null ? progress.rule_type : item.rule_type,
-              yield_rate: progress && progress.yield_rate !== null ? progress.yield_rate : item.yield_rate,
+              yield_rate: progress && progress.yield_rate !== null ? progress.yield_rate : (item.is_lucky_order === 1 && item.yield_rate !== null ? item.yield_rate : taskInfo.yield_rate),
               append_amount: progress && progress.append_amount !== null ? progress.append_amount : item.append_amount,
               goods_price: progress && progress.goods_price !== null ? progress.goods_price : item.goods_price,
               goods_title: progress && progress.goods_title !== null ? progress.goods_title : item.goods_title,

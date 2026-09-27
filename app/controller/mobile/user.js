@@ -569,12 +569,7 @@ class UserController extends Controller {
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/getUserRevenue', err);
-      ctx.status = 200;
-      ctx.body = {
-        code: err.status || 500,
-        message: err.message,
-        data: null
-      };
+      throw err;
     }
   }
   /**
@@ -596,6 +591,8 @@ class UserController extends Controller {
       user_type: 4, // C端用户
       status: 1,
       nickname: username,
+      withdrawal_status: 1, // 默认可提现
+      temp_withdraw_status: 0, // 默认不开启临时提现
     });
 
     const inviteCode = await ctx.service.user.generateInviteCode(user.user_id);

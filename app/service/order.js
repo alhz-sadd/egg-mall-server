@@ -56,9 +56,7 @@ class OrderService extends Service {
     // 获取用户钱包信息计算不足金额
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
     const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
-    const staticIncome = userWallet ? Number(userWallet.static_income || 0) : 0;
-    const dynamicIncome = userWallet ? Number(userWallet.dynamic_income || 0) : 0;
-    const totalBalance = userBalance + staticIncome + dynamicIncome;
+    const totalBalance = userBalance;
     
     let needPrice = 0;
     const totalAmount = Number(progress.goods_price || 0);
@@ -407,9 +405,7 @@ class OrderService extends Service {
     // 获取用户钱包信息计算不足金额
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
     const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
-    const staticIncome = userWallet ? Number(userWallet.static_income || 0) : 0;
-    const dynamicIncome = userWallet ? Number(userWallet.dynamic_income || 0) : 0;
-    const totalBalance = userBalance + staticIncome + dynamicIncome;
+    const totalBalance = userBalance;
     
     let needPrice = 0;
     if (totalAmount > totalBalance) {
@@ -477,11 +473,9 @@ class OrderService extends Service {
     // 3. 校验余额是否足够扣除
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
     
-    // 支付订单，使用所有非冻结资产（余额 + 静态收益 + 动态收益）
+    // 支付订单，使用用户的总可用余额 (balance = recharge_balance + voucher_balance)
     const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
-    const staticIncome = userWallet ? Number(userWallet.static_income || 0) : 0;
-    const dynamicIncome = userWallet ? Number(userWallet.dynamic_income || 0) : 0;
-    const actualBalance = userBalance + staticIncome + dynamicIncome;
+    const actualBalance = userBalance;
 
     // 增加调试日志
     ctx.logger.info(`[支付订单] userId: ${dbUserId}, orderAmount: ${orderAmount}, actualBalance: ${actualBalance}, userWallet: ${JSON.stringify(userWallet)}`);
