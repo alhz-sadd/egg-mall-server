@@ -75,6 +75,10 @@ module.exports = app => {
         name: 'idx_status',
         fields: [ 'status', 'is_deleted' ],
       },
+      {
+        name: 'idx_task_goods_price',
+        fields: [ 'goods_price' ],
+      },
     ],
   });
 

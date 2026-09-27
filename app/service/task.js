@@ -109,9 +109,9 @@ class TaskService extends Service {
       include: [
         {
           model: ctx.model.ShopTaskItem,
-          as: 'items'
-        }
-      ]
+          as: 'items',
+        },
+      ],
     });
     if (!task) {
       ctx.throw(404, '任务不存在或已禁用');
@@ -211,8 +211,8 @@ class TaskService extends Service {
     // 从进度表计算已完成订单数 (修改: 仅统计当前活动任务模板下的订单，而不是该用户历史所有订单)
     // 获取最新的一条绑定的任务记录（包含已绑定但未开启、或者已开启的）
     const currentTaskUser = await ctx.model.ShopTaskUser.findOne({
-      where: { user_id: dbUserId, status: { [ctx.app.Sequelize.Op.in]: [0, 1] } }, // 0: 已绑定, 1: 任务进行中
-      order: [['id', 'DESC']]
+      where: { user_id: dbUserId, status: { [ctx.app.Sequelize.Op.in]: [ 0, 1 ] } }, // 0: 已绑定, 1: 任务进行中
+      order: [[ 'id', 'DESC' ]],
     });
 
     let overNum = 0;
@@ -223,16 +223,16 @@ class TaskService extends Service {
       if (currentTaskUser.status === 1) {
         isOpen = 1;
       }
-      
+
       // 仅统计当前活动任务下的已完成订单数
       overNum = await ctx.model.ShopTaskUserItemProgress.count({
         where: {
           shop_task_user_id: currentTaskUser.id,
           user_id: dbUserId,
-          status: 1 // 已完成
-        }
+          status: 1, // 已完成
+        },
       });
-      
+
       const task = await ctx.model.ShopTask.findByPk(currentTaskUser.task_id);
       if (task) {
         sumNum = Number(task.task_count || 0);
@@ -271,32 +271,32 @@ class TaskService extends Service {
       err.status = 404;
       throw err;
     }
-    
+
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
-    
+
     // 任务门槛和商品匹配，使用用户所有非冻结资产
     // balance 包含了 voucher_balance(代金) 和 recharge_balance(充值)
     // 所以总非冻结资产 = balance + static_income(静态收益) + dynamic_income(动态收益)
     const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
     const staticIncome = userWallet ? Number(userWallet.static_income || 0) : 0;
     const dynamicIncome = userWallet ? Number(userWallet.dynamic_income || 0) : 0;
-    
+
     const totalBalance = userBalance + staticIncome + dynamicIncome;
 
     // 2. 检查是否有开启的任务
     const shopTaskUser = await ctx.model.ShopTaskUser.findOne({
       where: {
         user_id: userId,
-        status: 1 // 1: 任务进行中 (B端已开启)
+        status: 1, // 1: 任务进行中 (B端已开启)
       },
-      order: [['id', 'DESC']]
+      order: [[ 'id', 'DESC' ]],
     });
 
     if (!shopTaskUser) {
       // 检查是否有未开启(已绑定)的任务
       const boundTask = await ctx.model.ShopTaskUser.findOne({
         where: { user_id: userId, status: 0 },
-        order: [['id', 'DESC']]
+        order: [[ 'id', 'DESC' ]],
       });
       if (boundTask) {
         return { sequence_no: 0, task_status: 0, wares: {}, order: {}, is_lucky: 0 };
@@ -305,12 +305,12 @@ class TaskService extends Service {
       // 检查是否有已完成的任务
       const completedTask = await ctx.model.ShopTaskUser.findOne({
         where: { user_id: userId, status: 2 },
-        order: [['id', 'DESC']]
+        order: [[ 'id', 'DESC' ]],
       });
       if (completedTask) {
         return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
       }
-      
+
       // 没有任何绑定的任务时
       const err = new Error('任务不存在或已禁用');
       err.status = 404;
@@ -330,14 +330,14 @@ class TaskService extends Service {
         shop_task_user_id: shopTaskUser.id,
         user_id: userId,
         status: 0,
-        is_processing: 1
-      }
+        is_processing: 1,
+      },
     });
 
     if (unpaidProgress && unpaidProgress.order_id) {
       const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: unpaidProgress.task_item_id } });
       const orderAmount = Number(unpaidProgress.goods_price);
-      
+
       let yieldRate = 0;
       if (unpaidProgress.yield_rate !== null && Number(unpaidProgress.yield_rate) > 0) {
         yieldRate = Number(unpaidProgress.yield_rate);
@@ -346,10 +346,10 @@ class TaskService extends Service {
       } else if (shopTask && shopTask.yield_rate !== null) {
         yieldRate = Number(shopTask.yield_rate);
       }
-      
+
       const parentYieldRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
       const revenue = unpaidProgress.revenue !== null ? Number(unpaidProgress.revenue) : (orderAmount * yieldRate);
-      
+
       let picUrl = '';
       if (unpaidProgress.goods_id) {
         const unpaidGoods = await ctx.model.GoodsTask.findOne({ where: { id: unpaidProgress.goods_id } });
@@ -364,18 +364,18 @@ class TaskService extends Service {
         goods_id: unpaidProgress.goods_id,
         wares_name: unpaidProgress.goods_title,
         total_price: orderAmount,
-        pic_url: picUrl
+        pic_url: picUrl,
       };
-      
+
       const order = {
         order_id: unpaidProgress.order_id,
         total_price: orderAmount,
-        revenue_rate: yieldRate,           // 收益率
-        return_money: revenue,             // 回报金额 (静态收益)
+        revenue_rate: yieldRate, // 收益率
+        return_money: revenue, // 回报金额 (静态收益)
         parent_revenue_rate: parentYieldRate,
         parent_revenue: revenue * parentYieldRate, // 动态收益 = 静态收益 * 上级收益率
         order_type: taskItem ? (taskItem.is_lucky_order === 1 ? 2 : 1) : 1, // 1:普通订单, 2:幸运订单
-        c_time: unpaidProgress.create_time
+        c_time: unpaidProgress.create_time,
       };
 
       return {
@@ -383,7 +383,7 @@ class TaskService extends Service {
         task_status: 4,
         wares,
         order,
-        is_lucky: taskItem ? taskItem.is_lucky_order : 0
+        is_lucky: taskItem ? taskItem.is_lucky_order : 0,
       };
     }
 
@@ -398,9 +398,9 @@ class TaskService extends Service {
         shop_task_user_id: shopTaskUser.id,
         user_id: userId,
         status: 0,
-        is_processing: 0
+        is_processing: 0,
       },
-      order: [['id', 'ASC']]
+      order: [[ 'id', 'ASC' ]],
     });
 
     if (!nextProgress) {
@@ -418,7 +418,7 @@ class TaskService extends Service {
     const isLuckyOrder = nextProgress.is_lucky_order !== null ? nextProgress.is_lucky_order : (currentItem ? currentItem.is_lucky_order : 0);
     const appendAmount = nextProgress.append_amount !== null ? Number(nextProgress.append_amount) : (currentItem ? Number(currentItem.append_amount || 0) : 0);
     const ruleType = nextProgress.rule_type !== null ? nextProgress.rule_type : (currentItem ? currentItem.rule_type : 1);
-    
+
     let yieldRate = 0;
     if (nextProgress.yield_rate !== null && Number(nextProgress.yield_rate) > 0) {
       yieldRate = Number(nextProgress.yield_rate);
@@ -437,7 +437,7 @@ class TaskService extends Service {
       if (goodsId) {
         waresModel = await ctx.model.GoodsTask.findOne({ where: { id: goodsId, is_deleted: 0 } });
       }
-      
+
       if (!waresModel) {
         // 如果找不到商品，但手动匹配配置了价格和名称，也可以直接用
         const title = nextProgress.goods_title || (currentItem ? currentItem.goods_title : '') || '未知商品';
@@ -446,7 +446,7 @@ class TaskService extends Service {
           id: goodsId || 0,
           goods_name: title,
           goods_price: price,
-          goods_images: []
+          goods_images: [],
         };
       }
       goodsPrice = Number(waresModel.goods_price);
@@ -456,20 +456,20 @@ class TaskService extends Service {
         where: {
           shop_task_user_id: shopTaskUser.id,
           user_id: userId,
-          goods_id: { [Op.not]: null }
+          goods_id: { [Op.not]: null },
         },
-        attributes: ['goods_id']
+        attributes: [ 'goods_id' ],
       });
       const usedGoodsIds = usedProgresses.map(p => p.goods_id);
 
       if (isLuckyOrder === 1 && appendAmount > 0) {
         // 幸运订单且有追加金额：搜索价格 >= (余额+追加金额) 的商品，取最接近的
         const targetPrice = totalBalance + appendAmount;
-        
-        let goodsWhere = {
+
+        const goodsWhere = {
           status: 1,
           is_deleted: 0,
-          goods_price: { [Op.gte]: targetPrice }
+          goods_price: { [Op.gte]: targetPrice },
         };
 
         if (usedGoodsIds.length > 0) {
@@ -478,7 +478,7 @@ class TaskService extends Service {
 
         waresModel = await ctx.model.GoodsTask.findOne({
           where: goodsWhere,
-          order: [['goods_price', 'ASC']] // 取大于等于目标价中最便宜的（最接近目标价）
+          order: [[ 'goods_price', 'ASC' ]], // 取大于等于目标价中最便宜的（最接近目标价）
         });
 
         if (!waresModel && usedGoodsIds.length > 0) {
@@ -486,7 +486,7 @@ class TaskService extends Service {
           delete goodsWhere.id;
           waresModel = await ctx.model.GoodsTask.findOne({
             where: goodsWhere,
-            order: [['goods_price', 'ASC']]
+            order: [[ 'goods_price', 'ASC' ]],
           });
         }
 
@@ -500,7 +500,7 @@ class TaskService extends Service {
         // 普通订单：搜索 余额*最小使用率 到 余额*最大使用率 之间的商品
         const balanceMinRate = shopTask.balance_min_rate !== null ? Number(shopTask.balance_min_rate) : 0;
         const balanceMaxRate = shopTask.balance_max_rate !== null ? Number(shopTask.balance_max_rate) : 1;
-        
+
         let targetGoodsPriceMin = totalBalance * balanceMinRate;
         let targetGoodsPriceMax = totalBalance * balanceMaxRate;
 
@@ -510,32 +510,45 @@ class TaskService extends Service {
           targetGoodsPriceMax = temp;
         }
 
-        let goodsWhere = {
+        const goodsWhere = {
           status: 1,
           is_deleted: 0,
-          goods_price: { 
+          goods_price: {
             [Op.gte]: targetGoodsPriceMin,
-            [Op.lte]: targetGoodsPriceMax 
-          }
+            [Op.lte]: targetGoodsPriceMax,
+          },
         };
 
         if (usedGoodsIds.length > 0) {
           goodsWhere.id = { [Op.notIn]: usedGoodsIds };
         }
 
-        waresModel = await ctx.model.GoodsTask.findOne({
+        // ① 查询这个价格区间一共有多少条
+        let total = await ctx.model.GoodsTask.count({
           where: goodsWhere,
-          order: Sequelize.literal('RAND()')
         });
 
-        if (!waresModel && usedGoodsIds.length > 0) {
+        if (total === 0 && usedGoodsIds.length > 0) {
           // 该区间去重后没商品了，说明都出现过了，或者只有这一份商品，允许新一轮搜索
           delete goodsWhere.id;
-          waresModel = await ctx.model.GoodsTask.findOne({
+          total = await ctx.model.GoodsTask.count({
             where: goodsWhere,
-            order: Sequelize.literal('RAND()')
           });
         }
+
+        if (total === 0) {
+          ctx.throw(500, `暂无匹配的商品可接取，未找到价格在 ${targetGoodsPriceMin.toFixed(2)} - ${targetGoodsPriceMax.toFixed(2)} 之间的商品，请联系客服添加商品`);
+        }
+
+        // ② 生成一个 0 ~ total-1 的随机偏移量 offset
+        const offset = Math.floor(Math.random() * total);
+
+        // ③ 使用 LIMIT offset, 1 随机偏移取一条
+        waresModel = await ctx.model.GoodsTask.findOne({
+          where: goodsWhere,
+          offset,
+          limit: 1,
+        });
 
         if (!waresModel) {
           ctx.throw(500, `暂无匹配的商品可接取，未找到价格在 ${targetGoodsPriceMin.toFixed(2)} - ${targetGoodsPriceMax.toFixed(2)} 之间的商品，请联系客服添加商品`);
@@ -548,7 +561,7 @@ class TaskService extends Service {
     // 7. 更新进度（生成订单）
     const orderNo = 'T' + Date.now() + Math.floor(Math.random() * 1000);
     const cTime = new Date();
-    
+
     const parentYieldRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
     const revenue = goodsPrice * yieldRate;
 
@@ -557,10 +570,10 @@ class TaskService extends Service {
       goods_id: waresModel.id,
       goods_price: goodsPrice,
       goods_title: waresModel.goods_name,
-      revenue: revenue,
+      revenue,
       is_processing: 1,
       is_triggered: 1,
-      update_time: cTime
+      update_time: cTime,
     });
 
     let picUrl = '';
@@ -574,18 +587,18 @@ class TaskService extends Service {
       goods_id: waresModel.id,
       wares_name: waresModel.goods_name,
       total_price: goodsPrice,
-      pic_url: picUrl
+      pic_url: picUrl,
     };
 
     const order = {
       order_id: orderNo,
       total_price: goodsPrice,
-      revenue_rate: yieldRate,           // 收益率
-      return_money: revenue,             // 回报金额(即静态收益)
+      revenue_rate: yieldRate, // 收益率
+      return_money: revenue, // 回报金额(即静态收益)
       parent_revenue_rate: parentYieldRate,
       parent_revenue: revenue * parentYieldRate, // 动态收益 = 静态收益 * 上级收益率
       order_type: isLuckyOrder === 1 ? 2 : 1, // 1:普通订单, 2:幸运订单
-      c_time: cTime
+      c_time: cTime,
     };
 
     return {
@@ -593,7 +606,7 @@ class TaskService extends Service {
       task_status: 2,
       wares,
       order,
-      is_lucky: isLuckyOrder
+      is_lucky: isLuckyOrder,
     };
   }
 }

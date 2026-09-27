@@ -51,7 +51,9 @@ module.exports = appInfo => {
     // 自定义上传临时目录，避免线上部署时系统 /tmp 目录无权限 (EACCES) 的问题
     tmpdir: path.join(appInfo.baseDir, 'run/multipart-tmp'),
   };
-
+  config.cluster = {
+    workers: 1, // 开启 4 个 worker 进程
+  };
   // OSS 配置
   config.oss = {
     client: {
