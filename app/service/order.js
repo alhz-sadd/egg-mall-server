@@ -605,32 +605,47 @@ class OrderService extends Service {
 
       // 7. 处理上级返佣 (如果有上级)
       if (userObj.inviter_user_id && dynamicRevenue > 0) {
-        const parentWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userObj.inviter_user_id } });
-        if (parentWallet) {
-          await ctx.model.UserWallet.update({
-            balance: ctx.app.Sequelize.literal(`balance + ${dynamicRevenue}`),
-            voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${dynamicRevenue}`),
-            dynamic_income: ctx.app.Sequelize.literal(`dynamic_income + ${dynamicRevenue}`)
-          }, {
-            where: { user_id: userObj.inviter_user_id },
-            transaction
-          });
-
-          // 7.1 记录上级的动态收益资金流水 (biz_type: 5)
-          const logNo = (fundRecordService && fundRecordService.generateTempOrderNo) ? fundRecordService.generateTempOrderNo('50') : ('50' + Date.now());
-          await ctx.model.UserWalletLog.create({
+        // 先检查上级用户是否存在并且状态正常（没有被删除）
+        const parentUser = await ctx.model.SysUser.findOne({ 
+          where: { 
             user_id: userObj.inviter_user_id,
-            log_no: logNo,
-            biz_type: 5, // 动态收益发放
-            amount: dynamicRevenue,
-            balance_type: 1,
-            before_balance: Number(parentWallet.balance),
-            after_balance: Number(parentWallet.balance) + dynamicRevenue,
-            related_order_id: progress.id,
-            from_user_id: dbUserId, // 记录佣金来源的下级用户ID
-            remark: '下级任务订单动态收益',
-            create_time: new Date()
-          }, { transaction });
+            is_deleted: 0,
+            status: 1
+          } 
+        });
+
+        // 无论上级账号状态如何，我们只决定是否给这个直接上级加钱。
+        // 上级账号异常只是他自己拿不到佣金，并不影响下级的正常订单流转。
+        if (parentUser) {
+          const parentWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userObj.inviter_user_id } });
+          if (parentWallet) {
+            await ctx.model.UserWallet.update({
+              balance: ctx.app.Sequelize.literal(`balance + ${dynamicRevenue}`),
+              voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${dynamicRevenue}`),
+              dynamic_income: ctx.app.Sequelize.literal(`dynamic_income + ${dynamicRevenue}`)
+            }, {
+              where: { user_id: userObj.inviter_user_id },
+              transaction
+            });
+
+            // 7.1 记录上级的动态收益资金流水 (biz_type: 5)
+            const logNo = (fundRecordService && fundRecordService.generateTempOrderNo) ? fundRecordService.generateTempOrderNo('50') : ('50' + Date.now());
+            await ctx.model.UserWalletLog.create({
+              user_id: userObj.inviter_user_id,
+              log_no: logNo,
+              biz_type: 5, // 动态收益发放
+              amount: dynamicRevenue,
+              balance_type: 1,
+              before_balance: Number(parentWallet.balance),
+              after_balance: Number(parentWallet.balance) + dynamicRevenue,
+              related_order_id: progress.id,
+              from_user_id: dbUserId, // 记录佣金来源的下级用户ID
+              remark: '下级任务订单动态收益',
+              create_time: new Date()
+            }, { transaction });
+          }
+        } else {
+          ctx.logger.warn(`[订单支付] 上级用户(ID: ${userObj.inviter_user_id})不存在、被删除或被禁用，放弃向其发放动态收益。`);
         }
       }
 

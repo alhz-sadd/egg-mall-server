@@ -242,9 +242,7 @@ class TaskService extends Service {
     let hasMoney = 0;
     if (userWallet) {
       const balance = Number(userWallet.balance || 0);
-      const staticIncome = Number(userWallet.static_income || 0);
-      const dynamicIncome = Number(userWallet.dynamic_income || 0);
-      hasMoney = balance + staticIncome + dynamicIncome;
+      hasMoney = balance;
     }
 
     return {
@@ -275,13 +273,9 @@ class TaskService extends Service {
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
 
     // 任务门槛和商品匹配，使用用户所有非冻结资产
-    // balance 包含了 voucher_balance(代金) 和 recharge_balance(充值)
-    // 所以总非冻结资产 = balance + static_income(静态收益) + dynamic_income(动态收益)
+    // balance 已经是用户的总可用余额，直接使用 balance 即可，无需再加收益统计字段
     const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
-    const staticIncome = userWallet ? Number(userWallet.static_income || 0) : 0;
-    const dynamicIncome = userWallet ? Number(userWallet.dynamic_income || 0) : 0;
-
-    const totalBalance = userBalance + staticIncome + dynamicIncome;
+    const totalBalance = userBalance;
 
     // 2. 检查是否有开启的任务
     const shopTaskUser = await ctx.model.ShopTaskUser.findOne({

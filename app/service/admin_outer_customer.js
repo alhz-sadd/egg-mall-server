@@ -565,11 +565,11 @@ class AdminOuterCustomerService extends Service {
         os: latestLoginInfo.os,
 
         // 真实钱包表查询出的可用资产
-        voucher_balance: Number(w.balance || w.voucher_balance || 0).toFixed(2),
+        voucher_balance: Number(w.voucher_balance || 0).toFixed(2),
         static_income: Number(w.static_income || 0).toFixed(2),
         dynamic_income: Number(w.dynamic_income || 0).toFixed(2),
-        // (将三种资产加总返回给前端一个总额概念，方便兼容历史)
-        balance: (Number(w.balance || w.voucher_balance || 0) + Number(w.static_income || 0) + Number(w.dynamic_income || 0)).toFixed(2),
+        // (balance已包含总资产)
+        balance: Number(w.balance || 0).toFixed(2),
         frozen_balance: '0.00', // 如果需要列表展示冻结资产，可以继续关联钱包表或者走 stat 冗余
 
         // 来自 钱包 表的字段
