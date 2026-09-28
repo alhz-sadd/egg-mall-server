@@ -36,14 +36,27 @@ class AdminOuterTaskController extends Controller {
       where,
       limit,
       offset,
-      order: [[ 'create_time', 'DESC' ]],
+      order: [
+        [ 'sort', 'ASC' ],
+        [ 'create_time', 'DESC' ]
+      ],
+    });
+
+    const rows = result.rows.map(row => {
+      const task = row.toJSON();
+      task.min_amount = Number(task.min_amount);
+      task.yield_rate = Number(task.yield_rate);
+      task.parent_yield_rate = Number(task.parent_yield_rate);
+      task.balance_min_rate = Number(task.balance_min_rate);
+      task.balance_max_rate = Number(task.balance_max_rate);
+      return task;
     });
 
     ctx.body = {
       code: 200,
       message: '获取成功',
       data: {
-        list: result.rows,
+        list: rows,
         total: result.count,
         page: parseInt(page),
         page_size: limit,
@@ -85,13 +98,23 @@ class AdminOuterTaskController extends Controller {
     
     // 转换为符合前端期望的分页格式
     const taskJson = task.toJSON();
+    taskJson.min_amount = Number(taskJson.min_amount);
+    taskJson.yield_rate = Number(taskJson.yield_rate);
+    taskJson.parent_yield_rate = Number(taskJson.parent_yield_rate);
+    taskJson.balance_min_rate = Number(taskJson.balance_min_rate);
+    taskJson.balance_max_rate = Number(taskJson.balance_max_rate);
+
     const items = taskJson.items || [];
     
     // 如果子项是普通订单或者没有独立设置收益率，将其回显为主任务的收益率
     items.forEach(item => {
       if (item.is_lucky_order === 0 || item.yield_rate === null || item.yield_rate === undefined) {
         item.yield_rate = taskJson.yield_rate;
+      } else {
+        item.yield_rate = Number(item.yield_rate);
       }
+      item.append_amount = Number(item.append_amount);
+      item.goods_price = Number(item.goods_price);
     });
     
     ctx.body = {
@@ -126,6 +149,7 @@ class AdminOuterTaskController extends Controller {
       balance_min_rate: { type: 'number', required: false },
       balance_max_rate: { type: 'number', required: false },
       status: { type: 'int', required: false }, // 0=停用 1=启用
+      sort: { type: 'int', required: false }, // 排序，值越小越靠前
     }, payload);
 
     payload.shop_id = adminOuter.shop_id;
@@ -194,6 +218,7 @@ class AdminOuterTaskController extends Controller {
       balance_min_rate: { type: 'number', required: false },
       balance_max_rate: { type: 'number', required: false },
       status: { type: 'int', required: false },
+      sort: { type: 'int', required: false },
     }, payload);
 
     const transaction = await ctx.model.transaction();
@@ -525,18 +550,19 @@ class AdminOuterTaskController extends Controller {
     const transaction = await ctx.model.transaction();
     let bindRecord;
     try {
-      // 删除该用户之前所有的进度子项
+      // 删除该用户之前所有未支付的进度子项（保留已支付的，作为历史记录）
       await ctx.model.ShopTaskUserItemProgress.destroy({
-        where: { user_id },
+        where: { user_id, status: 0 },
         transaction,
         force: true
       });
 
-      // 删除该用户之前所有的绑定记录
-      await ctx.model.ShopTaskUser.destroy({
+      // 将该用户之前所有的绑定记录置为关闭/失效状态 (2)
+      await ctx.model.ShopTaskUser.update({
+        status: 2
+      }, {
         where: { user_id },
-        transaction,
-        force: true
+        transaction
       });
 
       // 绑定新的模板，状态默认为未开启 (0)
@@ -671,29 +697,65 @@ class AdminOuterTaskController extends Controller {
       ctx.throw(400, '任务非“执行中”状态，无法关闭');
     }
 
-    // 检查用户是否已经搜索过（即是否有已经生成的订单或已支付的子项）
-    const triggeredProgress = await ctx.model.ShopTaskUserItemProgress.findOne({
-      where: {
-        shop_task_user_id: userTask.id,
+    const transaction = await ctx.model.transaction();
+    try {
+      // 1. 删除该用户当前绑定的任务下所有未支付的子项进度（保留已完成订单记录作为历史）
+      await ctx.model.ShopTaskUserItemProgress.destroy({
+        where: { shop_task_user_id: userTask.id, user_id, status: 0 },
+        transaction,
+        force: true
+      });
+
+      // 2. 将当前任务记录状态设为 2 (已终止/历史)
+      await userTask.update({ status: 2 }, { transaction });
+
+      // 3. 为该用户重新绑定一份该任务的全新模板，状态为 0 (未开启)
+      const bindRecord = await ctx.model.ShopTaskUser.create({
         user_id,
-        [ctx.app.Sequelize.Op.or]: [
-          { is_triggered: 1 },
-          { status: 1 }
-        ]
+        task_id: userTask.task_id,
+        status: 0,
+        task_status: 0,
+      }, { transaction });
+
+      // 4. 重新拉取主任务和子项，初始化一份全新的、干净的任务进度
+      const task = await ctx.model.ShopTask.findByPk(userTask.task_id, { transaction });
+      const taskItems = await ctx.model.ShopTaskItem.findAll({
+        where: { task_id: userTask.task_id, is_deleted: 0 },
+        order: [['sort', 'ASC']],
+        transaction
+      });
+
+      if (taskItems.length > 0 && task) {
+        const progressItems = taskItems.map(item => ({
+          shop_task_user_id: bindRecord.id,
+          user_id,
+          task_item_id: item.item_id,
+          is_lucky_order: item.is_lucky_order,
+          yield_rate: (item.is_lucky_order === 1 && item.yield_rate !== null) ? item.yield_rate : task.yield_rate,
+          rule_type: item.rule_type,
+          append_amount: item.append_amount,
+          goods_price: item.goods_price,
+          goods_title: item.goods_title,
+          goods_id: item.goods_id,
+          status: 0, // 未完成
+          revenue: 0.00000,
+          is_triggered: 0,
+          is_processing: 0,
+        }));
+        await ctx.model.ShopTaskUserItemProgress.bulkCreate(progressItems, { transaction });
       }
-    });
 
-    // 只要用户搜索过（或支付过），就不允许关闭
-    if (triggeredProgress) {
-      ctx.throw(400, '用户已经接取或完成过订单，无法关闭任务');
+      await transaction.commit();
+
+      ctx.body = {
+        code: 200,
+        message: '任务关闭成功，进度已重置',
+      };
+    } catch (error) {
+      await transaction.rollback();
+      ctx.logger.error('[AdminOuterTaskController.closeUserTask] 关闭任务失败', error);
+      ctx.throw(500, '关闭任务失败：' + error.message);
     }
-
-    await userTask.update({ status: 0 }); // 恢复到未开启（已绑定）状态
-
-    ctx.body = {
-      code: 200,
-      message: '任务关闭成功',
-    };
   }
 }
 

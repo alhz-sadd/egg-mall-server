@@ -473,9 +473,9 @@ class AdminOuterCustomerController extends Controller {
         shop_id: adminOuter.shop_id,
       });
 
-      // 1. 从 shop_task_user 表查询用户绑定的任务 (最新的)
+      // 1. 从 shop_task_user 表查询用户绑定的任务 (最新的且非关闭状态的)
       const userTask = await ctx.model.ShopTaskUser.findOne({
-        where: { user_id: userId },
+        where: { user_id: userId, status: { [ctx.app.Sequelize.Op.in]: [0, 1] } },
         order: [['create_time', 'DESC']],
       });
 
@@ -530,14 +530,14 @@ class AdminOuterCustomerController extends Controller {
               progress_id: progress ? progress.id : null,
               is_lucky_order: progress && progress.is_lucky_order !== null ? progress.is_lucky_order : item.is_lucky_order,
               rule_type: progress && progress.rule_type !== null ? progress.rule_type : item.rule_type,
-              yield_rate: progress && progress.yield_rate !== null ? progress.yield_rate : (item.is_lucky_order === 1 && item.yield_rate !== null ? item.yield_rate : taskInfo.yield_rate),
-              append_amount: progress && progress.append_amount !== null ? progress.append_amount : item.append_amount,
-              goods_price: progress && progress.goods_price !== null ? progress.goods_price : item.goods_price,
+              yield_rate: Number(progress && progress.yield_rate !== null ? progress.yield_rate : (item.is_lucky_order === 1 && item.yield_rate !== null ? item.yield_rate : taskInfo.yield_rate)),
+              append_amount: Number(progress && progress.append_amount !== null ? progress.append_amount : item.append_amount),
+              goods_price: Number(progress && progress.goods_price !== null ? progress.goods_price : item.goods_price),
               goods_title: progress && progress.goods_title !== null ? progress.goods_title : item.goods_title,
               goods_id: progress && progress.goods_id !== null ? progress.goods_id : item.goods_id,
               // 用户进度数据
               progress_status: progress ? progress.status : 0, // 0未完成 1已完成
-              progress_revenue: progress ? progress.revenue : 0,
+              progress_revenue: Number(progress ? progress.revenue : 0),
               is_triggered: progress ? progress.is_triggered : 0, // 订单是否已触发：0否 1是
               is_processing: progress ? progress.is_processing : 0, // 是否正在进行中：0否 1是
               create_time: (progress && progress.create_time) ? progress.create_time : userTask.create_time, // 如果没有进度表记录，则回退为绑定时间

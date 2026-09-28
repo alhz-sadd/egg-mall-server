@@ -88,6 +88,12 @@ module.exports = app => {
       defaultValue: 0,
       comment: '幸运单团队分配 0:不分配 1:分配',
     },
+    sort: {
+      type: INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '排序，值越小越靠前',
+    },
     create_time: {
       type: DATE,
       allowNull: false,

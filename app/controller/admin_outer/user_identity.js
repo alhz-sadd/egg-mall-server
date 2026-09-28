@@ -4,6 +4,24 @@ const Controller = require('egg').Controller;
 const crypto = require('crypto');
 
 class AdminOuterUserIdentityController extends Controller {
+  // 加密身份证号
+  encryptIdCard(rawStr) {
+    if (!rawStr) return rawStr;
+    try {
+      const algorithm = 'aes-256-cbc';
+      const key = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
+      const iv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
+
+      const cipher = crypto.createCipheriv(algorithm, Buffer.from(key), Buffer.from(iv));
+      let encrypted = cipher.update(rawStr, 'utf8', 'hex');
+      encrypted += cipher.final('hex');
+      return encrypted;
+    } catch (error) {
+      this.ctx.logger.error('身份证加密失败:', error);
+      return rawStr;
+    }
+  }
+
   // 简单的 AES 解密函数 (需与加密函数匹配，若项目中已有统一封装请替换)
   decryptIdCard(encryptedStr) {
     if (!encryptedStr) return encryptedStr;
@@ -35,7 +53,7 @@ class AdminOuterUserIdentityController extends Controller {
       ctx.throw(401, '未登录或未绑定店铺');
     }
 
-    const { page = 1, page_size = 10, audit_status, real_name, username } = ctx.query;
+    const { page = 1, page_size = 10, audit_status, real_name, username, id_card_no } = ctx.query;
     const limit = parseInt(page_size);
     const offset = (parseInt(page) - 1) * limit;
 
@@ -68,6 +86,9 @@ class AdminOuterUserIdentityController extends Controller {
     }
     if (real_name) {
       where.real_name = { [Op.like]: `%${real_name}%` };
+    }
+    if (id_card_no) {
+      where.id_card_no = this.encryptIdCard(id_card_no);
     }
 
     const include = [{
