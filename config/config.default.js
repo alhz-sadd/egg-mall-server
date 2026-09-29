@@ -38,8 +38,8 @@ module.exports = appInfo => {
       }
       return allowedOrigins[0]; // 默认返回第一个
     },
-    allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH',
-    allowHeaders: 'Content-Type,Authorization',
+    allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH,OPTIONS',
+    allowHeaders: 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, token, shop-id, tenant-id',
     credentials: true,
   };
 
