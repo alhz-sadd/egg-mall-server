@@ -83,9 +83,9 @@ module.exports = appInfo => {
     dialect: 'mysql',
     host: process.env.DB_HOST || '127.0.0.1',
     port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
-    database: 'egg_mall',
-    username: 'egg_mall',
-    password: 'pizEe5PLjGWJhnWL',
+    database: 'egg-test',
+    username: 'egg-test',
+    password: 'NPbkZ3LACjMZ7WjK',
     define: {
       underscored: false,
       freezeTableName: true,
