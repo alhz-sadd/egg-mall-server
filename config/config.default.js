@@ -26,8 +26,11 @@ module.exports = appInfo => {
 
   // 跨域配置
   config.cors = {
-    origin: '*',
+    origin: [
+      'https://h5.carrehours.vip'
+    ],
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH',
+    credentials: true,
   };
 
   // JWT 配置
