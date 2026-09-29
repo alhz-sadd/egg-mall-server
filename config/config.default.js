@@ -17,19 +17,20 @@ module.exports = appInfo => {
   // 加载的中间件，按数组顺序执行
   config.middleware = [ 'i18nResponse', 'errorHandler', 'requestLog', 'operationLog', 'formatImageUrl' ];
 
-  // 安全插件配置
-  config.security = {
-    csrf: {
-      enable: false, // 前后端分离项目通常关闭 CSRF
-    },
-  };
-
   // 跨域配置
   config.cors = {
     origin: ctx => ctx.request.header.origin || '*',
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH,OPTIONS',
     allowHeaders: 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, lang, token, shop-id, tenant-id',
     credentials: true,
+  };
+
+  // 安全插件配置
+  config.security = {
+    csrf: {
+      enable: false, // 前后端分离项目通常关闭 CSRF
+    },
+    domainWhiteList: [ 'https://h5.carrefours.vip', 'http://localhost:8080' ],
   };
 
   // JWT 配置
