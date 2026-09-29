@@ -26,7 +26,7 @@ module.exports = appInfo => {
 
   // 跨域配置
   config.cors = {
-    origin: '*',
+    origin: ctx => ctx.request.header.origin || '*',
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH,OPTIONS',
     allowHeaders: 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, lang, token, shop-id, tenant-id',
     credentials: true,
