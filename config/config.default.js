@@ -26,18 +26,7 @@ module.exports = appInfo => {
 
   // 跨域配置
   config.cors = {
-    origin: ctx => {
-      const allowedOrigins = [
-        'https://h5.carrefours.vip',
-        'https://inner.carrefours.vip',
-        'https://outer.carrefours.vip',
-      ];
-      const origin = ctx.request.header.origin;
-      if (allowedOrigins.includes(origin)) {
-        return origin;
-      }
-      return allowedOrigins[0]; // 默认返回第一个
-    },
+    origin: '*',
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH,OPTIONS',
     allowHeaders: 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, lang, token, shop-id, tenant-id',
     credentials: true,
