@@ -26,11 +26,18 @@ module.exports = appInfo => {
 
   // 跨域配置
   config.cors = {
-    origin: [
-      'https://h5.carrefours.vip',
-      'https://inner.carrefours.vip',
-      'https://outer.carrefours.vip',
-    ],
+    origin: ctx => {
+      const allowedOrigins = [
+        'https://h5.carrefours.vip',
+        'https://inner.carrefours.vip',
+        'https://outer.carrefours.vip',
+      ];
+      const origin = ctx.request.header.origin;
+      if (allowedOrigins.includes(origin)) {
+        return origin;
+      }
+      return allowedOrigins[0]; // 默认返回第一个
+    },
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH',
     allowHeaders: 'Content-Type,Authorization',
     credentials: true,
