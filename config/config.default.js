@@ -39,7 +39,7 @@ module.exports = appInfo => {
       return allowedOrigins[0]; // 默认返回第一个
     },
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH,OPTIONS',
-    allowHeaders: 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, token, shop-id, tenant-id',
+    allowHeaders: 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, lang, token, shop-id, tenant-id',
     credentials: true,
   };
 
