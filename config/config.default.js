@@ -32,6 +32,7 @@ module.exports = appInfo => {
       'https://outer.carrefours.vip',
     ],
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH',
+    allowHeaders: 'Content-Type,Authorization',
     credentials: true,
   };
 
