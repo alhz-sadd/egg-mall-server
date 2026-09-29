@@ -11,7 +11,7 @@ module.exports = () => {
     sequelize: {
       // 生产环境使用 MySQL，连接信息通过环境变量注入
       dialect: 'mysql',
-      host: process.env.DB_HOST || '47.238.77.10',
+      host: process.env.DB_HOST || '127.0.0.1',
       port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
       database: 'egg_mall',
       username: 'egg_mall',
