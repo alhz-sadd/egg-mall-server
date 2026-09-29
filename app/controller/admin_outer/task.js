@@ -643,7 +643,19 @@ class AdminOuterTaskController extends Controller {
     }
 
     if (userTask.status !== 0) {
-      ctx.throw(400, '任务非“已绑定”状态，无法开启');
+      ctx.throw(400, '任务非“已绑定(未开启)”状态，无法开启');
+    }
+
+    // 校验：是否该模板的所有子项都已经完成
+    const remainingProgressCount = await ctx.model.ShopTaskUserItemProgress.count({
+      where: {
+        shop_task_user_id: userTask.id,
+        status: 0
+      }
+    });
+
+    if (remainingProgressCount === 0) {
+      ctx.throw(400, '该用户这个模板任务已完成，请更换模板');
     }
 
     const transaction = await ctx.model.transaction();
@@ -693,8 +705,8 @@ class AdminOuterTaskController extends Controller {
       ctx.throw(404, '用户尚未绑定此任务模板');
     }
 
-    if (userTask.status !== 1) {
-      ctx.throw(400, '任务非“执行中”状态，无法关闭');
+    if (userTask.status === 2) {
+      ctx.throw(400, '任务已关闭或已完成，无法再次关闭');
     }
 
     const transaction = await ctx.model.transaction();

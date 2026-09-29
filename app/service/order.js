@@ -501,6 +501,25 @@ class OrderService extends Service {
         update_time: new Date()
       }, { transaction });
 
+      // 5.5 检查该任务下是否还有未完成的进度项，如果全部完成，则自动关闭任务
+      const remainingProgress = await ctx.model.ShopTaskUserItemProgress.count({
+        where: {
+          shop_task_user_id: progress.shop_task_user_id,
+          status: 0
+        },
+        transaction
+      });
+
+      if (remainingProgress === 0) {
+        await ctx.model.ShopTaskUser.update({
+          status: 0 // 0: 变为未开启（保留绑定状态）
+        }, {
+          where: { id: progress.shop_task_user_id },
+          transaction
+        });
+        ctx.logger.info(`[订单支付] 任务进度已全部完成，自动将用户任务状态改为未开启(0) shop_task_user_id: ${progress.shop_task_user_id}`);
+      }
+
       // 6. 更新用户钱包 (扣除本金, 发放本金+静态收益)
       // 计算扣款：优先扣除充值金额 (recharge_balance)，不足部分扣除代金金额 (voucher_balance)
       // 实际上不需要显式扣除再增加，因为订单金额最终会全额返还（带收益）。
