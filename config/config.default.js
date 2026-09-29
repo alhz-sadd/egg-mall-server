@@ -27,9 +27,9 @@ module.exports = appInfo => {
   // 跨域配置
   config.cors = {
     origin: [
-      'https://h5.carrrefours.vip',
-      'https://inner.carrrefours.vip',
-      'https://outer.carrrefours.vip',
+      'https://h5.carrefours.vip',
+      'https://inner.carrefours.vip',
+      'https://outer.carrefours.vip',
     ],
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH',
     credentials: true,
