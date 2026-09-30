@@ -18,22 +18,8 @@ class RuleService extends Service {
       where: { config_type: 3, status: 1, is_deleted: 0 },
     });
 
-    // extra 的解析：如果原本就是对象则直接用，否则尝试 JSON.parse，解析失败兜底为空对象
-    let extraData = {};
-    if (rule && rule.extra) {
-      if (typeof rule.extra === 'string') {
-        try {
-          extraData = JSON.parse(rule.extra);
-        } catch (e) {
-          extraData = {};
-        }
-      } else {
-        extraData = rule.extra;
-      }
-    }
-
     return {
-      images: extraData.images || [],
+      content: rule ? rule.content : '',
     };
   }
 
@@ -46,26 +32,16 @@ class RuleService extends Service {
     const { ctx } = this;
     const rules = await ctx.model.SysH5Config.findAll({
       where: { config_type: 3, is_deleted: 0 },
-      order: [[ 'id', 'DESC' ]],
+      order: [[ 'sort', 'ASC' ], [ 'id', 'DESC' ]],
     });
 
-    // 如果想要前端支持多套规则列表，这里可以直接返回数组。
-    // 为了兼容前端如果只想取对象的情况，你可以看前端具体是怎么渲染的。这里我们直接返回包含 extra 解析后的数组。
     return rules.map(rule => {
-      let extraData = {};
-      if (rule.extra) {
-        if (typeof rule.extra === 'string') {
-          try { extraData = JSON.parse(rule.extra); } catch (e) {}
-        } else {
-          extraData = rule.extra;
-        }
-      }
       return {
         id: rule.id,
         title: rule.title,
+        sort: rule.sort,
         status: rule.status,
-        images: extraData.images || [],
-        extra: extraData,
+        content: rule.content || '',
       };
     });
   }
@@ -77,7 +53,8 @@ class RuleService extends Service {
    */
   async create(payload) {
     const { ctx } = this;
-    const images = this.extractImages(payload);
+    const content = payload.content || '';
+    const sort = payload.sort !== undefined ? Number(payload.sort) : 0;
 
     // 获取所有存在的规则
     const existList = await ctx.model.SysH5Config.findAll({
@@ -105,7 +82,8 @@ class RuleService extends Service {
         const title = payload.title || currentRule.title;
         await currentRule.update({
           title,
-          extra: { images },
+          sort,
+          content,
           status: targetStatus,
         }, { transaction });
       } else {
@@ -113,7 +91,8 @@ class RuleService extends Service {
         currentRule = await ctx.model.SysH5Config.create({
           config_type: 3,
           title: payload.title || '规则管理',
-          extra: { images },
+          sort,
+          content,
           status: targetStatus,
         }, { transaction });
         existList.push(currentRule);
@@ -131,7 +110,7 @@ class RuleService extends Service {
       }
 
       await transaction.commit();
-      return { images: currentRule.extra.images, status: currentRule.status };
+      return { content: currentRule.content, status: currentRule.status, sort: currentRule.sort };
     } catch (error) {
       await transaction.rollback();
       throw error;
@@ -211,20 +190,6 @@ class RuleService extends Service {
     }
 
     await rule.update({ status: 0, is_deleted: 1 });
-  }
-
-  /**
-   * 提取图片数组
-   * @param {Object} payload 请求数据
-   * @return {Array<string>} 图片地址数组
-   */
-  extractImages(payload) {
-    const { ctx } = this;
-    if (payload.images !== undefined) {
-      ctx.assert(Array.isArray(payload.images), 422, 'images 必须是数组');
-      return payload.images;
-    }
-    return [];
   }
 }
 
