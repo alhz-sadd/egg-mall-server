@@ -348,7 +348,7 @@ class AdminOuterCustomerService extends Service {
     const { rows, count } = await ctx.model.SysUser.findAndCountAll({
       where,
       include: include.length > 0 ? include : undefined,
-      attributes: [ 'user_id', 'username', 'nickname', 'phone', 'avatar', 'status', 'create_time', 'remark', 'inviter_user_id', 'last_login_ip', 'last_login_time', 'is_real_user', 'user_type', 'vip_level', 'withdrawal_status', 'temp_withdraw_status' ],
+      attributes: [ 'user_id', 'username', 'nickname', 'phone', 'avatar', 'status', 'create_time', 'remark', 'inviter_user_id', 'invite_code', 'last_login_ip', 'last_login_time', 'is_real_user', 'user_type', 'vip_level', 'withdrawal_status', 'temp_withdraw_status' ],
       order,
       limit: page_size,
       offset: (page - 1) * page_size,

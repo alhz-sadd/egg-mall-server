@@ -9,10 +9,10 @@ module.exports = () => {
     // 本地开发域名
     appBaseUrl: process.env.APP_BASE_URL || 'http://127.0.0.1:7001',
     sequelize: {
-      // 本地开发使用 MySQL，连接信息通过环境变量注入
+      // 本地开发使用 MySQL
       dialect: 'mysql',
-      host: process.env.DB_HOST || '47.238.77.10',
-      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
+      host: '47.238.77.10',
+      port: 3306,
       database: 'egg-test',
       username: 'egg-test',
       password: 'NPbkZ3LACjMZ7WjK',

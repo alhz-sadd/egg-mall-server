@@ -93,11 +93,11 @@ class MobileWithdrawController extends Controller {
       // 检查用户任务状态
       const Op = this.app.Sequelize.Op;
       
-      // 2. 用户任务中，不允许提现 (status 为 0 或 1)
+      // 2. 用户任务中，不允许提现 (status 为 1)
       const activeTask = await ctx.model.ShopTaskUser.findOne({
         where: {
           user_id: userId,
-          status: { [Op.in]: [0, 1] }
+          status: 1
         }
       });
 
@@ -123,6 +123,24 @@ class MobileWithdrawController extends Controller {
           ctx.body = {
             code: 4001,
             message: '请先完成任务模板后再进行提现'
+          };
+          return;
+        }
+      }
+
+      // 5. 店铺如果设置了需要完成实名认证后才能提现，就必须完成实名后才能提现
+      if (shopConfig && shopConfig.withdraw_first_need_identity === 1) {
+        const identity = await ctx.model.UserIdentity.findOne({
+          where: {
+            user_id: userId,
+            audit_status: 2 // 2代表审核通过
+          }
+        });
+
+        if (!identity) {
+          ctx.body = {
+            code: 4001,
+            message: '请先完成实名认证后再进行提现'
           };
           return;
         }
