@@ -18,7 +18,9 @@ class BannerController extends Controller {
     
     // 首先尝试从 header 或 query 中获取 origin/host 判断绑定的 H5 域名
     // 本地开发调试时，允许前端直接在 header 里传入 shop-id
-    const host = ctx.request.header.origin || ctx.request.header.host;
+    let host = ctx.request.header.origin || ctx.request.header.host || '';
+    // 去除协议头，保留域名（或包含端口号的完整主机名），以便于使用 like 进行模糊匹配
+    host = host.replace(/^https?:\/\//, '');
     let shopId = ctx.request.header['shop-id'] ? parseInt(ctx.request.header['shop-id'], 10) : 0;
     
     if (!shopId && host) {
