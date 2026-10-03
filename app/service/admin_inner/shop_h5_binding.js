@@ -14,11 +14,11 @@ class ShopH5BindingService extends Service {
 
     const where = { is_deleted: 0 };
 
-    if (shop_id) {
+    if (shop_id !== undefined && shop_id !== '') {
       where.shop_id = shop_id;
     }
 
-    if (h5_url) {
+    if (h5_url !== undefined && h5_url !== '') {
       where.h5_url = {
         [Op.like]: `%${h5_url}%`,
       };
