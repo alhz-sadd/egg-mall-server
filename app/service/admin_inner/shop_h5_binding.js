@@ -106,7 +106,7 @@ class ShopH5BindingService extends Service {
     });
 
     if (exist) {
-      ctx.throw(400, '该H5 URL已被绑定，请勿重复绑定');
+      ctx.throw(400, `该H5 URL已被绑定，请勿重复绑定 (已被店铺ID: ${exist.shop_id} 占用)`);
     }
 
     const userId = ctx.state.user ? ctx.state.user.user_id : null;
@@ -147,7 +147,7 @@ class ShopH5BindingService extends Service {
       });
 
       if (exist) {
-        ctx.throw(400, '该H5 URL已被其他记录绑定');
+        ctx.throw(400, `该H5 URL已被其他记录绑定 (已被店铺ID: ${exist.shop_id} 占用)`);
       }
     }
 
