@@ -315,7 +315,7 @@ class AdminInnerUserService extends Service {
       }
 
       const updateData = {};
-      const fields = [ 'nickname', 'phone', 'email', 'avatar', 'role_id', 'status', 'remark', 'shop_id' ];
+      const fields = [ 'nickname', 'phone', 'email', 'avatar', 'role_id', 'status', 'remark', 'shop_id', 'user_type' ];
       fields.forEach(field => {
         if (payload[field] !== undefined) {
           updateData[field] = payload[field];
