@@ -10,7 +10,7 @@ class MerchantController extends Controller {
    */
   async index() {
     const { ctx } = this;
-    const { keyword, status, page = 1, page_size = 10 } = ctx.query;
+    const { keyword, status, role, page = 1, page_size = 10 } = ctx.query;
 
     const where = {
       is_deleted: 0,
@@ -18,6 +18,22 @@ class MerchantController extends Controller {
 
     if (status !== undefined && status !== null && status !== '') {
       where.status = Number(status);
+    }
+
+    if (role !== undefined && role !== null && role !== '') {
+      // 如果传了 role，先查出对应 role_id 的商家 user_type=2
+      const merchantUsers = await ctx.model.SysUser.findAll({
+        where: { user_type: 2, role_id: role, is_deleted: 0 },
+        attributes: [ 'shop_id' ],
+        raw: true,
+      });
+      const validShopIds = merchantUsers.map(u => u.shop_id);
+      // 如果没有找到任何该角色的商家，直接返回空列表
+      if (validShopIds.length === 0) {
+        where.shop_id = -1;
+      } else {
+        where.shop_id = { [Op.in]: validShopIds };
+      }
     }
 
     if (keyword) {

@@ -245,33 +245,39 @@ class ShopService extends Service {
 
     const t = await ctx.model.transaction();
     try {
-      // 1. 获取该店铺下的所有用户ID (包括商家、店长、业务员、C端用户)
+      // 1. 获取该店铺下的所有用户ID (包括商家、店长、业务员、C端用户)，包含已软删的用户
       const users = await ctx.model.SysUser.findAll({
-        where: { shop_id, is_deleted: 0 },
+        where: { shop_id },
         attributes: [ 'user_id' ],
         transaction: t,
       });
       const userIds = users.map(u => u.user_id);
 
-      // 2. 软删除店铺内所有用户
-      await ctx.model.SysUser.update(
-        { is_deleted: 1 },
-        { where: { shop_id }, transaction: t },
-      );
+      // 2. 物理删除店铺内所有用户
+      await ctx.model.query('DELETE FROM sys_user WHERE shop_id = :shop_id', {
+        replacements: { shop_id },
+        transaction: t,
+      });
 
-      // 3. 软删除店铺主表
-      await shop.update({ is_deleted: 1 }, { transaction: t });
+      // 3. 物理删除店铺主表
+      await ctx.model.query('DELETE FROM shop WHERE shop_id = :shop_id', {
+        replacements: { shop_id },
+        transaction: t,
+      });
 
       // 4. 物理清理与 shop_id 直接关联的业务表
       const shopRelatedTables = [
         'shop_config',
         'shop_vip_level',
         'shop_pay_channel',
-        'shop_task', // 注意：这里是数据库表名，如果模型名不同需确认
+        'shop_task',
+        'shop_h5_binding',
         'customer_relation',
         'user_recharge',
         'user_withdraw',
         'sales_recharge_address',
+        'recharge_order',
+        'user_operate_log'
       ];
 
       for (const table of shopRelatedTables) {
@@ -289,11 +295,18 @@ class ShopService extends Service {
       if (userIds.length > 0) {
         const userRelatedTables = [
           'sys_oper_log',
+          'sys_user_role',
+          'user_identity',
           'user_login_log',
+          'user_login_logs',
           'user_operate_log',
           'user_wallet',
           'user_wallet_log',
-          'shop_task_user', // 对应 sys_user 的任务
+          'shop_task_user',
+          'user_tasks',
+          'user_commission_log',
+          'user_task_income_log',
+          'user_task_stat'
         ];
 
         for (const table of userRelatedTables) {
