@@ -100,7 +100,7 @@ module.exports = app => {
       type: INTEGER,
       defaultValue: 0,
       comment: '逻辑删除：0未删除，1已删除',
-    }
+    },
   }, {
     tableName: tableNames.SHOP_TASK_USER_ITEM_PROGRESS,
     timestamps: false, // 如果需要sequelize自动维护，可开启并映射字段

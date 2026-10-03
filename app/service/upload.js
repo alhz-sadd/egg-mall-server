@@ -31,16 +31,17 @@ class UploadService extends Service {
     const maxSizeStr = app.config.multipart.fileSize || '10mb';
     // 简单处理 '10mb' 字符串转数字，如果是数字则直接使用
     const maxSize = typeof maxSizeStr === 'string' ? parseInt(maxSizeStr) * 1024 * 1024 : maxSizeStr;
-    
+
     const fileSize = file.size || (await fs.promises.stat(file.filepath)).size;
     if (fileSize > maxSize) {
       ctx.throw(422, `图片大小不能超过 ${Math.floor(maxSize / 1024 / 1024)}MB`);
     }
 
     // 按日期分目录存储
-    const dateDir = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const dateDir = new Date().toISOString().slice(0, 10)
+      .replace(/-/g, '');
     const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
-    
+
     // OSS 上的文件路径
     const objectName = `uploads/${dir}/${dateDir}/${filename}`;
 

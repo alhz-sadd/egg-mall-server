@@ -47,7 +47,7 @@ class DashboardService extends Service {
 
     // 辅助方法：获取充值金额
     const getRechargeAmount = async (startTime, endTime) => {
-      let whereCondition = {
+      const whereCondition = {
         status: 2, // 2审核通过
         audit_time: {
           [Op.between]: [ startTime, endTime ],
@@ -74,7 +74,7 @@ class DashboardService extends Service {
 
     // 辅助方法：获取提现金额
     const getWithdrawAmount = async (startTime, endTime) => {
-      let whereCondition = {
+      const whereCondition = {
         status: 2, // 2审核通过
         audit_time: {
           [Op.between]: [ startTime, endTime ],

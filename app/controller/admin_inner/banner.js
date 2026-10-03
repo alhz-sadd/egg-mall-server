@@ -2,124 +2,182 @@
 
 const Controller = require('egg').Controller;
 
-/**
- * @Controller 管理端-轮播图
- * 管理端轮播图控制器
- */
 class BannerController extends Controller {
+  // =============== 店铺轮播图管理接口 (shop_id > 0) ===============
+
   /**
-   * @summary 管理端轮播图列表
-   * @description 管理员查看全部状态轮播图，支持状态筛选
-   * @router get /api/admin-inner/banners
-   * @request header string Authorization Bearer admin token
-   * @request query integer status 状态：1启用 0禁用
-   * @response 200 ApiResponse 轮播图列表
+   * @summary 获取店铺轮播图模板
+   * @router get /api/admin-inner/shops/:shop_id/banners
    */
-  async adminList() {
+  async adminGet() {
     const { ctx, service } = this;
-    const { status } = ctx.query;
+    const shopId = ctx.params.shop_id;
+    const data = await service.banner.adminList(shopId, ctx.query);
 
-    const result = await service.banner.adminList({ status });
-
-    ctx.body = {
-      code: 200,
-      message: 'success',
-      data: result,
-    };
+    ctx.body = { code: 200, message: 'success', data };
   }
 
   /**
-   * 兼容前端驼峰字段名
-   * @param {Object} body 请求体
-   */
-  _normalizePayload(body) {
-    if (body.imageUrl !== undefined && body.image === undefined) {
-      body.image = body.imageUrl;
-    }
-  }
-
-  /**
-   * 处理 multipart 上传的轮播图图片
-   * @param {Object} body 请求体
-   */
-  async _processImage(body) {
-    const { ctx, service } = this;
-    const files = ctx.request.files;
-    if (files && files.length) {
-      const result = await service.upload.image(files[0], 'banners');
-      body.image = result.url;
-    }
-  }
-
-  /**
-   * @summary 创建轮播图
-   * @description 创建新轮播图，支持 JSON 或 multipart/form-data 上传图片
-   * @router post /api/admin-inner/banners
-   * @request header string Authorization Bearer admin token
-   * @request body BannerRequest *body 轮播图信息
-   * @response 200 ApiResponse 创建成功
+   * @summary 创建/更新店铺轮播图模板
+   * @router post /api/admin-inner/shops/:shop_id/banners
    */
   async create() {
     const { ctx, service } = this;
-    const body = { ...ctx.request.body };
+    const body = ctx.request.body;
+    const shopId = ctx.params.shop_id;
 
-    this._normalizePayload(body);
-    await this._processImage(body);
+    const data = await service.banner.create(body, shopId);
 
-    const banner = await service.banner.create(body);
-
-    ctx.body = {
-      code: 200,
-      message: '创建成功',
-      data: banner,
-    };
+    ctx.body = { code: 200, message: '创建成功', data };
   }
 
   /**
-   * @summary 更新轮播图
-   * @description 根据轮播图ID更新信息
-   * @router put /api/admin-inner/banners/:id
-   * @request header string Authorization Bearer admin token
-   * @request path integer *id 轮播图ID
-   * @request body BannerRequest *body 轮播图信息
-   * @response 200 ApiResponse 更新成功
+   * @summary 更新店铺轮播图模板
+   * @router put /api/admin-inner/shops/:shop_id/banners/:id
    */
   async update() {
     const { ctx, service } = this;
-    const { id } = ctx.params;
-    const body = { ...ctx.request.body };
+    const body = ctx.request.body;
+    const shopId = ctx.params.shop_id;
 
-    this._normalizePayload(body);
-    await this._processImage(body);
+    if (ctx.params.id) {
+      body.id = ctx.params.id;
+    }
 
-    const banner = await service.banner.update(id, body);
+    if (!body.id) {
+      ctx.throw(400, '编辑操作必须传递模板的 id');
+    }
 
-    ctx.body = {
-      code: 200,
-      message: '更新成功',
-      data: banner,
-    };
+    const data = await service.banner.create(body, shopId);
+
+    ctx.body = { code: 200, message: '更新成功', data };
   }
 
   /**
-   * @summary 删除轮播图
-   * @description 根据轮播图ID软删除（状态改为禁用）
-   * @router delete /api/admin-inner/banners/:id
-   * @request header string Authorization Bearer admin token
-   * @request path integer *id 轮播图ID
-   * @response 200 ApiResponse 删除成功
+   * @summary 单独修改店铺轮播图模板状态
+   * @router put /api/admin-inner/shops/:shop_id/banners/:id/status
+   */
+  async updateStatus() {
+    const { ctx, service } = this;
+    const id = ctx.params.id;
+    const { status } = ctx.request.body;
+    const shopId = ctx.params.shop_id;
+
+    if (!id) {
+      ctx.throw(400, '必须传递模板的 id');
+    }
+    if (status === undefined) {
+      ctx.throw(400, '必须传递 status 字段');
+    }
+
+    const data = await service.banner.updateStatus(id, status, shopId);
+
+    ctx.body = { code: 200, message: '状态更新成功', data };
+  }
+
+  /**
+   * @summary 删除店铺轮播图模板
+   * @router delete /api/admin-inner/shops/:shop_id/banners/:id
    */
   async destroy() {
     const { ctx, service } = this;
-    const { id } = ctx.params;
+    const shopId = ctx.params.shop_id;
+    const id = ctx.params.id || ctx.request.body.id;
+    await service.banner.destroy(id, shopId);
 
-    await service.banner.destroy(id);
+    ctx.body = { code: 200, message: '删除成功' };
+  }
 
-    ctx.body = {
-      code: 200,
-      message: '删除成功',
-      data: null,
-    };
+  /**
+   * @summary 绑定平台轮播图模板到店铺
+   * @router post /api/admin-inner/shops/:shop_id/banners/bind
+   */
+  async bindTemplate() {
+    const { ctx, service } = this;
+    const shopId = ctx.params.shop_id;
+    const { template_id } = ctx.request.body;
+
+    if (!template_id) {
+      ctx.throw(400, '必须传递 template_id 字段');
+    }
+
+    const data = await service.banner.bindTemplate(template_id, shopId);
+
+    ctx.body = { code: 200, message: '绑定模板成功', data };
+  }
+
+  // =============== 全局轮播图模板管理接口 (shop_id = 0) ===============
+
+  /**
+   * @summary 总后台获取轮播图模板
+   * @router get /api/admin-inner/h5-config/banners
+   */
+  async adminGetGlobal() {
+    const { ctx, service } = this;
+    const data = await service.banner.adminList(0, ctx.query);
+
+    ctx.body = { code: 200, message: 'success', data };
+  }
+
+  /**
+   * @summary 创建/更新全局轮播图模板
+   * @router post /api/admin-inner/h5-config/banners
+   */
+  async createGlobal() {
+    const { ctx, service } = this;
+    const body = ctx.request.body;
+    const data = await service.banner.create(body, 0);
+
+    ctx.body = { code: 200, message: '创建成功', data };
+  }
+
+  /**
+   * @summary 更新全局轮播图模板
+   * @router put /api/admin-inner/h5-config/banners/:id
+   */
+  async updateGlobal() {
+    const { ctx, service } = this;
+    const body = ctx.request.body;
+    if (ctx.params.id) {
+      body.id = ctx.params.id;
+    }
+    if (!body.id) {
+      ctx.throw(400, '编辑操作必须传递模板的 id');
+    }
+    const data = await service.banner.create(body, 0);
+
+    ctx.body = { code: 200, message: '更新成功', data };
+  }
+
+  /**
+   * @summary 单独修改全局轮播图模板状态
+   * @router put /api/admin-inner/h5-config/banners/:id/status
+   */
+  async updateStatusGlobal() {
+    const { ctx, service } = this;
+    const id = ctx.params.id;
+    const { status } = ctx.request.body;
+    if (!id) {
+      ctx.throw(400, '必须传递模板的 id');
+    }
+    if (status === undefined) {
+      ctx.throw(400, '必须传递 status 字段');
+    }
+    const data = await service.banner.updateStatus(id, status, 0);
+
+    ctx.body = { code: 200, message: '状态更新成功', data };
+  }
+
+  /**
+   * @summary 删除全局轮播图模板
+   * @router delete /api/admin-inner/h5-config/banners/:id
+   */
+  async destroyGlobal() {
+    const { ctx, service } = this;
+    const id = ctx.params.id || ctx.request.body.id;
+    await service.banner.destroy(id, 0);
+
+    ctx.body = { code: 200, message: '删除成功' };
   }
 }
 

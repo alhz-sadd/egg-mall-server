@@ -10,18 +10,18 @@ class CommonAuthController extends Controller {
    */
   async commonLogin(userService, formatData = false) {
     const { ctx } = this;
-    
+
     // 使用统一的方法获取真实的客户端 IP
     const realIp = ctx.ip || ctx.request.ip || '127.0.0.1';
-    
+
     const meta = {
       ip: realIp,
       userAgent: ctx.get('user-agent'),
       device: 1, // 默认PC
     };
-    
+
     const result = await userService.login(ctx.request.body, meta);
-    
+
     if (result.need_totp) {
       ctx.status = 422; // 确保 HTTP 状态码也是 422
       ctx.body = {
@@ -77,7 +77,7 @@ class CommonAuthController extends Controller {
       delete payload.isRefresh;
       delete payload.iat;
       delete payload.exp;
-      
+
       const newAccessToken = app.jwt.sign(
         payload,
         app.config.jwt.secret,

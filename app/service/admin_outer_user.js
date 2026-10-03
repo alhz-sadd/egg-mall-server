@@ -6,12 +6,12 @@ class AdminOuterUserService extends Service {
   async login(payload, meta = {}) {
     const { ctx } = this;
     const { username, password, googleCode } = payload;
-    
+
     // 使用统一的方法获取真实的客户端 IP
     const realIp = ctx.ip || ctx.request.ip || '127.0.0.1';
-    
+
     const { ip = realIp } = meta;
-    
+
     // 强制使用统一 UA 解析
     const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
 
@@ -69,7 +69,7 @@ class AdminOuterUserService extends Service {
         await ctx.service.sysLog.recordLoginLog(logData);
         return { need_totp: true, userId: adminOuter.user_id };
       }
-      
+
       // 直接在此校验谷歌验证码
       await ctx.service.totp.loginVerify(adminOuter.user_id, payload.googleCode);
     }
@@ -102,11 +102,12 @@ class AdminOuterUserService extends Service {
 
   /**
    * 登录第二步：谷歌验证通过后下发 token
+   * @param userId
    */
   async generateTokensAfterTotp(userId) {
     const { ctx } = this;
     const adminOuter = await ctx.model.SysUser.findByPk(userId);
-    
+
     const accessToken = ctx.app.jwt.sign(
       { adminOuterId: adminOuter.user_id, username: adminOuter.username, type: 'admin_outer' },
       ctx.app.config.jwt.secret,
@@ -215,7 +216,7 @@ class AdminOuterUserService extends Service {
     const { ctx } = this;
     const user = await ctx.model.SysUser.findByPk(id);
     if (!user) ctx.throw(404, '员工不存在');
-    
+
     // 过滤掉 user_id 和 invite_code，确保不可修改
     const updateData = { ...payload };
     delete updateData.user_id;

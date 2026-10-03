@@ -25,7 +25,7 @@ class ProductController extends Controller {
     const queryCategoryId = category_id || type;
     const queryPageSize = pageSize || page_size;
 
-    // 移动端商品列表，只返回上架（status=1）商品
+    // 移动端商品列表，只返回上架（status=1）商品。商品是全平台通用的，不需要隔离 shop_id
     const result = await service.goods.list({
       category_id: queryCategoryId,
       goods_name: keyword,

@@ -14,7 +14,7 @@ try {
       image1: row[keys[2]],
       image2: row[keys[3]],
       image3: row[keys[4]],
-    }
+    };
   });
   console.log(JSON.stringify(formattedData, null, 2));
 } catch (error) {

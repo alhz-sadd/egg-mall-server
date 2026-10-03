@@ -12,12 +12,12 @@ class AdminInnerUserService extends Service {
   async login(payload, meta = {}) {
     const { ctx } = this;
     const { username, password, googleCode } = payload;
-    
+
     // 使用统一的方法获取真实的客户端 IP
     const realIp = ctx.ip || ctx.request.ip || '127.0.0.1';
-    
+
     const { ip = realIp, device = 1 } = meta;
-    
+
     // 强制使用统一 IP 解析位置
     const location = await ctx.service.sysLog.resolveIpLocation(ip);
     const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
@@ -69,7 +69,7 @@ class AdminInnerUserService extends Service {
         await ctx.service.sysLog.recordLoginLog(logData);
         return { need_totp: true, userId: adminInner.user_id };
       }
-      
+
       // 直接在此校验谷歌验证码
       await ctx.service.totp.loginVerify(adminInner.user_id, payload.googleCode);
     }
@@ -97,11 +97,12 @@ class AdminInnerUserService extends Service {
 
   /**
    * 登录第二步：谷歌验证通过后下发 token
+   * @param userId
    */
   async generateTokensAfterTotp(userId) {
     const { ctx } = this;
     const adminInner = await ctx.model.SysUser.findByPk(userId);
-    
+
     const accessToken = ctx.app.jwt.sign(
       { adminInnerId: adminInner.user_id, username: adminInner.username, type: 'admin_inner' },
       ctx.app.config.jwt.secret,

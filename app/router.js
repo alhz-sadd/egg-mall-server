@@ -110,7 +110,7 @@ module.exports = app => {
 
   // C端 充提渠道获取
   router.get('/api/mobile/pay-channels', auth, controller.mobile.payChannel.list);
-  
+
   // 业务员默认充值地址获取 (C端)
   router.get('/api/mobile/sales-address/default', auth, controller.mobile.salesRechargeAddress.getDefaultAddress);
 
@@ -178,6 +178,51 @@ module.exports = app => {
   router.get('/api/admin-inner/shops/:shop_id/setting', adminInnerAuth, controller.adminInner.shop.getSetting);
   router.put('/api/admin-inner/shops/:shop_id/setting', adminInnerAuth, controller.adminInner.shop.updateSetting);
   router.put('/api/admin-inner/shops/:shop_id/config', adminInnerAuth, controller.adminInner.config.updateShopConfig);
+  router.post('/api/admin-inner/shops/import-templates', adminInnerAuth, controller.adminInner.shop.importTemplates);
+
+  // admin-inner 指定店铺客服管理
+  router.get('/api/admin-inner/shops/:shop_id/customer-services', adminInnerAuth, controller.adminInner.h5Service.list);
+  router.post('/api/admin-inner/shops/:shop_id/customer-services', adminInnerAuth, controller.adminInner.h5Service.add);
+  router.put('/api/admin-inner/shops/:shop_id/customer-services/:id', adminInnerAuth, controller.adminInner.h5Service.edit);
+  router.delete('/api/admin-inner/shops/:shop_id/customer-services/:id', adminInnerAuth, controller.adminInner.h5Service.remove);
+  router.post('/api/admin-inner/shops/:shop_id/customer-services/import', adminInnerAuth, controller.adminInner.h5Service.importGlobalServices);
+
+  // admin-inner 指定店铺公告管理
+  router.get('/api/admin-inner/shops/:shop_id/notices', adminInnerAuth, controller.adminInner.h5Config.noticeList);
+  router.post('/api/admin-inner/shops/:shop_id/notices', adminInnerAuth, controller.adminInner.h5Config.noticeAdd);
+  router.put('/api/admin-inner/shops/:shop_id/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeEdit);
+  router.put('/api/admin-inner/shops/:shop_id/notices/:id/status', adminInnerAuth, controller.adminInner.h5Config.noticeUpdateStatus);
+  router.delete('/api/admin-inner/shops/:shop_id/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeRemove);
+  router.post('/api/admin-inner/shops/:shop_id/notices/bind', adminInnerAuth, controller.adminInner.h5Config.noticeBind);
+
+  // admin-inner 指定店铺分享图管理
+  router.get('/api/admin-inner/shops/:shop_id/share-images', adminInnerAuth, controller.adminInner.h5Config.shareImageList);
+  router.post('/api/admin-inner/shops/:shop_id/share-images', adminInnerAuth, controller.adminInner.h5Config.shareImageAdd);
+  router.put('/api/admin-inner/shops/:shop_id/share-images/:id', adminInnerAuth, controller.adminInner.h5Config.shareImageEdit);
+  router.put('/api/admin-inner/shops/:shop_id/share-images/:id/status', adminInnerAuth, controller.adminInner.h5Config.shareImageUpdateStatus);
+  router.delete('/api/admin-inner/shops/:shop_id/share-images/:id', adminInnerAuth, controller.adminInner.h5Config.shareImageRemove);
+  router.post('/api/admin-inner/shops/:shop_id/share-images/bind', adminInnerAuth, controller.adminInner.h5Config.shareImageBind);
+
+  // admin-inner 指定店铺轮播图模板管理
+  router.get('/api/admin-inner/shops/:shop_id/banners', adminInnerAuth, controller.adminInner.banner.adminGet);
+  router.post('/api/admin-inner/shops/:shop_id/banners', adminInnerAuth, controller.adminInner.banner.create);
+  router.put('/api/admin-inner/shops/:shop_id/banners/:id', adminInnerAuth, controller.adminInner.banner.update);
+  router.put('/api/admin-inner/shops/:shop_id/banners/:id/status', adminInnerAuth, controller.adminInner.banner.updateStatus);
+  router.delete('/api/admin-inner/shops/:shop_id/banners/:id', adminInnerAuth, controller.adminInner.banner.destroy);
+  router.post('/api/admin-inner/shops/:shop_id/banners/bind', adminInnerAuth, controller.adminInner.banner.bindTemplate);
+  router.get('/api/admin-inner/shops/:shop_id/rules', adminInnerAuth, controller.adminInner.rule.adminGet);
+  router.post('/api/admin-inner/shops/:shop_id/rules', adminInnerAuth, controller.adminInner.rule.create);
+  router.put('/api/admin-inner/shops/:shop_id/rules/:id', adminInnerAuth, controller.adminInner.rule.update);
+  router.put('/api/admin-inner/shops/:shop_id/rules/:id/status', adminInnerAuth, controller.adminInner.rule.updateStatus);
+  router.delete('/api/admin-inner/shops/:shop_id/rules/:id', adminInnerAuth, controller.adminInner.rule.destroy);
+  router.post('/api/admin-inner/shops/:shop_id/rules/bind', adminInnerAuth, controller.adminInner.rule.bindTemplate);
+
+  // admin-inner 店铺H5域名绑定
+  router.get('/api/admin-inner/shop-h5-bindings', adminInnerAuth, controller.adminInner.shopH5Binding.index);
+  router.get('/api/admin-inner/shop-h5-bindings/:id', adminInnerAuth, controller.adminInner.shopH5Binding.show);
+  router.post('/api/admin-inner/shop-h5-bindings', adminInnerAuth, controller.adminInner.shopH5Binding.create);
+  router.put('/api/admin-inner/shop-h5-bindings/:id', adminInnerAuth, controller.adminInner.shopH5Binding.update);
+  router.delete('/api/admin-inner/shop-h5-bindings/:id', adminInnerAuth, controller.adminInner.shopH5Binding.destroy);
 
   // admin-inner 系统基础参数
   router.get('/api/admin-inner/system/config', adminInnerAuth, controller.adminInner.config.getGlobalConfig);
@@ -188,6 +233,12 @@ module.exports = app => {
   router.post('/api/admin-inner/salespersons', adminInnerAuth, controller.adminInner.salesperson.create);
   router.put('/api/admin-inner/salespersons/:id', adminInnerAuth, controller.adminInner.salesperson.update);
   router.delete('/api/admin-inner/salespersons/:id', adminInnerAuth, controller.adminInner.salesperson.destroy);
+
+  // admin-inner Telegram机器人配置
+  router.get('/api/admin-inner/telegram-bots', adminInnerAuth, controller.adminInner.telegramBot.index);
+  router.post('/api/admin-inner/telegram-bots', adminInnerAuth, controller.adminInner.telegramBot.create);
+  router.put('/api/admin-inner/telegram-bots/:id', adminInnerAuth, controller.adminInner.telegramBot.update);
+  router.delete('/api/admin-inner/telegram-bots/:id', adminInnerAuth, controller.adminInner.telegramBot.destroy);
 
   // admin-inner 代理商/主管管理 (为了兼容前端调用的operators接口)
   router.post('/api/admin-inner/operators', adminInnerAuth, controller.adminInner.salesperson.create);
@@ -201,13 +252,14 @@ module.exports = app => {
   router.put('/api/admin-inner/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeEdit);
   router.delete('/api/admin-inner/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeRemove);
 
-  // admin-inner 轮播图管理 (全平台轮播，不隔离店铺)
-  router.get('/api/admin-inner/banners', adminInnerAuth, controller.adminInner.h5Config.bannerList);
-  router.post('/api/admin-inner/banners', adminInnerAuth, controller.adminInner.h5Config.bannerAdd);
-  router.put('/api/admin-inner/banners/:id', adminInnerAuth, controller.adminInner.h5Config.bannerEdit);
-  router.delete('/api/admin-inner/banners/:id', adminInnerAuth, controller.adminInner.h5Config.bannerRemove);
+  // admin-inner 轮播图管理 (支持全局和店铺隔离)
+  // 遗留的原有轮播图接口（如果不打算删除的话，先保留，但指向新的全局处理逻辑可能不合适。暂且注释或保持不动）
+  // router.get('/api/admin-inner/banners', adminInnerAuth, controller.adminInner.h5Config.bannerList);
+  // router.post('/api/admin-inner/banners', adminInnerAuth, controller.adminInner.h5Config.bannerAdd);
+  // router.put('/api/admin-inner/banners/:id', adminInnerAuth, controller.adminInner.h5Config.bannerEdit);
+  // router.delete('/api/admin-inner/banners/:id', adminInnerAuth, controller.adminInner.h5Config.bannerRemove);
 
-  // admin-inner 客服管理 (全平台客服，不隔离店铺)
+  // admin-inner 客服管理 (支持全局和店铺隔离)
   router.get('/api/admin-inner/customer-services', adminInnerAuth, controller.adminInner.h5Service.list);
   router.post('/api/admin-inner/customer-services', adminInnerAuth, controller.adminInner.h5Service.add);
   router.put('/api/admin-inner/customer-services/:id', adminInnerAuth, controller.adminInner.h5Service.edit);
@@ -289,28 +341,40 @@ module.exports = app => {
   router.get('/api/admin-inner/customers/:id/fund-details', adminInnerAuth, controller.adminInner.customer.fundDetails);
 
   // admin-inner H5配置
-  router.get('/api/admin-inner/h5-config/banners', adminInnerAuth, controller.adminInner.h5Config.bannerList);
-  router.post('/api/admin-inner/h5-config/banners', adminInnerAuth, controller.adminInner.h5Config.bannerAdd);
-  router.put('/api/admin-inner/h5-config/banners/:id', adminInnerAuth, controller.adminInner.h5Config.bannerEdit);
-  router.delete('/api/admin-inner/h5-config/banners/:id', adminInnerAuth, controller.adminInner.h5Config.bannerRemove);
+  // admin-inner 全局轮播图模板管理
+  router.get('/api/admin-inner/h5-config/banners', adminInnerAuth, controller.adminInner.banner.adminGetGlobal);
+  router.post('/api/admin-inner/h5-config/banners', adminInnerAuth, controller.adminInner.banner.createGlobal);
+  router.put('/api/admin-inner/h5-config/banners/:id', adminInnerAuth, controller.adminInner.banner.updateGlobal);
+  router.put('/api/admin-inner/h5-config/banners/:id/status', adminInnerAuth, controller.adminInner.banner.updateStatusGlobal);
+  router.put('/api/admin-inner/h5-config/banners', adminInnerAuth, controller.adminInner.banner.updateGlobal); // 兼容不带id的调用
+  router.delete('/api/admin-inner/h5-config/banners/:id', adminInnerAuth, controller.adminInner.banner.destroyGlobal);
+  router.delete('/api/admin-inner/h5-config/banners', adminInnerAuth, controller.adminInner.banner.destroyGlobal); // 兼容不带id的调用
 
   router.get('/api/admin-inner/h5-config/notices', adminInnerAuth, controller.adminInner.h5Config.noticeList);
   router.post('/api/admin-inner/h5-config/notices', adminInnerAuth, controller.adminInner.h5Config.noticeAdd);
   router.put('/api/admin-inner/h5-config/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeEdit);
+  router.put('/api/admin-inner/h5-config/notices/:id/status', adminInnerAuth, controller.adminInner.h5Config.noticeUpdateStatus);
   router.delete('/api/admin-inner/h5-config/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeRemove);
 
-  router.get('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.adminGet);
-  router.post('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.create);
-  router.put('/api/admin-inner/h5-config/rules/:id', adminInnerAuth, controller.adminInner.rule.update);
-  router.put('/api/admin-inner/h5-config/rules/:id/status', adminInnerAuth, controller.adminInner.rule.updateStatus);
-  router.put('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.update); // 兼容不带id的调用
-  router.delete('/api/admin-inner/h5-config/rules/:id', adminInnerAuth, controller.adminInner.rule.destroy);
-  router.delete('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.destroy); // 兼容不带id的调用
+  // admin-inner 全局规则管理（原规则管理接口，现在作为提供给店铺绑定的模板，取消原有关联限制）
+  router.get('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.adminGetGlobal);
+  router.post('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.createGlobal);
+  router.put('/api/admin-inner/h5-config/rules/:id', adminInnerAuth, controller.adminInner.rule.updateGlobal);
+  router.put('/api/admin-inner/h5-config/rules/:id/status', adminInnerAuth, controller.adminInner.rule.updateStatusGlobal);
+  router.put('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.updateGlobal); // 兼容不带id的调用
+  router.delete('/api/admin-inner/h5-config/rules/:id', adminInnerAuth, controller.adminInner.rule.destroyGlobal);
+  router.delete('/api/admin-inner/h5-config/rules', adminInnerAuth, controller.adminInner.rule.destroyGlobal); // 兼容不带id的调用
 
   router.get('/api/admin-inner/h5-config/service-entries', adminInnerAuth, controller.adminInner.h5Config.serviceEntryList);
   router.post('/api/admin-inner/h5-config/service-entries', adminInnerAuth, controller.adminInner.h5Config.serviceEntryAdd);
   router.put('/api/admin-inner/h5-config/service-entries/:id', adminInnerAuth, controller.adminInner.h5Config.serviceEntryEdit);
   router.delete('/api/admin-inner/h5-config/service-entries/:id', adminInnerAuth, controller.adminInner.h5Config.serviceEntryRemove);
+
+  // admin-inner H5分享图配置 (支持全局和店铺隔离)
+  router.get('/api/admin-inner/h5-config/share-images', adminInnerAuth, controller.adminInner.h5Config.shareImageList);
+  router.post('/api/admin-inner/h5-config/share-images', adminInnerAuth, controller.adminInner.h5Config.shareImageAdd);
+  router.put('/api/admin-inner/h5-config/share-images/:id', adminInnerAuth, controller.adminInner.h5Config.shareImageEdit);
+  router.delete('/api/admin-inner/h5-config/share-images/:id', adminInnerAuth, controller.adminInner.h5Config.shareImageRemove);
 
   // admin-inner H5客服配置
   router.get('/api/admin-inner/h5-services', adminInnerAuth, controller.adminInner.h5Service.list);

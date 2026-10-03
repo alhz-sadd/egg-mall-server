@@ -38,7 +38,7 @@ class AdminOuterTaskController extends Controller {
       offset,
       order: [
         [ 'sort', 'ASC' ],
-        [ 'create_time', 'DESC' ]
+        [ 'create_time', 'DESC' ],
       ],
     });
 
@@ -95,7 +95,7 @@ class AdminOuterTaskController extends Controller {
     if (!task) {
       ctx.throw(404, '任务不存在');
     }
-    
+
     // 转换为符合前端期望的分页格式
     const taskJson = task.toJSON();
     taskJson.min_amount = Number(taskJson.min_amount);
@@ -105,7 +105,7 @@ class AdminOuterTaskController extends Controller {
     taskJson.balance_max_rate = Number(taskJson.balance_max_rate);
 
     const items = taskJson.items || [];
-    
+
     // 如果子项是普通订单或者没有独立设置收益率，将其回显为主任务的收益率
     items.forEach(item => {
       if (item.is_lucky_order === 0 || item.yield_rate === null || item.yield_rate === undefined) {
@@ -116,13 +116,13 @@ class AdminOuterTaskController extends Controller {
       item.append_amount = Number(item.append_amount);
       item.goods_price = Number(item.goods_price);
     });
-    
+
     ctx.body = {
       code: 200,
       message: '获取成功',
       data: {
         total: items.length,
-        rows: items
+        rows: items,
       },
     };
   }
@@ -180,7 +180,7 @@ class AdminOuterTaskController extends Controller {
         }
         await ctx.model.ShopTaskItem.bulkCreate(items, { transaction });
       }
-      
+
       await transaction.commit();
     } catch (error) {
       await transaction.rollback();
@@ -276,7 +276,7 @@ class AdminOuterTaskController extends Controller {
           if (itemsToDelete.length > 0) {
             await ctx.model.ShopTaskItem.update(
               { is_deleted: 1 },
-              { where: { item_id: itemsToDelete }, transaction }
+              { where: { item_id: itemsToDelete }, transaction },
             );
           }
         }
@@ -289,16 +289,16 @@ class AdminOuterTaskController extends Controller {
       if (payload.yield_rate !== undefined) {
         await ctx.model.ShopTaskItem.update(
           { yield_rate: payload.yield_rate },
-          { 
-            where: { 
-              task_id: id, 
+          {
+            where: {
+              task_id: id,
               [ctx.app.Sequelize.Op.or]: [
                 { is_lucky_order: 0 },
-                { yield_rate: null }
-              ]
-            }, 
-            transaction 
-          }
+                { yield_rate: null },
+              ],
+            },
+            transaction,
+          },
         );
       }
 
@@ -445,9 +445,9 @@ class AdminOuterTaskController extends Controller {
             model: ctx.model.SysUser,
             as: 'user',
             where: { shop_id: adminOuter.shop_id },
-          }
+          },
         ],
-        order: [['id', 'DESC']] // 取最新的绑定记录
+        order: [[ 'id', 'DESC' ]], // 取最新的绑定记录
       });
     } else {
       // 否则认为 URL 中的 id 是 progress_id
@@ -458,7 +458,7 @@ class AdminOuterTaskController extends Controller {
             model: ctx.model.SysUser,
             as: 'user',
             where: { shop_id: adminOuter.shop_id },
-          }
+          },
         ],
       });
     }
@@ -473,7 +473,7 @@ class AdminOuterTaskController extends Controller {
 
     const updateData = { ...payload };
     delete updateData.user_id; // 不更新 user_id
-    
+
     // 如果修改为普通订单，或者没有传单独的收益率，尝试同步为主任务的收益率
     if (updateData.is_lucky_order === 0) {
       // 尝试获取主任务收益率进行同步
@@ -538,8 +538,8 @@ class AdminOuterTaskController extends Controller {
 
     // 校验用户是否在执行任务中 (status === 1)
     const currentTaskUser = await ctx.model.ShopTaskUser.findOne({
-      where: { user_id, status: { [ctx.model.Sequelize.Op.in]: [0, 1] } },
-      order: [['id', 'DESC']]
+      where: { user_id, status: { [ctx.model.Sequelize.Op.in]: [ 0, 1 ] } },
+      order: [[ 'id', 'DESC' ]],
     });
 
     if (currentTaskUser && currentTaskUser.status === 1) {
@@ -554,15 +554,15 @@ class AdminOuterTaskController extends Controller {
       await ctx.model.ShopTaskUserItemProgress.destroy({
         where: { user_id, status: 0 },
         transaction,
-        force: true
+        force: true,
       });
 
       // 将该用户之前所有的绑定记录置为关闭/失效状态 (2)
       await ctx.model.ShopTaskUser.update({
-        status: 2
+        status: 2,
       }, {
         where: { user_id },
-        transaction
+        transaction,
       });
 
       // 绑定新的模板，状态默认为未开启 (0)
@@ -576,8 +576,8 @@ class AdminOuterTaskController extends Controller {
       // 查询模板的所有子项
       const taskItems = await ctx.model.ShopTaskItem.findAll({
         where: { task_id, is_deleted: 0 },
-        order: [['sort', 'ASC']],
-        transaction
+        order: [[ 'sort', 'ASC' ]],
+        transaction,
       });
 
       // 绑定时即初始化子项进度，方便在未开启前修改特定用户的配置
@@ -635,7 +635,7 @@ class AdminOuterTaskController extends Controller {
     // 查询最新的绑定记录（按 ID 倒序，防止查询到历史失效的记录）
     const userTask = await ctx.model.ShopTaskUser.findOne({
       where: { user_id, task_id },
-      order: [['id', 'DESC']]
+      order: [[ 'id', 'DESC' ]],
     });
 
     if (!userTask) {
@@ -650,8 +650,8 @@ class AdminOuterTaskController extends Controller {
     const remainingProgressCount = await ctx.model.ShopTaskUserItemProgress.count({
       where: {
         shop_task_user_id: userTask.id,
-        status: 0
-      }
+        status: 0,
+      },
     });
 
     if (remainingProgressCount === 0) {
@@ -698,7 +698,7 @@ class AdminOuterTaskController extends Controller {
     // 查询最新的绑定记录（按 ID 倒序）
     const userTask = await ctx.model.ShopTaskUser.findOne({
       where: { user_id, task_id },
-      order: [['id', 'DESC']]
+      order: [[ 'id', 'DESC' ]],
     });
 
     if (!userTask) {
@@ -715,7 +715,7 @@ class AdminOuterTaskController extends Controller {
       await ctx.model.ShopTaskUserItemProgress.destroy({
         where: { shop_task_user_id: userTask.id, user_id, status: 0 },
         transaction,
-        force: true
+        force: true,
       });
 
       // 2. 将当前任务记录状态设为 2 (已终止/历史)
@@ -733,8 +733,8 @@ class AdminOuterTaskController extends Controller {
       const task = await ctx.model.ShopTask.findByPk(userTask.task_id, { transaction });
       const taskItems = await ctx.model.ShopTaskItem.findAll({
         where: { task_id: userTask.task_id, is_deleted: 0 },
-        order: [['sort', 'ASC']],
-        transaction
+        order: [[ 'sort', 'ASC' ]],
+        transaction,
       });
 
       if (taskItems.length > 0 && task) {

@@ -73,11 +73,11 @@ class AuthController extends CommonAuthController {
     const { ctx } = this;
     const { userId } = ctx.request.body;
     ctx.assert(userId, 422, '需要被修改的用户ID不能为空');
-    
+
     // A端可以修改 店长(2), 业务员(3), 用户(4)
     const targetUser = await ctx.model.SysUser.findByPk(userId);
     ctx.assert(targetUser, 404, '目标用户不存在');
-    ctx.assert([2, 3, 4].includes(targetUser.user_type), 403, '无权修改该类型用户的密码');
+    ctx.assert([ 2, 3, 4 ].includes(targetUser.user_type), 403, '无权修改该类型用户的密码');
 
     await this.commonResetUserPwd(userId);
   }
@@ -93,7 +93,7 @@ class AuthController extends CommonAuthController {
     // A端可以重置 店长(2), 业务员(3)。用户(4)没有谷歌验证
     const targetUser = await ctx.model.SysUser.findByPk(userId);
     ctx.assert(targetUser, 404, '目标用户不存在');
-    ctx.assert([2, 3].includes(targetUser.user_type), 403, '无权或无需重置该类型用户的谷歌验证码');
+    ctx.assert([ 2, 3 ].includes(targetUser.user_type), 403, '无权或无需重置该类型用户的谷歌验证码');
 
     await this.commonResetUserGoogle(userId);
   }

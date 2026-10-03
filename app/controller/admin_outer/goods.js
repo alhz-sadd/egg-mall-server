@@ -44,8 +44,8 @@ class AdminOuterGoodsController extends Controller {
 
     const list = await ctx.model.Goods.findAll({
       where,
-      attributes: ['goods_id', 'goods_name', 'goods_no', 'goods_type', 'price', 'cover_image'],
-      order: [['create_time', 'DESC']],
+      attributes: [ 'goods_id', 'goods_name', 'goods_no', 'goods_type', 'price', 'cover_image' ],
+      order: [[ 'create_time', 'DESC' ]],
     });
 
     ctx.body = {

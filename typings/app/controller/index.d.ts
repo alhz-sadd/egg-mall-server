@@ -16,7 +16,6 @@ import ExportAdminInnerH5Config = require('../../../app/controller/admin_inner/h
 import ExportAdminInnerH5Service = require('../../../app/controller/admin_inner/h5_service');
 import ExportAdminInnerLoginLog = require('../../../app/controller/admin_inner/login_log');
 import ExportAdminInnerMerchant = require('../../../app/controller/admin_inner/merchant');
-import ExportAdminInnerNotice = require('../../../app/controller/admin_inner/notice');
 import ExportAdminInnerOperationLog = require('../../../app/controller/admin_inner/operation_log');
 import ExportAdminInnerPayChannel = require('../../../app/controller/admin_inner/pay_channel');
 import ExportAdminInnerPoints = require('../../../app/controller/admin_inner/points');
@@ -24,10 +23,12 @@ import ExportAdminInnerProduct = require('../../../app/controller/admin_inner/pr
 import ExportAdminInnerRule = require('../../../app/controller/admin_inner/rule');
 import ExportAdminInnerSalesperson = require('../../../app/controller/admin_inner/salesperson');
 import ExportAdminInnerShop = require('../../../app/controller/admin_inner/shop');
+import ExportAdminInnerShopH5Binding = require('../../../app/controller/admin_inner/shop_h5_binding');
 import ExportAdminInnerShopPayChannel = require('../../../app/controller/admin_inner/shop_pay_channel');
 import ExportAdminInnerSysMenu = require('../../../app/controller/admin_inner/sys_menu');
 import ExportAdminInnerSysRole = require('../../../app/controller/admin_inner/sys_role');
 import ExportAdminInnerTask = require('../../../app/controller/admin_inner/task');
+import ExportAdminInnerTelegramBot = require('../../../app/controller/admin_inner/telegram_bot');
 import ExportAdminInnerUpload = require('../../../app/controller/admin_inner/upload');
 import ExportAdminInnerVipLevel = require('../../../app/controller/admin_inner/vip_level');
 import ExportAdminOuterAuth = require('../../../app/controller/admin_outer/auth');
@@ -91,7 +92,6 @@ declare module 'egg' {
       h5Service: ExportAdminInnerH5Service;
       loginLog: ExportAdminInnerLoginLog;
       merchant: ExportAdminInnerMerchant;
-      notice: ExportAdminInnerNotice;
       operationLog: ExportAdminInnerOperationLog;
       payChannel: ExportAdminInnerPayChannel;
       points: ExportAdminInnerPoints;
@@ -99,10 +99,12 @@ declare module 'egg' {
       rule: ExportAdminInnerRule;
       salesperson: ExportAdminInnerSalesperson;
       shop: ExportAdminInnerShop;
+      shopH5Binding: ExportAdminInnerShopH5Binding;
       shopPayChannel: ExportAdminInnerShopPayChannel;
       sysMenu: ExportAdminInnerSysMenu;
       sysRole: ExportAdminInnerSysRole;
       task: ExportAdminInnerTask;
+      telegramBot: ExportAdminInnerTelegramBot;
       upload: ExportAdminInnerUpload;
       vipLevel: ExportAdminInnerVipLevel;
     }

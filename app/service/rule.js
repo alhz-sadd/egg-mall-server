@@ -10,12 +10,13 @@ class RuleService extends Service {
   /**
    * 获取规则
    * 仅返回那套处于启用状态的规则模板里的图片数组
+   * @param {Number} shopId 店铺ID，如果不传则查询全局配置
    * @return {Object} 规则图片数组
    */
-  async get() {
+  async get(shopId = 0) {
     const { ctx } = this;
     const rule = await ctx.model.SysH5Config.findOne({
-      where: { config_type: 3, status: 1, is_deleted: 0 },
+      where: { config_type: 3, status: 1, is_deleted: 0, shop_id: shopId },
     });
 
     return {
@@ -26,12 +27,20 @@ class RuleService extends Service {
   /**
    * 管理端获取规则
    * 返回完整规则数据（含状态）
+   * @param {Number} shopId 店铺ID，如果不传则查询全局配置
    * @return {Object|Array} 规则数据
    */
-  async adminGet() {
+  async adminGet(shopId) {
     const { ctx } = this;
+    const where = { config_type: 3, is_deleted: 0 };
+    if (shopId !== undefined) {
+      where.shop_id = shopId;
+    } else {
+      // 默认查询全局模板
+      where.shop_id = 0;
+    }
     const rules = await ctx.model.SysH5Config.findAll({
-      where: { config_type: 3, is_deleted: 0 },
+      where,
       order: [[ 'sort', 'ASC' ], [ 'id', 'DESC' ]],
     });
 
@@ -49,16 +58,17 @@ class RuleService extends Service {
   /**
    * 创建/更新规则
    * @param {Object} payload 规则数据
+   * @param {Number} shopId 店铺ID，默认0（全局）
    * @return {Object} 规则数据
    */
-  async create(payload) {
+  async create(payload, shopId = 0) {
     const { ctx } = this;
     const content = payload.content || '';
     const sort = payload.sort !== undefined ? Number(payload.sort) : 0;
 
     // 获取所有存在的规则
     const existList = await ctx.model.SysH5Config.findAll({
-      where: { config_type: 3, is_deleted: 0 },
+      where: { config_type: 3, shop_id: shopId, is_deleted: 0 },
     });
 
     let currentRule = null;
@@ -74,114 +84,94 @@ class RuleService extends Service {
     // 判断即将保存的这条规则状态是不是启用 (1)
     const targetStatus = payload.status !== undefined ? Number(payload.status) : 1;
 
-    // 开启事务，保证原子性
-    const transaction = await ctx.model.transaction();
-    try {
-      if (currentRule) {
-        // 更新当前规则
-        const title = payload.title || currentRule.title;
-        await currentRule.update({
-          title,
-          sort,
-          content,
-          status: targetStatus,
-        }, { transaction });
-      } else {
-        // 创建新规则
-        currentRule = await ctx.model.SysH5Config.create({
-          config_type: 3,
-          title: payload.title || '规则管理',
-          sort,
-          content,
-          status: targetStatus,
-        }, { transaction });
-        existList.push(currentRule);
-      }
-
-      // 互斥逻辑：如果当前操作的是启用，就把其他所有的规则全部禁用 (status: 0)
-      if (targetStatus === 1) {
-        const otherIds = existList.map(item => item.id).filter(item_id => item_id !== currentRule.id);
-        if (otherIds.length > 0) {
-          await ctx.model.SysH5Config.update(
-            { status: 0 },
-            { where: { id: otherIds }, transaction },
-          );
+    // 如果是店铺规则，只能有一条规则启用；如果是平台模板（shopId=0），则允许多个启用以供选择
+    if (targetStatus === 1 && shopId !== 0) {
+      for (const rule of existList) {
+        if (rule.status === 1 && (!currentRule || rule.id !== currentRule.id)) {
+          await rule.update({ status: 0 });
         }
       }
-
-      await transaction.commit();
-      return { content: currentRule.content, status: currentRule.status, sort: currentRule.sort };
-    } catch (error) {
-      await transaction.rollback();
-      throw error;
     }
+
+    if (currentRule) {
+      // 更新当前规则
+      const title = payload.title || currentRule.title;
+      await currentRule.update({
+        title,
+        sort,
+        content,
+        status: targetStatus,
+      });
+    } else {
+      // 创建新规则
+      currentRule = await ctx.model.SysH5Config.create({
+        config_type: 3,
+        title: payload.title || '规则管理',
+        sort,
+        content,
+        status: targetStatus,
+        shop_id: shopId,
+      });
+      existList.push(currentRule);
+    }
+
+    return { content: currentRule.content, status: currentRule.status, sort: currentRule.sort };
   }
 
   /**
    * 更新规则
    * 若不存在则自动创建
    * @param {Object} payload 规则数据
+   * @param {Number} shopId 店铺ID
    * @return {Object} 规则数据
    */
-  async update(payload) {
-    return await this.create(payload);
+  async update(payload, shopId = 0) {
+    return await this.create(payload, shopId);
   }
 
   /**
    * 单独更新规则状态
    * @param {Number} id 规则ID
    * @param {Number} status 状态值 (0或1)
+   * @param {Number} shopId 店铺ID
    */
-  async updateStatus(id, status) {
+  async updateStatus(id, status, shopId = 0) {
     const { ctx } = this;
     const targetStatus = Number(status);
 
     const currentRule = await ctx.model.SysH5Config.findOne({
-      where: { id, config_type: 3, is_deleted: 0 },
+      where: { id, config_type: 3, shop_id: shopId, is_deleted: 0 },
     });
 
     if (!currentRule) {
       ctx.throw(404, '要操作的规则模板不存在');
     }
 
-    const transaction = await ctx.model.transaction();
-    try {
-      // 1. 更新当前目标状态
-      await currentRule.update({ status: targetStatus }, { transaction });
-
-      // 2. 如果是启用操作，强制把其他的都停用
-      if (targetStatus === 1) {
-        await ctx.model.SysH5Config.update(
-          { status: 0 },
-          {
-            where: {
-              config_type: 3,
-              is_deleted: 0,
-              id: { [ctx.app.Sequelize.Op.ne]: id },
-            },
-            transaction,
-          },
-        );
-      }
-
-      await transaction.commit();
-      return { id, status: targetStatus };
-    } catch (error) {
-      await transaction.rollback();
-      throw error;
+    // 如果是店铺规则，只能有一条规则启用；如果是平台模板（shopId=0），则允许多个启用以供选择
+    if (targetStatus === 1 && shopId !== 0) {
+      await ctx.model.SysH5Config.update(
+        { status: 0 },
+        { where: { config_type: 3, shop_id: shopId, is_deleted: 0 } },
+      );
     }
+
+    await currentRule.update({ status: targetStatus });
+
+    return { id, status: targetStatus };
   }
 
   /**
    * 删除规则
+   * @param {Number} id 规则ID
+   * @param {Number} shopId 店铺ID
    */
-  async destroy() {
+  async destroy(id, shopId = 0) {
     const { ctx } = this;
-    const id = ctx.params.id || ctx.request.body.id;
+    const ruleId = id || ctx.params.id || ctx.request.body.id;
 
-    const where = { config_type: 3, is_deleted: 0 };
-    if (id) {
-      where.id = id;
+    const where = { config_type: 3, shop_id: shopId, is_deleted: 0 };
+    if (ruleId) {
+      where.id = ruleId;
     }
 
     const rule = await ctx.model.SysH5Config.findOne({ where });
@@ -189,7 +179,45 @@ class RuleService extends Service {
       ctx.throw(404, '规则不存在');
     }
 
-    await rule.update({ status: 0, is_deleted: 1 });
+    await rule.destroy();
+  }
+  /**
+   * 绑定平台规则模板到店铺
+   * @param {Number} templateId 平台模板ID
+   * @param {Number} shopId 店铺ID
+   */
+  async bindTemplate(templateId, shopId) {
+    const { ctx } = this;
+    if (!shopId) {
+      ctx.throw(400, '必须提供 shopId');
+    }
+
+    // 获取平台模板
+    const template = await ctx.model.SysH5Config.findOne({
+      where: { id: templateId, config_type: 3, shop_id: 0, is_deleted: 0 },
+    });
+
+    if (!template) {
+      ctx.throw(404, '指定的平台模板不存在');
+    }
+
+    // 先将当前店铺已有的启用规则禁用（一家店铺只能绑定一条启用规则）
+    await ctx.model.SysH5Config.update(
+      { status: 0 },
+      { where: { config_type: 3, shop_id: shopId, status: 1, is_deleted: 0 } },
+    );
+
+    // 将模板数据复制一条作为店铺的绑定规则（启用状态）
+    const newRule = await ctx.model.SysH5Config.create({
+      config_type: 3,
+      title: template.title,
+      sort: template.sort,
+      content: template.content,
+      status: 1,
+      shop_id: shopId,
+    });
+
+    return newRule;
   }
 }
 

@@ -84,7 +84,7 @@ class AdminOuterRechargeController extends Controller {
     if (user_id) {
       where.user_id = user_id;
     }
-    
+
     if (start_time || end_time) {
       where.create_time = {};
       if (start_time) {
@@ -198,10 +198,10 @@ class AdminOuterRechargeController extends Controller {
       await ctx.model.UserWallet.update({
         voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${recharge.user_receive_amount}`),
         balance: ctx.app.Sequelize.literal(`balance + ${recharge.user_receive_amount}`),
-        total_recharge_amount: ctx.app.Sequelize.literal(`total_recharge_amount + ${recharge.user_receive_amount}`)
+        total_recharge_amount: ctx.app.Sequelize.literal(`total_recharge_amount + ${recharge.user_receive_amount}`),
       }, {
         where: { user_id: recharge.user_id },
-        transaction
+        transaction,
       });
 
       // 记录流水

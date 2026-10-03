@@ -29,8 +29,8 @@ class OrderService extends Service {
     const progress = await ctx.model.ShopTaskUserItemProgress.findOne({
       where: {
         order_id: orderId.toString(),
-        user_id: dbUserId
-      }
+        user_id: dbUserId,
+      },
     });
 
     if (!progress) {
@@ -47,23 +47,23 @@ class OrderService extends Service {
       }
     }
 
-    const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0 
-      ? Number(progress.yield_rate) 
+    const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0
+      ? Number(progress.yield_rate)
       : (taskItem && taskItem.yield_rate !== null ? Number(taskItem.yield_rate) : (shopTask ? Number(shopTask.yield_rate || 0) : 0));
     const revenueRate = yieldRate;
     const parentRevenueRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
-    
+
     // 获取用户钱包信息计算不足金额
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
     const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
     const totalBalance = userBalance;
-    
+
     let needPrice = 0;
     const totalAmount = Number(progress.goods_price || 0);
     if (totalAmount > totalBalance) {
       needPrice = Number((totalAmount - totalBalance).toFixed(2));
     }
-    
+
     // 进度表中的 status: 0=未完成, 1=已完成
     // 映射到前端期望的 status: 0=待支付, 1=已完成
     let mappedStatus = 0;
@@ -194,12 +194,12 @@ class OrderService extends Service {
     }
     const dbUserId = userObj.user_id;
 
-    const where = { 
+    const where = {
       user_id: dbUserId,
       order_id: {
         [ctx.app.Sequelize.Op.not]: null,
-        [ctx.app.Sequelize.Op.ne]: ''
-      } // 仅查询已经分配了订单号的（即真实的未支付或已完成的订单，过滤掉B端生成的空占位数据）
+        [ctx.app.Sequelize.Op.ne]: '',
+      }, // 仅查询已经分配了订单号的（即真实的未支付或已完成的订单，过滤掉B端生成的空占位数据）
     };
     // 前端 status 参数: 0待支付，1已完成
     // 对应进度表 status: 0未完成, 1已完成
@@ -214,27 +214,27 @@ class OrderService extends Service {
       where,
       limit,
       offset,
-      order: [['update_time', 'DESC'], ['id', 'DESC']], // 确保最新触发/创建的订单在最前面
+      order: [[ 'update_time', 'DESC' ], [ 'id', 'DESC' ]], // 确保最新触发/创建的订单在最前面
     });
 
     // 收集所有需要查询的 task_item_id 和 goods_id
-    const taskItemIds = [...new Set(rows.map(r => r.task_item_id).filter(id => id))];
-    const goodsIds = [...new Set(rows.map(r => r.goods_id).filter(id => id))];
+    const taskItemIds = [ ...new Set(rows.map(r => r.task_item_id).filter(id => id)) ];
+    const goodsIds = [ ...new Set(rows.map(r => r.goods_id).filter(id => id)) ];
 
     // 并行批量查询所需的关联数据
-    const [taskItemsList, goodsList] = await Promise.all([
+    const [ taskItemsList, goodsList ] = await Promise.all([
       taskItemIds.length > 0 ? ctx.model.ShopTaskItem.findAll({ where: { item_id: taskItemIds } }) : [],
-      goodsIds.length > 0 ? ctx.model.GoodsTask.findAll({ where: { id: goodsIds } }) : []
+      goodsIds.length > 0 ? ctx.model.GoodsTask.findAll({ where: { id: goodsIds } }) : [],
     ]);
 
     // 构建映射字典 (Map)，提高查找效率 O(1)
-    const taskItemMap = new Map(taskItemsList.map(item => [item.item_id, item]));
-    const goodsMap = new Map(goodsList.map(g => [g.id, g]));
+    const taskItemMap = new Map(taskItemsList.map(item => [ item.item_id, item ]));
+    const goodsMap = new Map(goodsList.map(g => [ g.id, g ]));
 
     // 收集所需的 task_id 再次批量查询 ShopTask
-    const taskIds = [...new Set(taskItemsList.map(item => item.task_id).filter(id => id))];
+    const taskIds = [ ...new Set(taskItemsList.map(item => item.task_id).filter(id => id)) ];
     const shopTasksList = taskIds.length > 0 ? await ctx.model.ShopTask.findAll({ where: { task_id: taskIds } }) : [];
-    const shopTaskMap = new Map(shopTasksList.map(task => [task.task_id, task]));
+    const shopTaskMap = new Map(shopTasksList.map(task => [ task.task_id, task ]));
 
     const list = [];
     for (const progress of rows) {
@@ -247,17 +247,17 @@ class OrderService extends Service {
           picUrl = goods.goods_images[0];
         }
       }
-      
+
       const totalAmount = Number(progress.goods_price || 0);
-      const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0 
-        ? Number(progress.yield_rate) 
+      const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0
+        ? Number(progress.yield_rate)
         : (taskItem && taskItem.yield_rate !== null ? Number(taskItem.yield_rate) : (shopTask ? Number(shopTask.yield_rate || 0) : 0));
       const revenueRate = yieldRate;
       const parentRevenueRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
-      
+
       let mappedStatus = 0;
       if (progress.status === 1) {
-        mappedStatus = 1; 
+        mappedStatus = 1;
       }
 
       const revenue = progress.revenue !== null ? Number(progress.revenue) : (totalAmount * revenueRate);
@@ -366,7 +366,7 @@ class OrderService extends Service {
    */
   async getOrderMsg(orderId, userId) {
     const { ctx } = this;
-    
+
     // 获取当前请求用户的真实数据库主键ID
     const userObj = await ctx.model.SysUser.findByPk(userId);
     if (!userObj || userObj.user_type !== 4) {
@@ -377,8 +377,8 @@ class OrderService extends Service {
     const progress = await ctx.model.ShopTaskUserItemProgress.findOne({
       where: {
         order_id: orderId.toString(),
-        user_id: dbUserId
-      }
+        user_id: dbUserId,
+      },
     });
 
     if (!progress) {
@@ -396,17 +396,17 @@ class OrderService extends Service {
     }
 
     const totalAmount = Number(progress.goods_price || 0);
-    const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0 
-      ? Number(progress.yield_rate) 
+    const yieldRate = progress.yield_rate !== null && Number(progress.yield_rate) > 0
+      ? Number(progress.yield_rate)
       : (taskItem && taskItem.yield_rate !== null ? Number(taskItem.yield_rate) : (shopTask ? Number(shopTask.yield_rate || 0) : 0));
     const revenueRate = yieldRate;
     const parentRevenueRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
-    
+
     // 获取用户钱包信息计算不足金额
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
     const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
     const totalBalance = userBalance;
-    
+
     let needPrice = 0;
     if (totalAmount > totalBalance) {
       needPrice = Number((totalAmount - totalBalance).toFixed(2));
@@ -414,7 +414,7 @@ class OrderService extends Service {
 
     let mappedStatus = 0;
     if (progress.status === 1) {
-      mappedStatus = 1; 
+      mappedStatus = 1;
     }
 
     const revenue = progress.revenue !== null ? Number(progress.revenue) : (totalAmount * revenueRate);
@@ -432,7 +432,7 @@ class OrderService extends Service {
       pic_url: picUrl,
       wares_name: progress.goods_title || '',
       c_time: progress.create_time ? new Date(progress.create_time).toISOString() : null,
-      need_price: needPrice.toString() // 不足金额 = 商品价格 - 用户余额
+      need_price: needPrice.toString(), // 不足金额 = 商品价格 - 用户余额
     };
   }
 
@@ -459,8 +459,8 @@ class OrderService extends Service {
         order_id: idOrNo.toString(),
         user_id: dbUserId,
         status: 0,
-        is_processing: 1
-      }
+        is_processing: 1,
+      },
     });
 
     if (!progress) {
@@ -472,7 +472,7 @@ class OrderService extends Service {
 
     // 3. 校验余额是否足够扣除
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
-    
+
     // 支付订单，使用用户的总可用余额 (balance = recharge_balance + voucher_balance)
     const userBalance = userWallet ? Number(userWallet.balance || 0) : 0;
     const actualBalance = userBalance;
@@ -498,24 +498,24 @@ class OrderService extends Service {
         status: 1,
         is_processing: 0,
         dynamic_revenue: dynamicRevenue,
-        update_time: new Date()
+        update_time: new Date(),
       }, { transaction });
 
       // 5.5 检查该任务下是否还有未完成的进度项，如果全部完成，则自动关闭任务
       const remainingProgress = await ctx.model.ShopTaskUserItemProgress.count({
         where: {
           shop_task_user_id: progress.shop_task_user_id,
-          status: 0
+          status: 0,
         },
-        transaction
+        transaction,
       });
 
       if (remainingProgress === 0) {
         await ctx.model.ShopTaskUser.update({
-          status: 0 // 0: 变为未开启（保留绑定状态）
+          status: 0, // 0: 变为未开启（保留绑定状态）
         }, {
           where: { id: progress.shop_task_user_id },
-          transaction
+          transaction,
         });
         ctx.logger.info(`[订单支付] 任务进度已全部完成，自动将用户任务状态改为未开启(0) shop_task_user_id: ${progress.shop_task_user_id}`);
       }
@@ -528,13 +528,13 @@ class OrderService extends Service {
       // recharge_balance 扣减 orderAmount（最多扣到0），剩下的扣减从 voucher_balance 中扣除
       // voucher_balance 增加 orderAmount + revenue
       // balance 总余额净变动为 +revenue
-      
+
       const currentRechargeBalance = userWallet ? Number(userWallet.recharge_balance || 0) : 0;
       const currentVoucherBalance = userWallet ? Number(userWallet.voucher_balance || 0) : 0;
-      
+
       let deductRecharge = 0;
       let deductVoucher = 0;
-      
+
       if (currentRechargeBalance >= orderAmount) {
         deductRecharge = orderAmount;
       } else {
@@ -546,20 +546,20 @@ class OrderService extends Service {
       // recharge_balance 变动： -deductRecharge
       // voucher_balance 变动： -deductVoucher + (orderAmount + revenue)
       // balance 变动： +revenue
-      
+
       const voucherNetChange = (orderAmount + revenue) - deductVoucher;
 
-          if (userWallet) {
-            await ctx.model.UserWallet.update({
-              balance: ctx.app.Sequelize.literal(`balance + ${revenue}`),
-              recharge_balance: ctx.app.Sequelize.literal(`recharge_balance - ${deductRecharge}`),
-              voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${voucherNetChange}`),
-              static_income: ctx.app.Sequelize.literal(`static_income + ${revenue}`)
-            }, {
-              where: { user_id: dbUserId },
-              transaction
-            });
-          }
+      if (userWallet) {
+        await ctx.model.UserWallet.update({
+          balance: ctx.app.Sequelize.literal(`balance + ${revenue}`),
+          recharge_balance: ctx.app.Sequelize.literal(`recharge_balance - ${deductRecharge}`),
+          voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${voucherNetChange}`),
+          static_income: ctx.app.Sequelize.literal(`static_income + ${revenue}`),
+        }, {
+          where: { user_id: dbUserId },
+          transaction,
+        });
+      }
 
       // 6.1 记录用户的静态收益资金流水 (biz_type: 4)
       const fundRecordService = ctx.service.fundRecord;
@@ -575,7 +575,7 @@ class OrderService extends Service {
           after_balance: (userWallet ? Number(userWallet.balance || 0) : 0) + revenue,
           related_order_id: progress.id, // 使用进度表ID作为关联
           remark: '任务订单静态收益',
-          create_time: new Date()
+          create_time: new Date(),
         }, { transaction });
       }
 
@@ -590,20 +590,20 @@ class OrderService extends Service {
           income_amount: revenue,
           settle_time: new Date(),
           create_time: new Date(),
-          update_time: new Date()
+          update_time: new Date(),
         }, { transaction });
       }
 
       // 6.3 记录/更新到 user_task_stat
       const todayStr = dayjs().format('YYYY-MM-DD');
       const statRecord = await ctx.model.UserTaskStat.findOne({
-        where: { user_id: dbUserId, stat_date: todayStr }
+        where: { user_id: dbUserId, stat_date: todayStr },
       });
       if (statRecord) {
         await statRecord.update({
-          task_order_count: ctx.app.Sequelize.literal(`task_order_count + 1`),
+          task_order_count: ctx.app.Sequelize.literal('task_order_count + 1'),
           task_income: ctx.app.Sequelize.literal(`task_income + ${revenue}`),
-          update_time: new Date()
+          update_time: new Date(),
         }, { transaction });
       } else {
         await ctx.model.UserTaskStat.create({
@@ -612,19 +612,19 @@ class OrderService extends Service {
           task_order_count: 1,
           task_income: revenue,
           create_time: new Date(),
-          update_time: new Date()
+          update_time: new Date(),
         }, { transaction });
       }
 
       // 7. 处理上级返佣 (如果有上级)
       if (userObj.inviter_user_id && dynamicRevenue > 0) {
         // 先检查上级用户是否存在并且状态正常（没有被删除）
-        const parentUser = await ctx.model.SysUser.findOne({ 
-          where: { 
+        const parentUser = await ctx.model.SysUser.findOne({
+          where: {
             user_id: userObj.inviter_user_id,
             is_deleted: 0,
-            status: 1
-          } 
+            status: 1,
+          },
         });
 
         // 无论上级账号状态如何，我们只决定是否给这个直接上级加钱。
@@ -635,10 +635,10 @@ class OrderService extends Service {
             await ctx.model.UserWallet.update({
               balance: ctx.app.Sequelize.literal(`balance + ${dynamicRevenue}`),
               voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${dynamicRevenue}`),
-              dynamic_income: ctx.app.Sequelize.literal(`dynamic_income + ${dynamicRevenue}`)
+              dynamic_income: ctx.app.Sequelize.literal(`dynamic_income + ${dynamicRevenue}`),
             }, {
               where: { user_id: userObj.inviter_user_id },
-              transaction
+              transaction,
             });
 
             // 7.1 记录上级的动态收益资金流水 (biz_type: 5)
@@ -654,7 +654,7 @@ class OrderService extends Service {
               related_order_id: progress.id,
               from_user_id: dbUserId, // 记录佣金来源的下级用户ID
               remark: '下级任务订单动态收益',
-              create_time: new Date()
+              create_time: new Date(),
             }, { transaction });
           }
         } else {
@@ -663,12 +663,12 @@ class OrderService extends Service {
       }
 
       await transaction.commit();
-      
+
       return {
         order_id: progress.order_id,
         status: 1, // 已完成
         pay_amount: orderAmount,
-        revenue: revenue
+        revenue,
       };
     } catch (err) {
       await transaction.rollback();

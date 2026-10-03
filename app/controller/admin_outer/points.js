@@ -332,10 +332,10 @@ class AdminOuterPointsController extends Controller {
       await ctx.model.UserWallet.update({
         balance: ctx.app.Sequelize.literal(`balance - ${amount}`),
         recharge_balance: ctx.app.Sequelize.literal(`recharge_balance - ${deductRecharge}`),
-        voucher_balance: ctx.app.Sequelize.literal(`voucher_balance - ${deductVoucher}`)
+        voucher_balance: ctx.app.Sequelize.literal(`voucher_balance - ${deductVoucher}`),
       }, {
         where: { user_id },
-        transaction
+        transaction,
       });
       await ctx.model.UserWalletLog.create({
         user_id,

@@ -71,7 +71,7 @@ class TaskController extends Controller {
         ctx.body = {
           code: 404,
           message: '用户不存在',
-          data: null
+          data: null,
         };
         return;
       }

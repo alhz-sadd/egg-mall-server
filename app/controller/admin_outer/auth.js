@@ -155,7 +155,7 @@ class AdminOuterAuthController extends CommonAuthController {
 
     if (currentUserType === 2) {
       // 店长可以修改 自己及同级店长(2), 业务员(3), 用户(4)
-      ctx.assert([2, 3, 4].includes(targetUser.user_type), 403, '无权修改该类型用户的密码');
+      ctx.assert([ 2, 3, 4 ].includes(targetUser.user_type), 403, '无权修改该类型用户的密码');
     } else if (currentUserType === 3) {
       // 业务员只可以修改 用户(4)
       ctx.assert(targetUser.user_type === 4, 403, '无权修改该类型用户的密码');
@@ -180,7 +180,7 @@ class AdminOuterAuthController extends CommonAuthController {
 
     if (currentUserType === 2) {
       // 店长可以重置 自己及同级店长(2), 业务员(3)
-      ctx.assert([2, 3].includes(targetUser.user_type), 403, '无权或无需重置该类型用户的谷歌验证码');
+      ctx.assert([ 2, 3 ].includes(targetUser.user_type), 403, '无权或无需重置该类型用户的谷歌验证码');
     } else {
       // 业务员不能重置任何人的谷歌（因为用户没有谷歌验证）
       ctx.throw(403, '无权操作');

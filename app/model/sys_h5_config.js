@@ -12,10 +12,16 @@ module.exports = app => {
       autoIncrement: true,
       comment: '主键自增',
     },
+    shop_id: {
+      type: BIGINT,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '所属店铺ID，0表示全局',
+    },
     config_type: {
       type: TINYINT,
       allowNull: false,
-      comment: '类型：1-Banner, 2-公告, 3-规则管理, 4-首页商品, 5-任务商品',
+      comment: '类型：1-Banner, 2-公告, 3-规则管理, 4-首页商品, 5-任务商品, 6-服务入口, 7-分享图',
     },
     title: {
       type: STRING(255),

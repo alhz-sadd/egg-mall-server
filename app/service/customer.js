@@ -38,7 +38,7 @@ class CustomerService extends Service {
     }
 
     // 调用统一个方法获取最新登录信息
-    const loginInfoMap = await ctx.service.sysLog.getLatestLoginInfoMap([customerUserId]);
+    const loginInfoMap = await ctx.service.sysLog.getLatestLoginInfoMap([ customerUserId ]);
     const latestLoginInfo = loginInfoMap[customerUserId] || {};
 
     // 4. 最近充值聚合

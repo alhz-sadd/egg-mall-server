@@ -162,6 +162,12 @@ class WithdrawService extends Service {
 
       ctx.logger.info('[WithdrawService.create] 提现请求创建成功，订单号: %s，用户ID: %s，提现金额: %s，扣除前余额: %s，扣除后余额: %s，状态: %s', request.order_num, request.user_id, request.amount, beforeBalance, afterBalance, request.status);
 
+      // 发送 TG 异步通知
+      ctx.runInBackground(async () => {
+        const msg = `💳 <b>新的提现申请</b>\n\n👤 用户ID: ${user.user_id}\n💵 提现金额: ${money}\n🏦 提现方式: ${way || '未知'}\n📝 备注: ${remark || '无'}`;
+        await ctx.service.telegram.sendMessage(msg, user.shop_id || 0);
+      });
+
       return request.toJSON();
     } catch (err) {
       await transaction.rollback();

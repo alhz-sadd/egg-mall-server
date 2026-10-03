@@ -12,6 +12,12 @@ module.exports = app => {
       autoIncrement: true,
       comment: '主键自增',
     },
+    shop_id: {
+      type: BIGINT,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '所属店铺ID，0表示全局',
+    },
     service_name: {
       type: STRING(128),
       allowNull: false,

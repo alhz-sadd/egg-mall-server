@@ -93,7 +93,7 @@ class AdminOuterWithdrawController extends Controller {
     if (channel_code) {
       where.channel_code = channel_code;
     }
-    
+
     // 时间范围查询 (基于 create_time)
     if (start_time || end_time) {
       where.create_time = {};
@@ -255,7 +255,7 @@ class AdminOuterWithdrawController extends Controller {
           by: withdraw.amount,
           transaction,
         });
-        
+
         // B端审核通过：直接将之前申请时冻结的资产 (freeze_voucher_balance) 扣除即可
         // 因为 C 端申请提现时，已经把 balance 减掉了并加到了 freeze_voucher_balance 里。
         if (wallet.freeze_voucher_balance >= withdraw.amount) {
@@ -264,8 +264,8 @@ class AdminOuterWithdrawController extends Controller {
             transaction,
           });
         } else {
-           // 如果冻结金额对不上，为了让流程走通，直接将冻结金额清零
-           await wallet.update({ freeze_voucher_balance: 0 }, { transaction });
+          // 如果冻结金额对不上，为了让流程走通，直接将冻结金额清零
+          await wallet.update({ freeze_voucher_balance: 0 }, { transaction });
         }
       }
 
@@ -362,10 +362,10 @@ class AdminOuterWithdrawController extends Controller {
         await ctx.model.UserWallet.update({
           freeze_voucher_balance: ctx.app.Sequelize.literal(`freeze_voucher_balance - ${withdraw.amount}`),
           voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${withdraw.amount}`),
-          balance: ctx.app.Sequelize.literal(`balance + ${withdraw.amount}`)
+          balance: ctx.app.Sequelize.literal(`balance + ${withdraw.amount}`),
         }, {
           where: { user_id: withdraw.user_id },
-          transaction
+          transaction,
         });
       }
 

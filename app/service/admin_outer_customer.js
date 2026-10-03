@@ -200,14 +200,14 @@ class AdminOuterCustomerService extends Service {
       allRelations = await ctx.model.CustomerRelation.findAll({
         where: { root_salesman_user_id: currentUser.user_id, is_deleted: 0 },
         attributes: [ 'c_user_id', 'parent_customer_user_id' ],
-        raw: true
+        raw: true,
       });
       hasPermission = true;
     } else if (currentUser.user_type === 2) { // 店长
       allRelations = await ctx.model.CustomerRelation.findAll({
         where: { shop_id: currentUser.shop_id, is_deleted: 0 },
         attributes: [ 'c_user_id', 'parent_customer_user_id' ],
-        raw: true
+        raw: true,
       });
       hasPermission = true;
     }
@@ -231,7 +231,7 @@ class AdminOuterCustomerService extends Service {
       allRelations.forEach(r => {
         let depth = 1;
         let currentParent = r.parent_customer_user_id;
-        
+
         // 当店长查看全局时，某个C端用户的上级可能也是C端用户，
         // 而不是直接挂在业务员下，所以需要精确计算深度：
         // 一直往上找，直到遇到 null（说明他是第一层）或者遇到业务员ID（不在 parentMap 的键里）
@@ -240,7 +240,7 @@ class AdminOuterCustomerService extends Service {
           currentParent = parentMap[currentParent];
           if (depth > 100) break; // 防止死循环
         }
-        
+
         if (targetLevel === 1 && depth === 1) {
           levelMatchedIds.add(r.c_user_id);
         } else if (targetLevel === 2 && depth === 2) {
@@ -249,9 +249,9 @@ class AdminOuterCustomerService extends Service {
           levelMatchedIds.add(r.c_user_id);
         }
       });
-      
+
       // 取交集
-      allowedUserIds = new Set([...allowedUserIds].filter(x => levelMatchedIds.has(x)));
+      allowedUserIds = new Set([ ...allowedUserIds ].filter(x => levelMatchedIds.has(x)));
     }
 
     // 3. 将所有查到的用户ID加入查询条件，同时兼顾前面传入的精确 user_id
@@ -288,14 +288,14 @@ class AdminOuterCustomerService extends Service {
     // 处理关联表条件：parent_id, salesman_id, user_level, has_recharge
     const relationWhere = {};
     if (parent_id) relationWhere.parent_customer_user_id = parent_id;
-    
+
     if (salesman_id) {
       // 无论输入什么，都尝试去匹配 user_id 或名称
       const orConditions = [
         { nickname: { [Op.like]: `%${salesman_id}%` } },
-        { username: { [Op.like]: `%${salesman_id}%` } }
+        { username: { [Op.like]: `%${salesman_id}%` } },
       ];
-      
+
       if (/^\d+$/.test(salesman_id)) {
         orConditions.push({ user_id: Number(salesman_id) });
       }
@@ -304,12 +304,12 @@ class AdminOuterCustomerService extends Service {
       const matchedSalesmen = await ctx.model.SysUser.findAll({
         where: {
           user_type: 3, // 业务员
-          [Op.or]: orConditions
+          [Op.or]: orConditions,
         },
-        attributes: ['user_id'],
-        raw: true
+        attributes: [ 'user_id' ],
+        raw: true,
       });
-      
+
       if (matchedSalesmen.length > 0) {
         const matchedIds = matchedSalesmen.map(s => s.user_id);
         relationWhere.root_salesman_user_id = { [Op.in]: matchedIds };
@@ -402,28 +402,28 @@ class AdminOuterCustomerService extends Service {
           extraUserMap[u.user_id] = u.nickname || u.username;
         });
       }
-      
+
       // 查询首充及充值次数信息
       const allRecharges = await ctx.model.UserRecharge.findAll({
-        where: { 
+        where: {
           user_id: { [Op.in]: userIds },
           status: 2, // 审核通过
         },
         attributes: [ 'user_id', 'amount', 'audit_time', 'create_time', 'is_first_recharge' ],
         raw: true,
       });
-      
+
       allRecharges.forEach(fr => {
         // 统计充值次数
         rechargeCountMap[fr.user_id] = (rechargeCountMap[fr.user_id] || 0) + 1;
-        
+
         // 首充可能标记为 is_first_recharge = 1
         // 如果没有标记，但在审核通过记录中它是最早的，我们也可以作为首充依据
         const time = fr.audit_time || fr.create_time;
         if (!firstRechargeMap[fr.user_id] || new Date(time) < new Date(firstRechargeMap[fr.user_id].time)) {
           firstRechargeMap[fr.user_id] = {
             amount: fr.amount,
-            time: time
+            time,
           };
         }
       });
@@ -434,7 +434,7 @@ class AdminOuterCustomerService extends Service {
           user_id: { [Op.in]: userIds },
           status: 2, // 审核通过(已打款)
         },
-        attributes: ['user_id', 'amount'],
+        attributes: [ 'user_id', 'amount' ],
         raw: true,
       });
 
@@ -443,10 +443,10 @@ class AdminOuterCustomerService extends Service {
       // 先把该页所有用户的进度记录ID查出来
       const userProgresses = await ctx.model.ShopTaskUserItemProgress.findAll({
         where: { user_id: { [Op.in]: userIds } },
-        attributes: ['id', 'user_id'],
-        raw: true
+        attributes: [ 'id', 'user_id' ],
+        raw: true,
       });
-      
+
       const progressToUserMap = {};
       const progressIds = [];
       userProgresses.forEach(p => {
@@ -463,9 +463,9 @@ class AdminOuterCustomerService extends Service {
         const allParentIncomes = await ctx.model.UserWalletLog.findAll({
           where: {
             biz_type: 5, // 5 = 动态收益发放
-            related_order_id: { [Op.in]: progressIds }
+            related_order_id: { [Op.in]: progressIds },
           },
-          attributes: ['related_order_id', 'amount'],
+          attributes: [ 'related_order_id', 'amount' ],
           raw: true,
         });
 
@@ -516,15 +516,15 @@ class AdminOuterCustomerService extends Service {
             rel = await ctx.model.CustomerRelation.findOne({ where: { c_user_id: currentId, is_deleted: 0 } });
             if (rel) relationMap[currentId] = rel; // 缓存一下
           }
-          
+
           // 如果没有上级了，或者查不到关系了，说明到顶了，跳出循环
           if (!rel || !rel.parent_customer_user_id) {
             break;
           }
-          
+
           calculatedLevel++;
           currentId = rel.parent_customer_user_id;
-          
+
           // 防止死循环的保护
           if (calculatedLevel > 100) break;
         }
@@ -536,7 +536,7 @@ class AdminOuterCustomerService extends Service {
       const totalRecharge = Number(w.total_recharge_amount || 0);
       const userShopId = r.shop_id || row.shop_id; // 从关系表或主表取 shop_id
       const shopVips = vipMapByShop[userShopId] || vipMapByShop[0] || [];
-      
+
       let currentVipLevel = row.vip_level || 1; // 默认值
       let currentVipName = 'VIP1';
       for (const vip of shopVips) {
@@ -582,7 +582,7 @@ class AdminOuterCustomerService extends Service {
         temp_withdraw_status: row.temp_withdraw_status, // 统一使用数据库字段名
         total_withdraw_amount: (withdrawAmountMap[row.user_id] || 0).toFixed(2),
         total_withdraw_count: withdrawCountMap[row.user_id] || 0,
-        
+
         // 增加：给上级产生的佣金贡献字段，并起名为总佣金字段兼容前端
         contribute_commission_to_parent: (parentIncomeAmountMap ? (parentIncomeAmountMap[row.user_id] || 0) : 0).toFixed(2),
         total_commission_amount: (parentIncomeAmountMap ? (parentIncomeAmountMap[row.user_id] || 0) : 0).toFixed(2),
@@ -743,7 +743,7 @@ class AdminOuterCustomerService extends Service {
         sysUserUpdate.is_real_user = is_real_user === true || is_real_user === 'true' || is_real_user === 1 || is_real_user === '1' ? 1 : 0;
         operResult.push(`真实用户状态修改为: ${sysUserUpdate.is_real_user}`);
       }
-      
+
       // 新增：支持修改 提现状态 (withdrawal_status) 和 临时提现状态 (temp_withdraw_status)
       if (payload.withdrawal_status !== undefined) {
         sysUserUpdate.withdrawal_status = payload.withdrawal_status === true || payload.withdrawal_status === 'true' || payload.withdrawal_status === 1 || payload.withdrawal_status === '1' ? 1 : 0;
@@ -752,7 +752,7 @@ class AdminOuterCustomerService extends Service {
         sysUserUpdate.withdrawal_status = payload.allow_withdraw === true || payload.allow_withdraw === 'true' || payload.allow_withdraw === 1 || payload.allow_withdraw === '1' ? 1 : 0;
         operResult.push(`提现状态修改为: ${sysUserUpdate.withdrawal_status}`);
       }
-      
+
       if (payload.temp_withdraw_status !== undefined) {
         sysUserUpdate.temp_withdraw_status = payload.temp_withdraw_status === true || payload.temp_withdraw_status === 'true' || payload.temp_withdraw_status === 1 || payload.temp_withdraw_status === '1' ? 1 : 0;
         operResult.push(`临时提现状态修改为: ${sysUserUpdate.temp_withdraw_status}`);
@@ -766,14 +766,14 @@ class AdminOuterCustomerService extends Service {
         // 由于 Sequelize 的实例缓存机制，对于从缓存或关联查出来的模型，直接调用 user.update 有时不会触发真实 SQL，我们改用原生 query 强行写入数据库
         const updateFields = [];
         const replacements = { user_id: userId };
-        
+
         for (const key in sysUserUpdate) {
           updateFields.push(`${key} = :${key}`);
           replacements[key] = sysUserUpdate[key];
         }
-        
+
         const sql = `UPDATE sys_user SET ${updateFields.join(', ')} WHERE user_id = :user_id`;
-        
+
         await ctx.model.query(sql, {
           replacements,
           type: ctx.model.Sequelize.QueryTypes.UPDATE,

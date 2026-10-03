@@ -67,7 +67,7 @@ class UserController extends Controller {
 
     const meta = {
       ip: ctx.ip || ctx.request.ip || '127.0.0.1',
-      userAgent: ctx.get('user-agent') || ''
+      userAgent: ctx.get('user-agent') || '',
     };
     const result = await service.user.login({ user_phone: loginPhone, user_password: loginPassword }, meta);
 

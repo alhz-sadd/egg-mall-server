@@ -192,14 +192,14 @@ class GoodsService extends Service {
   }
 
   /**
-   * 软删除商品
+   * 物理删除商品
    * @param goodsId
    */
   async destroy(goodsId) {
     const { ctx } = this;
     const item = await ctx.model.Goods.findOne({ where: { goods_id: goodsId, is_deleted: 0 } });
     ctx.assert(item, 404, '商品不存在');
-    return await item.update({ is_deleted: 1 });
+    return await item.destroy();
   }
 }
 

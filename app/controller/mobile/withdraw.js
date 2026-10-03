@@ -24,12 +24,12 @@ class MobileWithdrawController extends Controller {
     }
 
     const payload = ctx.request.body;
-    
+
     // 如果前端传过来的 amount 是字符串，先转为数字，避免 validate 类型校验报错
     if (payload.amount !== undefined) {
       payload.amount = Number(payload.amount);
     }
-    
+
     // 兼容前端传参字段 user_withdraw_password
     if (payload.user_withdraw_password !== undefined && payload.withdraw_pwd === undefined) {
       payload.withdraw_pwd = payload.user_withdraw_password;
@@ -76,7 +76,7 @@ class MobileWithdrawController extends Controller {
     if (user.withdrawal_status === 0) {
       ctx.body = {
         code: 4001,
-        message: '您的账号已被限制提现'
+        message: '您的账号已被限制提现',
       };
       return;
     }
@@ -92,20 +92,20 @@ class MobileWithdrawController extends Controller {
     if (!isTempWithdrawAllowed) {
       // 检查用户任务状态
       const Op = this.app.Sequelize.Op;
-      
+
       // 2. 用户任务中，不允许提现 (status 为 1)
       const activeTask = await ctx.model.ShopTaskUser.findOne({
         where: {
           user_id: userId,
-          status: 1
-        }
+          status: 1,
+        },
       });
 
       if (activeTask) {
         // 只要用户开启任务，就不允许提现
         ctx.body = {
           code: 4001,
-          message: '您的任务未完成，完成整个任务模板后才可提现'
+          message: '您的任务未完成，完成整个任务模板后才可提现',
         };
         return;
       }
@@ -115,14 +115,14 @@ class MobileWithdrawController extends Controller {
         const completedTask = await ctx.model.ShopTaskUser.findOne({
           where: {
             user_id: userId,
-            status: 2
-          }
+            status: 2,
+          },
         });
 
         if (!completedTask) {
           ctx.body = {
             code: 4001,
-            message: '请先完成任务模板后再进行提现'
+            message: '请先完成任务模板后再进行提现',
           };
           return;
         }
@@ -133,14 +133,14 @@ class MobileWithdrawController extends Controller {
         const identity = await ctx.model.UserIdentity.findOne({
           where: {
             user_id: userId,
-            audit_status: 2 // 2代表审核通过
-          }
+            audit_status: 2, // 2代表审核通过
+          },
         });
 
         if (!identity) {
           ctx.body = {
             code: 4001,
-            message: '请先完成实名认证后再进行提现'
+            message: '请先完成实名认证后再进行提现',
           };
           return;
         }
@@ -193,10 +193,10 @@ class MobileWithdrawController extends Controller {
         balance: ctx.app.Sequelize.literal(`balance - ${amount}`),
         recharge_balance: ctx.app.Sequelize.literal(`recharge_balance - ${deductRecharge}`),
         voucher_balance: ctx.app.Sequelize.literal(`voucher_balance - ${deductVoucher}`),
-        freeze_voucher_balance: ctx.app.Sequelize.literal(`freeze_voucher_balance + ${amount}`)
+        freeze_voucher_balance: ctx.app.Sequelize.literal(`freeze_voucher_balance + ${amount}`),
       }, {
         where: { user_id: userId },
-        transaction
+        transaction,
       });
 
       const orderNo = 'WD' + Date.now() + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
@@ -254,7 +254,7 @@ class MobileWithdrawController extends Controller {
     const { page = 1, page_size = 10, status } = ctx.query;
 
     const where = { user_id: userId };
-    
+
     // 如果 status 存在，且不为 0 (0表示全部)，则加入查询条件
     if (status !== undefined && status !== '' && parseInt(status) !== 0) {
       where.status = parseInt(status);

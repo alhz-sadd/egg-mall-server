@@ -176,7 +176,7 @@ class UserService extends Service {
 
       // 根据新生成的 user_id 生成基于ID的邀请码
       const personalInviteCode = await this.generateInviteCode(user.user_id);
-      
+
       // 更新邀请码
       await user.update({ invite_code: personalInviteCode }, { transaction });
 
@@ -208,59 +208,65 @@ class UserService extends Service {
       }
 
       // 发放邀请奖励
-      if (inviterUserId && shopId) {
-        const shopConfig = await ctx.model.ShopConfig.findOne({
-          where: { shop_id: shopId },
+    if (inviterUserId && shopId) {
+      const shopConfig = await ctx.model.ShopConfig.findOne({
+        where: { shop_id: shopId },
+        transaction,
+      });
+
+      if (shopConfig && shopConfig.invite_new_user_reward > 0) {
+        const rewardAmount = parseFloat(shopConfig.invite_new_user_reward);
+
+        let inviterWallet = await ctx.model.UserWallet.findOne({
+          where: { user_id: inviterUserId },
           transaction,
         });
 
-        if (shopConfig && shopConfig.invite_new_user_reward > 0) {
-          const rewardAmount = parseFloat(shopConfig.invite_new_user_reward);
-
-          let inviterWallet = await ctx.model.UserWallet.findOne({
-            where: { user_id: inviterUserId },
-            transaction,
-          });
-
-          if (!inviterWallet) {
-            inviterWallet = await ctx.model.UserWallet.create({
-              user_id: inviterUserId,
-              balance: 0,
-              voucher_balance: 0,
-            }, { transaction });
-          }
-
-          const beforeBalance = parseFloat(inviterWallet.voucher_balance);
-          const afterBalance = beforeBalance + rewardAmount;
-
-          await inviterWallet.update({
-            voucher_balance: afterBalance,
-          }, { transaction });
-
-          await ctx.model.UserWalletLog.create({
+        if (!inviterWallet) {
+          inviterWallet = await ctx.model.UserWallet.create({
             user_id: inviterUserId,
-            currency_type: 2, // 1:现金 2:代金券
-            log_type: 8, // 假设 8 代表邀请奖励
-            amount: rewardAmount,
-            before_balance: beforeBalance,
-            after_balance: afterBalance,
-            remark: `邀请新用户注册奖励, 新用户ID: ${user.user_id}`,
-            related_order_id: user.user_id,
+            balance: 0,
+            voucher_balance: 0,
           }, { transaction });
         }
+
+        const beforeBalance = parseFloat(inviterWallet.voucher_balance);
+        const afterBalance = beforeBalance + rewardAmount;
+
+        await inviterWallet.update({
+          voucher_balance: afterBalance,
+        }, { transaction });
+
+        await ctx.model.UserWalletLog.create({
+          user_id: inviterUserId,
+          currency_type: 2, // 1:现金 2:代金券
+          log_type: 8, // 假设 8 代表邀请奖励
+          amount: rewardAmount,
+          before_balance: beforeBalance,
+          after_balance: afterBalance,
+          remark: `邀请新用户注册奖励, 新用户ID: ${user.user_id}`,
+          related_order_id: user.user_id,
+        }, { transaction });
       }
+    }
 
-      await transaction.commit();
+    await transaction.commit();
 
-      // 刷新 VIP 等级（根据 shop_id 规则，初始可能为 VIP1）
-      if (shopId) {
-        await service.vipLevel.refreshUserVip(user.user_id);
-      }
+    // 刷新 VIP 等级（根据 shop_id 规则，初始可能为 VIP1）
+    if (shopId) {
+      await service.vipLevel.refreshUserVip(user.user_id);
+    }
 
-      // 重新查询以获取最新数据
-      updatedUser = await ctx.model.SysUser.findByPk(user.user_id);
+    // 重新查询以获取最新数据
+    updatedUser = await ctx.model.SysUser.findByPk(user.user_id);
+    
+    // 发送 TG 异步通知
+    ctx.runInBackground(async () => {
+      const msg = `📢 <b>新用户注册</b>\n\n👤 账号: ${updatedUser.username}\n🆔 ID: ${updatedUser.user_id}\n⏰ 时间: ${new Date().toLocaleString()}`;
+      await ctx.service.telegram.sendMessage(msg, updatedUser.shop_id || 0);
+    });
 
-    } catch (error) {
+  } catch (error) {
       await transaction.rollback();
       throw error;
     }
@@ -302,7 +308,7 @@ class UserService extends Service {
     const { ctx } = this;
     let code;
     let exists = true;
-    
+
     // 如果没有传入 userId，则降级使用原来的随机生成逻辑 (用于非C端或尚未生成ID的场景)
     if (!userId) {
       return await this._generateRandomInviteCode();
@@ -464,7 +470,7 @@ class UserService extends Service {
     // 每次登录成功时，更新最后登录IP和时间到 sys_user 表，以便后台展示
     await user.update({
       last_login_ip: ip,
-      last_login_time: new Date()
+      last_login_time: new Date(),
     });
 
     await this.recordLoginLog({
@@ -933,24 +939,24 @@ class UserService extends Service {
     // 计算 statistics.total_invite_income: 查当前用户的钱包中的 dynamic_income，这是最实时准确的
     const currentUserWallet = await ctx.model.UserWallet.findOne({
       where: { user_id: userId },
-      attributes: ['dynamic_income'],
-      raw: true
+      attributes: [ 'dynamic_income' ],
+      raw: true,
     });
     const totalInviteIncome = currentUserWallet ? Number(currentUserWallet.dynamic_income || 0) : 0;
 
     // 计算 list 中每个下级贡献的佣金总和 (user_invite_income)
     const subordinateIds = rows.map(item => item.user_id);
-    let subordinateContributedIncomeMap = new Map();
+    const subordinateContributedIncomeMap = new Map();
 
     if (subordinateIds.length > 0) {
       // 1. 查出这些下级产生的所有订单进度 ID
       const progressRecords = await ctx.model.ShopTaskUserItemProgress.findAll({
-        attributes: ['id', 'user_id'],
+        attributes: [ 'id', 'user_id' ],
         where: {
           user_id: { [ctx.app.Sequelize.Op.in]: subordinateIds },
-          status: 1 // 假设状态1为已完成，有收益
+          status: 1, // 假设状态1为已完成，有收益
         },
-        raw: true
+        raw: true,
       });
 
       // 构建 map: progressId -> user_id
@@ -970,7 +976,7 @@ class UserService extends Service {
           ],
           where: {
             user_id: userId, // 当前团队用户是佣金接收者
-            biz_type: 5,     // 动态收益发放
+            biz_type: 5, // 动态收益发放
             related_order_id: { [ctx.app.Sequelize.Op.in]: progressIds },
           },
           raw: true,
@@ -1259,7 +1265,7 @@ class UserService extends Service {
 
         while (currentUserId && depth < maxDepth) {
           const rel = await ctx.model.CustomerRelation.findOne({
-            where: { c_user_id: currentUserId, is_deleted: 0 }
+            where: { c_user_id: currentUserId, is_deleted: 0 },
           });
           if (!rel) break;
 

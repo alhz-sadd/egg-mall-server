@@ -46,5 +46,6 @@ module.exports = {
 
   SYS_H5_CONFIG: 'sys_h5_config', // H5配置表
   SYS_H5_SERVICE: 'sys_h5_service', // H5服务表
+  SHOP_H5_BINDING: 'shop_h5_binding', // 店铺H5域名绑定表
   SYS_OPER_LOG: 'sys_oper_log', // 系统操作日志表
 };

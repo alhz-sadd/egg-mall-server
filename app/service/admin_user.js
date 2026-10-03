@@ -736,7 +736,7 @@ class AdminUserService extends Service {
     }
 
     const updateData = {};
-    
+
     // 绝对禁止修改的字段
     delete payload.admin_code;
     delete payload.invite_code;

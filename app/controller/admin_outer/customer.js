@@ -349,7 +349,7 @@ class AdminOuterCustomerController extends Controller {
     const transaction = await ctx.model.transaction();
     try {
       const before_balance = Number(wallet.voucher_balance);
-      const after_balance = Number(change_type) === 1 
+      const after_balance = Number(change_type) === 1
         ? before_balance + Number(amount)
         : before_balance - Number(amount);
 
@@ -360,7 +360,7 @@ class AdminOuterCustomerController extends Controller {
       }
 
       const log_no = `B_BAL_${Date.now()}`;
-      
+
       await ctx.model.UserWalletLog.create({
         user_id: userId,
         log_no,
@@ -457,96 +457,96 @@ class AdminOuterCustomerController extends Controller {
   /**
      * 获取用户当前绑定策略的详情以及对应的策略规则列表
      */
-    async policy() {
-      const { ctx } = this;
-      const userId = ctx.params.id;
-      const adminOuter = ctx.state.adminOuter;
+  async policy() {
+    const { ctx } = this;
+    const userId = ctx.params.id;
+    const adminOuter = ctx.state.adminOuter;
 
-      if (!userId) {
-        ctx.throw(400, '缺少用户ID参数');
-      }
+    if (!userId) {
+      ctx.throw(400, '缺少用户ID参数');
+    }
 
-      // 校验权限
-      await ctx.service.user.checkMemberAccess(userId, {
-        role: adminOuter.user_type,
-        id: adminOuter.user_id,
-        shop_id: adminOuter.shop_id,
-      });
+    // 校验权限
+    await ctx.service.user.checkMemberAccess(userId, {
+      role: adminOuter.user_type,
+      id: adminOuter.user_id,
+      shop_id: adminOuter.shop_id,
+    });
 
-      // 1. 从 shop_task_user 表查询用户绑定的任务 (最新的且非关闭状态的)
-      const userTask = await ctx.model.ShopTaskUser.findOne({
-        where: { user_id: userId, status: { [ctx.app.Sequelize.Op.in]: [0, 1] } },
-        order: [['create_time', 'DESC']],
-      });
+    // 1. 从 shop_task_user 表查询用户绑定的任务 (最新的且非关闭状态的)
+    const userTask = await ctx.model.ShopTaskUser.findOne({
+      where: { user_id: userId, status: { [ctx.app.Sequelize.Op.in]: [ 0, 1 ] } },
+      order: [[ 'create_time', 'DESC' ]],
+    });
 
-      if (!userTask) {
-        return ctx.body = {
-          code: 200,
-          message: '获取成功',
-          data: null, // 无绑定任务
-        };
-      }
-
-      // 2. 根据 task_id 查询主任务模板信息
-      const taskInfo = await ctx.model.ShopTask.findOne({
-        where: { task_id: userTask.task_id }
-      });
-
-      // 3. 查询任务的子项列表
-      const taskItems = await ctx.model.ShopTaskItem.findAll({
-        where: { task_id: userTask.task_id, is_deleted: 0 },
-        order: [['item_id', 'ASC']]
-      });
-
-      // 4. 查询该用户的进度
-      const progressItems = await ctx.model.ShopTaskUserItemProgress.findAll({
-        where: { shop_task_user_id: userTask.id, user_id: userId }
-      });
-
-      // 计算任务进度 (已完成的订单数 / 总任务数)
-      const totalCount = taskItems.length;
-      const completedCount = progressItems.filter(p => p.status === 1).length; // status 为 1 表示已完成/已支付
-
-      // 当用户完成了所有任务时，如果当前任务状态是开启的(1)，则返回前端未开启状态(0)
-      // 注意：这只是在B端展示上返回未开启状态。实际在C端走 search 接口搜索订单时，
-      // 如果没有未开始的子项了，C端的 search 接口也会自动把 `shop_task_user` 的 status 更新为 2 (已完成)
-      const displayTaskStatus = (completedCount >= totalCount && totalCount > 0) ? 0 : userTask.status;
-
-      // 5. 组装返回数据
-      ctx.body = {
+    if (!userTask) {
+      return ctx.body = {
         code: 200,
         message: '获取成功',
-        data: {
-          task_id: taskInfo ? taskInfo.task_id : null,
-          task_name: taskInfo ? taskInfo.task_name : '未知任务',
-          task_status: displayTaskStatus, // 修正后的返回主状态：全部完成则显示0未开启，否则按实际来
-          progress_text: `${completedCount}/${totalCount}`, // 当前用户任务进度
-          items: taskItems.map((item, index) => {
-            // 找到对应的进度记录
-            const progress = progressItems.find(p => p.task_item_id === item.item_id);
-            return {
-              sort_num: index + 1, // 当前子项的序列号 (1, 2, 3...)
-              item_id: item.item_id,
-              progress_id: progress ? progress.id : null,
-              is_lucky_order: progress && progress.is_lucky_order !== null ? progress.is_lucky_order : item.is_lucky_order,
-              rule_type: progress && progress.rule_type !== null ? progress.rule_type : item.rule_type,
-              yield_rate: Number(progress && progress.yield_rate !== null ? progress.yield_rate : (item.is_lucky_order === 1 && item.yield_rate !== null ? item.yield_rate : taskInfo.yield_rate)),
-              append_amount: Number(progress && progress.append_amount !== null ? progress.append_amount : item.append_amount),
-              goods_price: Number(progress && progress.goods_price !== null ? progress.goods_price : item.goods_price),
-              goods_title: progress && progress.goods_title !== null ? progress.goods_title : item.goods_title,
-              goods_id: progress && progress.goods_id !== null ? progress.goods_id : item.goods_id,
-              // 用户进度数据
-              progress_status: progress ? progress.status : 0, // 0未完成 1已完成
-              progress_revenue: Number(progress ? progress.revenue : 0),
-              is_triggered: progress ? progress.is_triggered : 0, // 订单是否已触发：0否 1是
-              is_processing: progress ? progress.is_processing : 0, // 是否正在进行中：0否 1是
-              create_time: (progress && progress.create_time) ? progress.create_time : userTask.create_time, // 如果没有进度表记录，则回退为绑定时间
-              update_time: (progress && progress.update_time) ? progress.update_time : userTask.create_time, // 同上，未完成更新前也默认展示绑定时间
-            };
-          })
-          }
+        data: null, // 无绑定任务
       };
     }
+
+    // 2. 根据 task_id 查询主任务模板信息
+    const taskInfo = await ctx.model.ShopTask.findOne({
+      where: { task_id: userTask.task_id },
+    });
+
+    // 3. 查询任务的子项列表
+    const taskItems = await ctx.model.ShopTaskItem.findAll({
+      where: { task_id: userTask.task_id, is_deleted: 0 },
+      order: [[ 'item_id', 'ASC' ]],
+    });
+
+    // 4. 查询该用户的进度
+    const progressItems = await ctx.model.ShopTaskUserItemProgress.findAll({
+      where: { shop_task_user_id: userTask.id, user_id: userId },
+    });
+
+    // 计算任务进度 (已完成的订单数 / 总任务数)
+    const totalCount = taskItems.length;
+    const completedCount = progressItems.filter(p => p.status === 1).length; // status 为 1 表示已完成/已支付
+
+    // 当用户完成了所有任务时，如果当前任务状态是开启的(1)，则返回前端未开启状态(0)
+    // 注意：这只是在B端展示上返回未开启状态。实际在C端走 search 接口搜索订单时，
+    // 如果没有未开始的子项了，C端的 search 接口也会自动把 `shop_task_user` 的 status 更新为 2 (已完成)
+    const displayTaskStatus = (completedCount >= totalCount && totalCount > 0) ? 0 : userTask.status;
+
+    // 5. 组装返回数据
+    ctx.body = {
+      code: 200,
+      message: '获取成功',
+      data: {
+        task_id: taskInfo ? taskInfo.task_id : null,
+        task_name: taskInfo ? taskInfo.task_name : '未知任务',
+        task_status: displayTaskStatus, // 修正后的返回主状态：全部完成则显示0未开启，否则按实际来
+        progress_text: `${completedCount}/${totalCount}`, // 当前用户任务进度
+        items: taskItems.map((item, index) => {
+          // 找到对应的进度记录
+          const progress = progressItems.find(p => p.task_item_id === item.item_id);
+          return {
+            sort_num: index + 1, // 当前子项的序列号 (1, 2, 3...)
+            item_id: item.item_id,
+            progress_id: progress ? progress.id : null,
+            is_lucky_order: progress && progress.is_lucky_order !== null ? progress.is_lucky_order : item.is_lucky_order,
+            rule_type: progress && progress.rule_type !== null ? progress.rule_type : item.rule_type,
+            yield_rate: Number(progress && progress.yield_rate !== null ? progress.yield_rate : (item.is_lucky_order === 1 && item.yield_rate !== null ? item.yield_rate : taskInfo.yield_rate)),
+            append_amount: Number(progress && progress.append_amount !== null ? progress.append_amount : item.append_amount),
+            goods_price: Number(progress && progress.goods_price !== null ? progress.goods_price : item.goods_price),
+            goods_title: progress && progress.goods_title !== null ? progress.goods_title : item.goods_title,
+            goods_id: progress && progress.goods_id !== null ? progress.goods_id : item.goods_id,
+            // 用户进度数据
+            progress_status: progress ? progress.status : 0, // 0未完成 1已完成
+            progress_revenue: Number(progress ? progress.revenue : 0),
+            is_triggered: progress ? progress.is_triggered : 0, // 订单是否已触发：0否 1是
+            is_processing: progress ? progress.is_processing : 0, // 是否正在进行中：0否 1是
+            create_time: (progress && progress.create_time) ? progress.create_time : userTask.create_time, // 如果没有进度表记录，则回退为绑定时间
+            update_time: (progress && progress.update_time) ? progress.update_time : userTask.create_time, // 同上，未完成更新前也默认展示绑定时间
+          };
+        }),
+      },
+    };
+  }
 }
 
 module.exports = AdminOuterCustomerController;

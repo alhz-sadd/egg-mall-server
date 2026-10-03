@@ -15,7 +15,7 @@ class GoodsTaskService extends Service {
 
     if (goods_name) where.goods_name = { [Op.like]: `%${goods_name}%` };
     if (status !== undefined && status !== '') where.status = status;
-    
+
     if (price_min !== undefined || price_max !== undefined) {
       const priceCondition = {};
       if (price_min !== undefined && price_min !== '') {
@@ -88,14 +88,14 @@ class GoodsTaskService extends Service {
   }
 
   /**
-   * 软删除任务商品
+   * 物理删除任务商品
    * @param id
    */
   async destroy(id) {
     const { ctx } = this;
     const item = await ctx.model.GoodsTask.findOne({ where: { id, is_deleted: 0 } });
     ctx.assert(item, 404, '任务商品不存在');
-    return await item.update({ is_deleted: 1 });
+    return await item.destroy();
   }
 }
 

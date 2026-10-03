@@ -58,6 +58,8 @@ class AdminOuterOrderService extends Service {
 
   /**
    * B端获取订单列表 (基于任务进度表)
+   * @param query
+   * @param currentUser
    */
   async getOrderList(query, currentUser) {
     const { ctx } = this;
@@ -77,12 +79,12 @@ class AdminOuterOrderService extends Service {
     const offset = (parseInt(page) - 1) * limit;
 
     // 基础条件：未删除，且只有被触发过（分配了订单号）的子项才算作真实订单展示给B端
-    const where = { 
+    const where = {
       is_deleted: 0,
       order_id: {
         [Op.not]: null,
-        [Op.ne]: ''
-      }
+        [Op.ne]: '',
+      },
     };
 
     if (order_id) {
@@ -101,7 +103,7 @@ class AdminOuterOrderService extends Service {
     }
 
     // 权限隔离逻辑
-    let allowedUserIds = await this.getAllowedUserIds(currentUser);
+    const allowedUserIds = await this.getAllowedUserIds(currentUser);
 
     if (allowedUserIds.length === 0) {
       return { list: [], total: 0 };
@@ -129,15 +131,15 @@ class AdminOuterOrderService extends Service {
     // 查询用户名映射
     let list = [];
     if (rows.length > 0) {
-      const userIdsInPage = [...new Set(rows.map(r => r.user_id))];
+      const userIdsInPage = [ ...new Set(rows.map(r => r.user_id)) ];
       const progressIds = rows.map(r => r.id);
 
       // 查询用户信息
       const users = await ctx.model.SysUser.findAll({
         where: { user_id: { [Op.in]: userIdsInPage } },
-        attributes: ['user_id', 'username']
+        attributes: [ 'user_id', 'username' ],
       });
-      
+
       const userMap = {};
       users.forEach(u => {
         userMap[u.user_id] = u.username;
@@ -147,9 +149,9 @@ class AdminOuterOrderService extends Service {
       const dynamicLogs = await ctx.model.UserWalletLog.findAll({
         where: {
           biz_type: 5,
-          related_order_id: { [Op.in]: progressIds }
+          related_order_id: { [Op.in]: progressIds },
         },
-        attributes: ['related_order_id', 'amount']
+        attributes: [ 'related_order_id', 'amount' ],
       });
 
       const dynamicMap = {};
@@ -159,10 +161,10 @@ class AdminOuterOrderService extends Service {
       });
 
       // 获取任务模板信息以计算预期动态佣金
-      const taskItemIds = [...new Set(rows.map(r => r.task_item_id))];
+      const taskItemIds = [ ...new Set(rows.map(r => r.task_item_id)) ];
       const taskItems = await ctx.model.ShopTaskItem.findAll({
         where: { item_id: { [Op.in]: taskItemIds } },
-        attributes: ['item_id', 'task_id']
+        attributes: [ 'item_id', 'task_id' ],
       });
 
       const itemToTaskMap = {};
@@ -174,7 +176,7 @@ class AdminOuterOrderService extends Service {
 
       const tasks = await ctx.model.ShopTask.findAll({
         where: { task_id: { [Op.in]: Array.from(taskIds) } },
-        attributes: ['task_id', 'parent_yield_rate']
+        attributes: [ 'task_id', 'parent_yield_rate' ],
       });
 
       const taskRateMap = {};
@@ -185,13 +187,13 @@ class AdminOuterOrderService extends Service {
       list = rows.map(row => {
         const data = row.toJSON();
         data.username = userMap[data.user_id] || '未知用户';
-        
+
         // 补充订单类型：1普通订单任务，2幸运订单任务
         data.order_type = data.is_lucky_order === 1 ? 2 : 1;
 
         // 静态佣金(收益) 对应表中的 revenue
         data.static_commission = data.revenue;
-        
+
         // 预期动态佣金计算：静态收益(revenue) * 上级收益率
         const taskId = itemToTaskMap[data.task_item_id];
         const parentYieldRate = taskId ? (taskRateMap[taskId] || 0) : 0;
@@ -211,6 +213,8 @@ class AdminOuterOrderService extends Service {
   }
   /**
    * B端获取订单详情(收益列表)
+   * @param id
+   * @param currentUser
    */
   async getOrderDetail(id, currentUser) {
     const { ctx } = this;
@@ -218,7 +222,7 @@ class AdminOuterOrderService extends Service {
 
     // 1. 查询订单基本信息，校验权限
     const progress = await ctx.model.ShopTaskUserItemProgress.findOne({
-      where: { id, is_deleted: 0 }
+      where: { id, is_deleted: 0 },
     });
 
     if (!progress) {
@@ -234,16 +238,16 @@ class AdminOuterOrderService extends Service {
     const logs = await ctx.model.UserWalletLog.findAll({
       where: {
         related_order_id: id,
-        biz_type: { [Op.in]: [ 4, 5 ] }
+        biz_type: { [Op.in]: [ 4, 5 ] },
       },
       order: [[ 'create_time', 'ASC' ]],
       include: [
         {
           model: ctx.model.SysUser,
           as: 'user',
-          attributes: ['user_id', 'username']
-        }
-      ]
+          attributes: [ 'user_id', 'username' ],
+        },
+      ],
     });
 
     // 3. 组装返回数据结构

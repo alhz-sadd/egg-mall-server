@@ -52,7 +52,7 @@ class MobileRechargeController extends Controller {
 
     // 检查是否首充
     const rechargeCount = await ctx.model.UserRecharge.count({
-      where: { user_id: userId, status: { [ctx.app.Sequelize.Op.in]: [1, 2] } } // 统计审核中和已通过的
+      where: { user_id: userId, status: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] } }, // 统计审核中和已通过的
     });
     const isFirstRecharge = rechargeCount === 0 ? 1 : 0;
 

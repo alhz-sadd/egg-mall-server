@@ -78,13 +78,13 @@ class FundRecordService extends Service {
       else if (qType === '3') where.biz_type = 7;
       else if (qType === '4') where.biz_type = 6;
       else if (qType === '5') where.biz_type = { [Op.in]: [ 2, 3 ] };
-      else if (qType === '7') where.biz_type = { [Op.notIn]: [1, 2, 3, 4, 5, 6, 7] };
+      else if (qType === '7') where.biz_type = { [Op.notIn]: [ 1, 2, 3, 4, 5, 6, 7 ] };
     }
 
     // 过滤是否只看进账 (is_income = 1 表示只看进账，即 amount > 0)
     if (query.is_income === '1' || query.is_income === 1) {
       where.amount = {
-        [Op.gt]: 0
+        [Op.gt]: 0,
       };
     }
 

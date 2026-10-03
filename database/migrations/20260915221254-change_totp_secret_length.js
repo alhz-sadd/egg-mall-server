@@ -16,5 +16,5 @@ module.exports = {
       allowNull: true,
       comment: 'TOTP底层密钥，生成二维码、校验验证码靠它，只存后端，不给前端',
     });
-  }
+  },
 };

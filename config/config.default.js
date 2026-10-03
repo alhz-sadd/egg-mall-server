@@ -30,11 +30,11 @@ module.exports = appInfo => {
     csrf: {
       enable: false, // 前后端分离项目通常关闭 CSRF
     },
-    domainWhiteList: [ 
-      'https://h5.carrefours.vip', 
-      'https://inner.carrefours.vip', 
-      'https://outer.carrefours.vip', 
-      'http://localhost:8080' 
+    domainWhiteList: [
+      'https://h5.carrefours.vip',
+      'https://inner.carrefours.vip',
+      'https://outer.carrefours.vip',
+      'http://localhost:8080',
     ],
   };
 

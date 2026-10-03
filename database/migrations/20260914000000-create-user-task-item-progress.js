@@ -18,10 +18,10 @@ module.exports = {
         comment: '关联 user_task.id',
         references: {
           model: 'shop_task_user',
-          key: 'id'
+          key: 'id',
         },
         onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onDelete: 'CASCADE',
       },
       user_id: {
         type: BIGINT(20),
@@ -29,10 +29,10 @@ module.exports = {
         comment: '关联 sys_user.user_id',
         references: {
           model: 'sys_user',
-          key: 'user_id'
+          key: 'user_id',
         },
         onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onDelete: 'CASCADE',
       },
       task_item_id: {
         type: BIGINT(20),
@@ -40,10 +40,10 @@ module.exports = {
         comment: '关联 shop_task_item.item_id',
         references: {
           model: 'shop_task_item',
-          key: 'item_id'
+          key: 'item_id',
         },
         onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onDelete: 'CASCADE',
       },
       order_id: {
         type: BIGINT(20),
@@ -76,11 +76,11 @@ module.exports = {
         type: INTEGER,
         defaultValue: 0,
         comment: '逻辑删除：0未删除，1已删除',
-      }
+      },
     });
   },
 
-  down: async (queryInterface) => {
+  down: async queryInterface => {
     await queryInterface.dropTable(tableNames.SHOP_TASK_USER_ITEM_PROGRESS);
-  }
+  },
 };

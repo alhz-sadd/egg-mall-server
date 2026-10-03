@@ -10,6 +10,7 @@ import ExportGoodsTask = require('../../../app/model/goods_task');
 import ExportSalesRechargeAddress = require('../../../app/model/sales_recharge_address');
 import ExportShop = require('../../../app/model/shop');
 import ExportShopConfig = require('../../../app/model/shop_config');
+import ExportShopH5Binding = require('../../../app/model/shop_h5_binding');
 import ExportShopPayChannel = require('../../../app/model/shop_pay_channel');
 import ExportShopTask = require('../../../app/model/shop_task');
 import ExportShopTaskItem = require('../../../app/model/shop_task_item');
@@ -43,6 +44,7 @@ declare module 'egg' {
     SalesRechargeAddress: ReturnType<typeof ExportSalesRechargeAddress>;
     Shop: ReturnType<typeof ExportShop>;
     ShopConfig: ReturnType<typeof ExportShopConfig>;
+    ShopH5Binding: ReturnType<typeof ExportShopH5Binding>;
     ShopPayChannel: ReturnType<typeof ExportShopPayChannel>;
     ShopTask: ReturnType<typeof ExportShopTask>;
     ShopTaskItem: ReturnType<typeof ExportShopTaskItem>;

@@ -89,6 +89,16 @@ module.exports = app => {
       defaultValue: '123456',
       comment: '操作密码',
     },
+    telegram_bot_token: {
+      type: app.Sequelize.STRING(128),
+      allowNull: true,
+      comment: 'Telegram机器人Token',
+    },
+    telegram_chat_id: {
+      type: app.Sequelize.STRING(64),
+      allowNull: true,
+      comment: 'Telegram接收消息的ChatID',
+    },
     create_time: {
       type: DATE,
       allowNull: false,

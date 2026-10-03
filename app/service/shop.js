@@ -293,8 +293,8 @@ class ShopService extends Service {
           'user_operate_log',
           'user_wallet',
           'user_wallet_log',
-        'shop_task_user', // 对应 sys_user 的任务
-      ];
+          'shop_task_user', // 对应 sys_user 的任务
+        ];
 
         for (const table of userRelatedTables) {
           try {

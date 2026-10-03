@@ -16,10 +16,10 @@ class InviteController extends Controller {
     const { ctx, service } = this;
     const { userId } = ctx.state.user;
 
-    // 获取用户信息（为了拿 invite_code）
+    // 获取用户信息（为了拿 invite_code 和 shop_id）
     const user = await ctx.model.SysUser.findOne({
       where: { user_id: userId, is_deleted: 0 },
-      attributes: [ 'user_id', 'invite_code' ],
+      attributes: [ 'user_id', 'invite_code', 'shop_id' ],
     });
 
     if (!user) {
@@ -38,11 +38,33 @@ class InviteController extends Controller {
     const totalInviteIncomeStatsResult = await ctx.model.UserWalletLog.sum('amount', {
       where: {
         user_id: userId, // 当前用户是佣金接收者
-        biz_type: 5,     // 动态收益发放
+        biz_type: 5, // 动态收益发放
       },
     });
 
     const totalIncome = totalInviteIncomeStatsResult ? Number(totalInviteIncomeStatsResult).toFixed(2) : '0.00';
+
+    // 获取店铺绑定的分享图 (config_type: 7)
+    let shareImageConfig = await ctx.model.SysH5Config.findOne({
+      where: {
+        shop_id: user.shop_id,
+        config_type: 7, // 7-分享图
+        status: 1,
+        is_deleted: 0,
+      },
+    });
+
+    // 如果店铺未绑定，降级使用平台全局分享图
+    if (!shareImageConfig) {
+      shareImageConfig = await ctx.model.SysH5Config.findOne({
+        where: {
+          shop_id: 0,
+          config_type: 7,
+          status: 1,
+          is_deleted: 0,
+        },
+      });
+    }
 
     ctx.body = {
       code: 200,
@@ -50,6 +72,7 @@ class InviteController extends Controller {
       data: {
         invite_code: inviteCode,
         total_invite_income: totalIncome,
+        share_image: shareImageConfig ? shareImageConfig.cover_image : null,
       },
     };
   }

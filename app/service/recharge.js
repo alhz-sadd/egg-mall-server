@@ -210,6 +210,12 @@ class RechargeService extends Service {
       await user.increment('user_balance', { by: Number(amount) });
     }
 
+    // 发送 TG 异步通知
+    ctx.runInBackground(async () => {
+      const msg = `💰 <b>新的上分/充值记录</b>\n\n👤 用户ID: ${user.user_id}\n💵 金额: ${amount}\n🧾 订单号: ${order_num || record.id}\n📝 备注: ${remark || '无'}`;
+      await ctx.service.telegram.sendMessage(msg, user.shop_id || 0);
+    });
+
     return {
       id: record.id,
       user_id: user.user_id, // 返回9-12位的 user_id

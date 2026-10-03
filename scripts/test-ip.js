@@ -9,28 +9,28 @@ if (typeof result === 'string') {
 } else {
   const { country, province, city, isp } = result;
   const parts = [];
-  
+
   if (country && country !== '0') {
     if (country === '中国' && (province || city)) {
     } else {
       parts.push(country);
     }
   }
-  
+
   if (province && province !== '0') {
     parts.push(province);
   }
-  
+
   if (city && city !== '0') {
     if (!province || (!province.includes(city) && !city.includes(province))) {
       parts.push(city);
     }
   }
-  
+
   if (isp && isp !== '0') {
     parts.push(isp);
   }
-  
+
   if (parts.length > 0) {
     region = parts.join(' ');
   }

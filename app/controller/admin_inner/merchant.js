@@ -324,7 +324,7 @@ class MerchantController extends Controller {
     }
 
     // 店铺商品数量 (已废弃 shop_goods)
-    let product_count = 0;
+    const product_count = 0;
 
     // 任务数量
     let task_count = 0;
@@ -428,17 +428,17 @@ class MerchantController extends Controller {
     if (ctx.model.UserWalletLog) {
       const cUsers = await ctx.model.SysUser.findAll({
         where: { shop_id: shopId, user_type: 4, is_deleted: 0 },
-        attributes: ['user_id'],
-        raw: true
+        attributes: [ 'user_id' ],
+        raw: true,
       });
       const cUserIds = cUsers.map(u => u.user_id);
-      
+
       if (cUserIds.length > 0) {
         const walletLogs = await ctx.model.UserWalletLog.findAll({
           where: {
             user_id: { [ctx.app.Sequelize.Op.in]: cUserIds },
-            biz_type: 1, 
-            balance_type: { [ctx.app.Sequelize.Op.in]: [1, 2] },
+            biz_type: 1,
+            balance_type: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] },
           },
           attributes: [ 'amount' ],
           raw: true,
@@ -446,8 +446,8 @@ class MerchantController extends Controller {
         for (const log of walletLogs) {
           const amount = Number(log.amount) || 0;
           if (amount > 0) {
-             total_recharge_count++;
-             total_recharge_amount += amount;
+            total_recharge_count++;
+            total_recharge_amount += amount;
           }
         }
       }
@@ -471,20 +471,20 @@ class MerchantController extends Controller {
     // 10. 店铺所有订单数
     let total_order_count = 0;
     if (ctx.model.ShopTaskUserItemProgress && ctx.model.ShopTask) {
-       // 通过 task_item_id -> shop_task_item -> shop_task -> shop_id 的路径查询
-       // 或者更简单的方式，直接找到该店铺的所有C端用户，然后查询这些用户的订单
-       const cUsersForOrders = await ctx.model.SysUser.findAll({
-         where: { shop_id: shopId, user_type: 4, is_deleted: 0 },
-         attributes: ['user_id'],
-         raw: true
-       });
-       const cUserIdsForOrders = cUsersForOrders.map(u => u.user_id);
-       
-       if (cUserIdsForOrders.length > 0) {
-         total_order_count = await ctx.model.ShopTaskUserItemProgress.count({
-           where: { user_id: { [ctx.app.Sequelize.Op.in]: cUserIdsForOrders } }
-         });
-       }
+      // 通过 task_item_id -> shop_task_item -> shop_task -> shop_id 的路径查询
+      // 或者更简单的方式，直接找到该店铺的所有C端用户，然后查询这些用户的订单
+      const cUsersForOrders = await ctx.model.SysUser.findAll({
+        where: { shop_id: shopId, user_type: 4, is_deleted: 0 },
+        attributes: [ 'user_id' ],
+        raw: true,
+      });
+      const cUserIdsForOrders = cUsersForOrders.map(u => u.user_id);
+
+      if (cUserIdsForOrders.length > 0) {
+        total_order_count = await ctx.model.ShopTaskUserItemProgress.count({
+          where: { user_id: { [ctx.app.Sequelize.Op.in]: cUserIdsForOrders } },
+        });
+      }
     }
 
     // ============================================
@@ -539,8 +539,8 @@ class MerchantController extends Controller {
         const walletLogs = await ctx.model.UserWalletLog.findAll({
           where: {
             user_id: { [Op.in]: userIds },
-            biz_type: 1, 
-            balance_type: { [Op.in]: [1, 2] }, 
+            biz_type: 1,
+            balance_type: { [Op.in]: [ 1, 2 ] },
           },
           attributes: [ 'amount' ],
           raw: true,
@@ -549,8 +549,8 @@ class MerchantController extends Controller {
         for (const log of walletLogs) {
           const amount = Number(log.amount || 0);
           if (amount > 0) {
-             spTopUpAmount += amount;
-             spTopUpCount += 1;
+            spTopUpAmount += amount;
+            spTopUpCount += 1;
           }
         }
       }
@@ -584,7 +584,7 @@ class MerchantController extends Controller {
           real_recharge_count,
           kyc_verified_count,
           total_order_count,
-        }
+        },
       },
     };
   }

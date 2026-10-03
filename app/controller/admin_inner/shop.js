@@ -247,6 +247,69 @@ class ShopController extends Controller {
       data: setting,
     };
   }
+  /**
+   * 导入全局模板到店铺 (支持分批导入)
+   */
+  async importTemplates() {
+    const { ctx } = this;
+    const { shop_id, type } = ctx.request.body;
+
+    ctx.validate({
+      shop_id: { type: 'int', required: true, convertType: 'int' },
+      type: { type: 'string', required: true }, // 可选值: 'banner', 'rule', 'share_image', 'service', 'all'
+    }, ctx.request.body);
+
+    // 校验店铺是否存在
+    const shop = await ctx.model.Shop.findOne({
+      where: { shop_id, is_deleted: 0 },
+    });
+
+    if (!shop) {
+      ctx.throw(404, '店铺不存在');
+    }
+
+    const adminId = ctx.state.adminInner.adminInnerId;
+
+    // 根据 type 决定导入的内容
+    const configTypesToImport = [];
+    let importService = false;
+
+    switch (type) {
+      case 'banner':
+        configTypesToImport.push(1);
+        break;
+      case 'rule':
+        configTypesToImport.push(3);
+        break;
+      case 'share_image':
+        configTypesToImport.push(7);
+        break;
+      case 'service':
+        importService = true;
+        break;
+      case 'all':
+        configTypesToImport.push(1, 3, 7);
+        importService = true;
+        break;
+      default:
+        ctx.throw(400, '不支持的模板类型');
+    }
+
+    // 1. 导入 H5 配置 (Banner、规则、分享图)
+    if (configTypesToImport.length > 0) {
+      await ctx.service.h5Config.importGlobalConfigs(shop_id, adminId, configTypesToImport);
+    }
+
+    // 2. 导入 客服配置
+    if (importService) {
+      await ctx.service.h5Service.importGlobalServices(shop_id, adminId);
+    }
+
+    ctx.body = {
+      code: 200,
+      message: '导入模板成功',
+    };
+  }
 }
 
 module.exports = ShopController;

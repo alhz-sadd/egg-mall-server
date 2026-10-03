@@ -17,7 +17,7 @@ module.exports = () => {
       const baseUrl = ctx.app.config.appBaseUrl;
       if (!baseUrl) return;
 
-      const traverse = (obj) => {
+      const traverse = obj => {
         for (const key in obj) {
           const val = obj[key];
           if (typeof val === 'string') {

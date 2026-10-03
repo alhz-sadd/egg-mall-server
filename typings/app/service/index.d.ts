@@ -43,6 +43,7 @@ import ExportStrategy = require('../../../app/service/strategy');
 import ExportSysConfig = require('../../../app/service/sys_config');
 import ExportSysLog = require('../../../app/service/sys_log');
 import ExportTask = require('../../../app/service/task');
+import ExportTelegram = require('../../../app/service/telegram');
 import ExportTotp = require('../../../app/service/totp');
 import ExportUpload = require('../../../app/service/upload');
 import ExportUser = require('../../../app/service/user');
@@ -51,6 +52,7 @@ import ExportVipLevel = require('../../../app/service/vip_level');
 import ExportWithdraw = require('../../../app/service/withdraw');
 import ExportWithdrawConfig = require('../../../app/service/withdraw_config');
 import ExportWithdrawWay = require('../../../app/service/withdraw_way');
+import ExportAdminInnerShopH5Binding = require('../../../app/service/admin_inner/shop_h5_binding');
 
 declare module 'egg' {
   interface IService {
@@ -90,6 +92,7 @@ declare module 'egg' {
     sysConfig: AutoInstanceType<typeof ExportSysConfig>;
     sysLog: AutoInstanceType<typeof ExportSysLog>;
     task: AutoInstanceType<typeof ExportTask>;
+    telegram: AutoInstanceType<typeof ExportTelegram>;
     totp: AutoInstanceType<typeof ExportTotp>;
     upload: AutoInstanceType<typeof ExportUpload>;
     user: AutoInstanceType<typeof ExportUser>;
@@ -98,5 +101,8 @@ declare module 'egg' {
     withdraw: AutoInstanceType<typeof ExportWithdraw>;
     withdrawConfig: AutoInstanceType<typeof ExportWithdrawConfig>;
     withdrawWay: AutoInstanceType<typeof ExportWithdrawWay>;
+    adminInner: {
+      shopH5Binding: AutoInstanceType<typeof ExportAdminInnerShopH5Binding>;
+    }
   }
 }

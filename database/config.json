@@ -1,8 +1,8 @@
 {
   "development": {
-    "username": "egg_mall",
-    "password": "pizEe5PLjGWJhnWL",
-    "database": "egg_mall",
+    "username": "egg-test",
+    "password": "NPbkZ3LACjMZ7WjK",
+    "database": "egg-test",
     "host": "47.238.77.10",
     "dialect": "mysql"
   },

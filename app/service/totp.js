@@ -75,7 +75,7 @@ class TotpService extends Service {
     // 写入 Redis 授权标记，保存 userId
     const authKey = `totp:bind:auth:${bindToken}`;
     await app.redis.set(authKey, userId, 'EX', 300); // 5分钟过期
-    
+
     return { bindToken };
   }
 
@@ -140,7 +140,7 @@ class TotpService extends Service {
 
     // 生成8组恢复码
     const recoveryCodes = this.generateRecoveryCodes(8);
-    
+
     // AES加密临时密钥
     const encryptedSecret = this.encrypt(secretBase32);
 

@@ -444,9 +444,9 @@ class TaskService extends Service {
           goods_images: [],
         };
       }
-      
+
       goodsPrice = Number(waresModel.goods_price);
-      
+
       // 如果是幸运订单且是手动选择，商品价格要根据设置好的价格(configuredPrice)，而不是商品原价
       if (isLuckyOrder === 1 && configuredPrice > 0) {
         goodsPrice = configuredPrice;
@@ -466,7 +466,7 @@ class TaskService extends Service {
       if (isLuckyOrder === 1 && appendAmount > 0) {
         // 幸运订单且有追加金额：搜索价格大于 (余额+追加金额) 的第一条商品，不扫描全表
         const targetPrice = totalBalance + appendAmount;
-        
+
         ctx.logger.info(`[TaskService.search] 幸运订单商品匹配 -> userId: ${userId}, 余额: ${totalBalance}, 追加金额: ${appendAmount}, 搜索起始价格: ${targetPrice}`);
 
         const goodsWhere = {
