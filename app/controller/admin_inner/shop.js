@@ -310,6 +310,28 @@ class ShopController extends Controller {
       message: '导入模板成功',
     };
   }
+
+  /**
+   * 删除店铺 (深度级联清理)
+   */
+  async destroy() {
+    const { ctx } = this;
+    const { id } = ctx.params;
+
+    const shop = await ctx.model.Shop.findByPk(id);
+    if (!shop) {
+      ctx.throw(404, '店铺不存在');
+    }
+
+    // 调用 Service 执行店铺的深度清理
+    await ctx.service.shop.destroy(shop.shop_id);
+
+    ctx.body = {
+      code: 200,
+      message: '店铺删除成功，已清理相关所有数据',
+      data: null,
+    };
+  }
 }
 
 module.exports = ShopController;

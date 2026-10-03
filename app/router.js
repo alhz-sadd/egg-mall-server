@@ -175,6 +175,7 @@ module.exports = app => {
   router.get('/api/admin-inner/shops/all', adminInnerAuth, controller.adminInner.shop.all);
   router.get('/api/admin-inner/shops', adminInnerAuth, controller.adminInner.shop.index);
   router.get('/api/admin-inner/shops/:id', adminInnerAuth, controller.adminInner.shop.show);
+  router.delete('/api/admin-inner/shops/:id', adminInnerAuth, controller.adminInner.shop.destroy);
   router.get('/api/admin-inner/shops/:shop_id/setting', adminInnerAuth, controller.adminInner.shop.getSetting);
   router.put('/api/admin-inner/shops/:shop_id/setting', adminInnerAuth, controller.adminInner.shop.updateSetting);
   router.put('/api/admin-inner/shops/:shop_id/config', adminInnerAuth, controller.adminInner.config.updateShopConfig);

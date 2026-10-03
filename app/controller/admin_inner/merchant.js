@@ -697,38 +697,32 @@ class MerchantController extends Controller {
   }
 
   /**
-   * 删除商家账号或店铺
+   * 删除店长或业务员账号 (软删除)
    */
   async destroy() {
     const { ctx } = this;
     const { id } = ctx.params;
+    const { Op } = require('sequelize');
 
-    // 1. 尝试按商家 ID 查找
+    // 兼容前端可能传 user_id 或 shop_id 的情况
     const merchant = await ctx.model.SysUser.findOne({
-      where: { user_id: id, is_deleted: 0 },
+      where: { 
+        [Op.or]: [
+          { user_id: id },
+          // 如果传的是 shop_id，则查找该店铺下的店长(user_type=2)
+          { shop_id: id, user_type: 2 }
+        ],
+        is_deleted: 0 
+      },
     });
 
-    // 如果是商家(店长)账号，只软删除该账号，不删除店铺
-    if (merchant) {
-      await merchant.update({ is_deleted: 1 });
-      ctx.body = { code: 200, message: '账号删除成功，店铺依然保留', data: null };
-      return;
+    if (!merchant) {
+      ctx.throw(404, '账号不存在或该店铺未绑定店长');
     }
 
-    // 2. 如果不是商家 ID，尝试作为店铺 ID 查找并删除店铺
-    const shop = await ctx.model.Shop.findByPk(id);
-    if (shop) {
-      // 调用 Service 执行店铺的深度清理
-      await ctx.service.shop.destroy(shop.shop_id);
-      ctx.body = {
-        code: 200,
-        message: '删除成功，已清理店铺相关的所有数据及关联用户',
-        data: null,
-      };
-      return;
-    }
-
-    ctx.throw(404, '商家或店铺不存在');
+    // 软删除该账号
+    await merchant.update({ is_deleted: 1 });
+    ctx.body = { code: 200, message: '账号删除成功', data: null };
   }
 }
 
