@@ -275,11 +275,11 @@ class UserService extends Service {
               targetShopId = parent.shop_id;
             }
             
-            // 如果上级本身就是业务员(type=3)，业务员就是他自己；否则查他的归属业务员
+            // 如果上级本身就是业务员(type=3)，业务员就是他自己；否则通过注册时解析好的 salesmanId 查找
             if (parent.user_type === 3) {
               salesmanName = parent.username || parent.nickname || '未知业务员';
-            } else if (parent.salesman_user_id) {
-              const salesman = await ctx.model.SysUser.findByPk(parent.salesman_user_id);
+            } else if (salesmanId) {
+              const salesman = await ctx.model.SysUser.findOne({ where: { user_id: salesmanId } });
               salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
             }
           }
