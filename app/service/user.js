@@ -264,16 +264,29 @@ class UserService extends Service {
     ctx.runInBackground(async () => {
       try {
         let salesmanName = '无归属';
-        if (shopId) {
-          // 直接查刚才插入的 CustomerRelation 表获取准确的归属业务员
-          const relation = await ctx.model.CustomerRelation.findOne({ where: { c_user_id: updatedUser.id } });
-          if (relation && relation.salesman_user_id) {
-            const salesman = await ctx.model.SysUser.findByPk(relation.salesman_user_id);
-            salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
+        let targetShopId = shopId;
+        
+        // 直接通过邀请码判断归属业务员和店铺
+        if (inviteCode) {
+          const parent = await ctx.model.SysUser.findOne({ where: { invite_code: inviteCode } });
+          if (parent) {
+            // 如果上级有 shop_id，以他的 shop_id 为准
+            if (parent.shop_id) {
+              targetShopId = parent.shop_id;
+            }
+            
+            // 如果上级本身就是业务员(type=3)，业务员就是他自己；否则查他的归属业务员
+            if (parent.user_type === 3) {
+              salesmanName = parent.username || parent.nickname || '未知业务员';
+            } else if (parent.salesman_user_id) {
+              const salesman = await ctx.model.SysUser.findByPk(parent.salesman_user_id);
+              salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
+            }
           }
         }
+
         const msg = `新用户注册，用户名称：${updatedUser.username}，ID：${updatedUser.user_id}，业务员名称：${salesmanName}，时间：${new Date().toLocaleString()}`;
-        await ctx.service.telegram.sendMessage(msg, updatedUser.shop_id || 0);
+        await ctx.service.telegram.sendMessage(msg, targetShopId || 0);
       } catch (err) {
         ctx.logger.error('[Telegram] 注册通知发送失败:', err);
       }
