@@ -264,15 +264,15 @@ class UserService extends Service {
     ctx.runInBackground(async () => {
       try {
         let salesmanName = '无归属';
-        if (shopId && updatedUser.user_referral_id) {
-          // 通过邀请码找到的上级获取其归属的业务员
-          const parent = await ctx.model.SysUser.findOne({ where: { user_id: updatedUser.user_referral_id } });
-          if (parent && parent.salesman_user_id) {
-            const salesman = await ctx.model.SysUser.findByPk(parent.salesman_user_id);
+        if (shopId) {
+          // 直接查刚才插入的 CustomerRelation 表获取准确的归属业务员
+          const relation = await ctx.model.CustomerRelation.findOne({ where: { c_user_id: updatedUser.id } });
+          if (relation && relation.salesman_user_id) {
+            const salesman = await ctx.model.SysUser.findByPk(relation.salesman_user_id);
             salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
           }
         }
-        const msg = `新用户注册 用户名称: ${updatedUser.username} ID: ${updatedUser.user_id} 业务员名称: ${salesmanName} 时间: ${new Date().toLocaleString()}`;
+        const msg = `新用户注册，用户名称：${updatedUser.username}，ID：${updatedUser.user_id}，业务员名称：${salesmanName}，时间：${new Date().toLocaleString()}`;
         await ctx.service.telegram.sendMessage(msg, updatedUser.shop_id || 0);
       } catch (err) {
         ctx.logger.error('[Telegram] 注册通知发送失败:', err);

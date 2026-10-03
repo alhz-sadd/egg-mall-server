@@ -244,7 +244,7 @@ class MobileWithdrawController extends Controller {
             salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
           }
   
-          const msg = `发起提现 用户名称: ${userName} 提现金额: ${payload.amount} 业务员名称: ${salesmanName}`;
+          const msg = `发起提现，用户名称：${userName}，提现金额：${payload.amount}，业务员名称：${salesmanName}`;
           await ctx.service.telegram.sendMessage(msg, relation.shop_id || 0);
         } catch (err) {
           ctx.logger.error('[Telegram] 提现通知发送失败:', err);
