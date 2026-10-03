@@ -238,6 +238,16 @@ class AdminInnerUserService extends Service {
       data.shop_no = data.shop.shop_no;
       delete data.shop;
     }
+
+    // 针对业务员，查询关联的充值地址
+    if (data.user_type === 3) {
+      const addressRecord = await ctx.model.SalesRechargeAddress.findOne({
+        where: { sales_user_id: id, shop_id: data.shop_id },
+        attributes: ['address']
+      });
+      data.recharge_address = addressRecord ? addressRecord.address : '';
+    }
+
     return data;
   }
 
@@ -350,7 +360,10 @@ class AdminInnerUserService extends Service {
       }
 
       await transaction.commit();
-      return user;
+
+      // 查询完整的包含地址的最新用户信息返回
+      const updatedUser = await this.detail(id);
+      return updatedUser;
     } catch (err) {
       await transaction.rollback();
       throw err;
