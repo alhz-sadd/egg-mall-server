@@ -697,7 +697,7 @@ class MerchantController extends Controller {
   }
 
   /**
-   * 删除商家账号及店铺 (深度级联清理)
+   * 删除商家账号或店铺
    */
   async destroy() {
     const { ctx } = this;
@@ -708,35 +708,27 @@ class MerchantController extends Controller {
       where: { user_id: id, is_deleted: 0 },
     });
 
-    let shopId;
+    // 如果是商家(店长)账号，只软删除该账号，不删除店铺
     if (merchant) {
-      shopId = merchant.shop_id;
-    } else {
-      // 2. 如果不是商家 ID，尝试作为店铺 ID 直接删除
-      const shop = await ctx.model.Shop.findByPk(id);
-      if (shop) {
-        shopId = shop.shop_id;
-      }
+      await merchant.update({ is_deleted: 1 });
+      ctx.body = { code: 200, message: '账号删除成功，店铺依然保留', data: null };
+      return;
     }
 
-    if (!shopId) {
-      // 如果仅是独立用户且无店铺关联，则仅软删用户
-      if (merchant) {
-        await merchant.update({ is_deleted: 1 });
-        ctx.body = { code: 200, message: '账号删除成功', data: null };
-        return;
-      }
-      ctx.throw(404, '商家或店铺不存在');
+    // 2. 如果不是商家 ID，尝试作为店铺 ID 查找并删除店铺
+    const shop = await ctx.model.Shop.findByPk(id);
+    if (shop) {
+      // 调用 Service 执行店铺的深度清理
+      await ctx.service.shop.destroy(shop.shop_id);
+      ctx.body = {
+        code: 200,
+        message: '删除成功，已清理店铺相关的所有数据及关联用户',
+        data: null,
+      };
+      return;
     }
 
-    // 调用 Service 执行深度清理
-    await ctx.service.shop.destroy(shopId);
-
-    ctx.body = {
-      code: 200,
-      message: '删除成功，已清理店铺相关的所有数据及关联用户',
-      data: null,
-    };
+    ctx.throw(404, '商家或店铺不存在');
   }
 }
 
