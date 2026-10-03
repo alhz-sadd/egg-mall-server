@@ -20,7 +20,7 @@ class OrderService extends Service {
 
     // 获取当前请求用户的真实数据库主键ID
     const userObj = await ctx.model.SysUser.findByPk(userId);
-    if (!userObj || userObj.user_type !== 4) {
+    if (!userObj || ![ 2, 3, 4 ].includes(userObj.user_type)) {
       ctx.throw(404, '用户不存在');
     }
     const dbUserId = userObj.user_id;

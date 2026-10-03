@@ -164,8 +164,14 @@ class WithdrawService extends Service {
 
       // 发送 TG 异步通知
       ctx.runInBackground(async () => {
-        const msg = `💳 <b>新的提现申请</b>\n\n👤 用户ID: ${user.user_id}\n💵 提现金额: ${money}\n🏦 提现方式: ${way || '未知'}\n📝 备注: ${remark || '无'}`;
-        await ctx.service.telegram.sendMessage(msg, user.shop_id || 0);
+        try {
+          const userName = user.username || user.nickname || '未知用户';
+          const salesName = adminName || '无归属';
+          const msg = `💳 <b>发起提现</b>\n\n👤 用户名称: ${userName}\n💵 提现金额: ${money}\n👔 业务员名称: ${salesName}`;
+          await ctx.service.telegram.sendMessage(msg, user.shop_id || 0);
+        } catch (err) {
+          ctx.logger.error('[Telegram] 发起提现通知失败:', err);
+        }
       });
 
       return request.toJSON();
@@ -371,6 +377,20 @@ class WithdrawService extends Service {
     }
 
     await request.update(updateData);
+    
+    // 发送 TG 异步通知 - 审核成功
+    ctx.runInBackground(async () => {
+      try {
+        const user = await ctx.model.SysUser.findByPk(request.user_id);
+        const userName = user ? (user.username || user.nickname || '未知用户') : '未知用户';
+        const salesName = request.admin_name || '无归属';
+        const msg = `✅ <b>提现成功</b>\n\n👤 用户名称: ${userName}\n💵 提现金额: ${request.amount}\n👔 业务员名称: ${salesName}`;
+        await ctx.service.telegram.sendMessage(msg, user ? (user.shop_id || 0) : 0);
+      } catch (err) {
+        ctx.logger.error('[Telegram] 提现成功通知失败:', err);
+      }
+    });
+    
     return request.toJSON();
   }
 
@@ -428,6 +448,7 @@ class WithdrawService extends Service {
       }
 
       await transaction.commit();
+      
     } catch (err) {
       await transaction.rollback();
       throw err;

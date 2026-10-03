@@ -73,6 +73,27 @@ class MobileRechargeController extends Controller {
       is_first_recharge: isFirstRecharge,
     });
 
+    // 发送 TG 异步通知
+    ctx.runInBackground(async () => {
+      try {
+        // 查出用户信息获取用户名
+        const user = await ctx.model.SysUser.findByPk(userId);
+        const userName = user ? (user.username || user.nickname || '未知用户') : '未知用户';
+        
+        // 查出业务员信息获取业务员名称
+        let salesmanName = '无归属';
+        if (relation.salesman_user_id) {
+          const salesman = await ctx.model.SysUser.findByPk(relation.salesman_user_id);
+          salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
+        }
+
+        const msg = `💰 <b>发起充值申请</b>\n\n👤 用户名称: ${userName}\n💵 充值金额: ${payload.amount}\n� 业务员名称: ${salesmanName}`;
+        await ctx.service.telegram.sendMessage(msg, relation.shop_id || 0);
+      } catch (err) {
+        ctx.logger.error('[Telegram] 充值通知获取用户信息失败:', err);
+      }
+    });
+
     ctx.body = {
       code: 200,
       message: '充值申请已提交',

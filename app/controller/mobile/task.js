@@ -65,7 +65,8 @@ class TaskController extends Controller {
       }
 
       const user = await ctx.model.SysUser.findByPk(userId);
-      if (!user || user.user_type !== 4) {
+      // 允许业务员(3)和店长(2)也能在移动端登录查看测试，不仅限于C端用户(4)
+      if (!user || ![ 2, 3, 4 ].includes(user.user_type)) {
         // 软返回，不抛出 404 错误
         ctx.status = 200;
         ctx.body = {

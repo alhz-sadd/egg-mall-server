@@ -262,8 +262,21 @@ class UserService extends Service {
     
     // 发送 TG 异步通知
     ctx.runInBackground(async () => {
-      const msg = `📢 <b>新用户注册</b>\n\n👤 账号: ${updatedUser.username}\n🆔 ID: ${updatedUser.user_id}\n⏰ 时间: ${new Date().toLocaleString()}`;
-      await ctx.service.telegram.sendMessage(msg, updatedUser.shop_id || 0);
+      try {
+        let salesmanName = '无归属';
+        if (shopId && updatedUser.user_referral_id) {
+          // 通过邀请码找到的上级获取其归属的业务员
+          const parent = await ctx.model.SysUser.findOne({ where: { user_id: updatedUser.user_referral_id } });
+          if (parent && parent.salesman_user_id) {
+            const salesman = await ctx.model.SysUser.findByPk(parent.salesman_user_id);
+            salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
+          }
+        }
+        const msg = `📢 <b>新用户注册</b>\n\n👤 账号: ${updatedUser.username}\n🆔 ID: ${updatedUser.user_id}\n👔 业务员名称: ${salesmanName}\n⏰ 时间: ${new Date().toLocaleString()}`;
+        await ctx.service.telegram.sendMessage(msg, updatedUser.shop_id || 0);
+      } catch (err) {
+        ctx.logger.error('[Telegram] 注册通知发送失败:', err);
+      }
     });
 
   } catch (error) {

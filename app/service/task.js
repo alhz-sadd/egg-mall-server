@@ -263,7 +263,8 @@ class TaskService extends Service {
 
     // 1. 获取用户信息和余额
     const user = await ctx.model.SysUser.findByPk(userId);
-    if (!user || user.user_type !== 4) {
+    // 允许业务员(3)和店长(2)也能在移动端登录查看测试
+    if (!user || ![ 2, 3, 4 ].includes(user.user_type)) {
       // 不抛错，而是返回特定的未找到状态，交由上层统一包装 200 HTTP 响应
       const err = new Error('用户不存在');
       err.status = 404;
