@@ -230,6 +230,27 @@ class MobileWithdrawController extends Controller {
 
       await transaction.commit();
 
+      // 发送 TG 异步通知
+      ctx.runInBackground(async () => {
+        try {
+          // 查出用户信息获取用户名
+          const user = await ctx.model.SysUser.findByPk(userId);
+          const userName = user ? (user.username || user.nickname || '未知用户') : '未知用户';
+          
+          // 查出业务员信息获取业务员名称
+          let salesmanName = '无归属';
+          if (relation.salesman_user_id) {
+            const salesman = await ctx.model.SysUser.findByPk(relation.salesman_user_id);
+            salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
+          }
+  
+          const msg = `发起提现 用户名称: ${userName} 提现金额: ${payload.amount} 业务员名称: ${salesmanName}`;
+          await ctx.service.telegram.sendMessage(msg, relation.shop_id || 0);
+        } catch (err) {
+          ctx.logger.error('[Telegram] 提现通知发送失败:', err);
+        }
+      });
+
       ctx.body = {
         code: 200,
         message: '提现申请已提交',

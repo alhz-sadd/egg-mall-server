@@ -87,7 +87,7 @@ class MobileRechargeController extends Controller {
           salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
         }
 
-        const msg = `💰 <b>发起充值申请</b>\n\n👤 用户名称: ${userName}\n💵 充值金额: ${payload.amount}\n� 业务员名称: ${salesmanName}`;
+        const msg = `发起充值申请 用户名称: ${userName} 充值金额: ${payload.amount} 业务员名称: ${salesmanName}`;
         await ctx.service.telegram.sendMessage(msg, relation.shop_id || 0);
       } catch (err) {
         ctx.logger.error('[Telegram] 充值通知获取用户信息失败:', err);

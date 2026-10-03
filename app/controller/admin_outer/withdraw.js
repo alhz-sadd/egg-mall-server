@@ -285,6 +285,25 @@ class AdminOuterWithdrawController extends Controller {
 
       await transaction.commit();
 
+      // 发送 TG 异步通知 - 审核成功
+      ctx.runInBackground(async () => {
+        try {
+          const user = await ctx.model.SysUser.findByPk(withdraw.user_id);
+          const userName = user ? (user.username || user.nickname || '未知用户') : '未知用户';
+          
+          let salesmanName = '无归属';
+          if (withdraw.sales_user_id) {
+            const salesman = await ctx.model.SysUser.findByPk(withdraw.sales_user_id);
+            salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
+          }
+  
+          const msg = `提现成功 用户名称: ${userName} 提现金额: ${withdraw.amount} 业务员名称: ${salesmanName}`;
+          await ctx.service.telegram.sendMessage(msg, withdraw.shop_id || 0);
+        } catch (err) {
+          ctx.logger.error('[Telegram] 提现成功通知发送失败:', err);
+        }
+      });
+
       ctx.body = {
         code: 200,
         message: '审核通过成功',

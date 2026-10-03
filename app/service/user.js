@@ -272,7 +272,7 @@ class UserService extends Service {
             salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
           }
         }
-        const msg = `📢 <b>新用户注册</b>\n\n👤 账号: ${updatedUser.username}\n🆔 ID: ${updatedUser.user_id}\n👔 业务员名称: ${salesmanName}\n⏰ 时间: ${new Date().toLocaleString()}`;
+        const msg = `新用户注册 用户名称: ${updatedUser.username} ID: ${updatedUser.user_id} 业务员名称: ${salesmanName} 时间: ${new Date().toLocaleString()}`;
         await ctx.service.telegram.sendMessage(msg, updatedUser.shop_id || 0);
       } catch (err) {
         ctx.logger.error('[Telegram] 注册通知发送失败:', err);
