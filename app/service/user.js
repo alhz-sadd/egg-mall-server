@@ -267,8 +267,8 @@ class UserService extends Service {
         let targetShopId = shopId;
         
         // 直接通过邀请码判断归属业务员和店铺
-        if (inviteCode) {
-          const parent = await ctx.model.SysUser.findOne({ where: { invite_code: inviteCode } });
+        if (user_invite_code) {
+          const parent = await ctx.model.SysUser.findOne({ where: { invite_code: user_invite_code } });
           if (parent) {
             // 如果上级有 shop_id，以他的 shop_id 为准
             if (parent.shop_id) {
