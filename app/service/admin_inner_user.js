@@ -262,6 +262,7 @@ class AdminInnerUserService extends Service {
     const { username, password, user_type, shop_id, role_id, status, nickname, phone, email, avatar, remark } = payload;
 
     // 检查账号在同店铺下是否存在 (A端管理员 shop_id 视为 null，也需要排重)
+    // 根据需求：不同店铺允许存在同名账号
     const whereCondition = { username, is_deleted: 0 };
     if (shop_id) {
       whereCondition.shop_id = Number(shop_id);
