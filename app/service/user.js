@@ -96,14 +96,6 @@ class UserService extends Service {
       ctx.throw(422, '两次输入的密码不一致');
     }
 
-    // 校验手机号是否已注册
-    const existPhone = await ctx.model.SysUser.findOne({
-      where: { username: user_phone, is_deleted: 0 },
-    });
-    if (existPhone) {
-      ctx.throw(409, '手机号已被注册');
-    }
-
     let inviterUserId = null;
     let shopId = null;
     let salesmanId = null;
@@ -146,6 +138,20 @@ class UserService extends Service {
         shopId = inviter.shop_id;
         rootShopId = inviter.shop_id;
       }
+    }
+
+    // 校验手机号在当前店铺是否已注册
+    const whereCondition = { username: user_phone, is_deleted: 0 };
+    if (shopId) {
+      whereCondition.shop_id = shopId;
+    } else {
+      whereCondition.shop_id = null;
+    }
+    const existPhone = await ctx.model.SysUser.findOne({
+      where: whereCondition,
+    });
+    if (existPhone) {
+      ctx.throw(409, '该手机号在当前店铺已被注册');
     }
 
     // 密码加密
@@ -413,19 +419,24 @@ class UserService extends Service {
   /**
    * 用户登录
    * @param {Object} payload 登录参数
-   * @param {Object} meta 登录环境信息 { ip, device }
+   * @param {Object} meta 登录环境信息 { ip, device, shopId }
    * @return {Object} 用户信息及 JWT Token
    */
   async login(payload, meta = {}) {
     const { ctx, app } = this;
     const { user_phone, user_password } = payload;
-    const { ip, device } = meta;
+    const { ip, device, shopId } = meta;
     const startTime = Date.now();
 
     const logNo = `LL${Date.now()}${Math.floor(Math.random() * 10000)}`;
     const parsedUa = ctx.service.sysLog.resolveUserAgent(meta.userAgent);
 
-    const user = await ctx.model.SysUser.findOne({ where: { username: user_phone } });
+    const whereCondition = { username: user_phone };
+    if (shopId) {
+      whereCondition.shop_id = shopId;
+    }
+
+    const user = await ctx.model.SysUser.findOne({ where: whereCondition });
     if (!user) {
       await this.recordLoginLog({
         log_no: logNo,

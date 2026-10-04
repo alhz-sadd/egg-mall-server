@@ -109,17 +109,18 @@ class MobileWithdrawController extends Controller {
         };
         return;
       }
-
-      // 3. 店铺如果设置了需要完成任务后才能提现，就必须完成一个任务模板后才能提现
+      // 3. 店铺如果设置了需要完成任务后才能提现，就必须至少完成过一个任务订单才能提现
       if (shopConfig && shopConfig.withdraw_first_need_task === 1) {
-        const completedTask = await ctx.model.ShopTaskUser.findOne({
+        // 根据新需求：只要用户完成过一个任务订单(status为1)，就跳过此限制
+        const completedTaskItem = await ctx.model.ShopTaskUserItemProgress.findOne({
           where: {
             user_id: userId,
-            status: 2,
+            status: 1, // 1表示已完成
+            is_deleted: 0,
           },
         });
 
-        if (!completedTask) {
+        if (!completedTaskItem) {
           ctx.body = {
             code: 4001,
             message: '请先完成任务模板后再进行提现',
@@ -156,12 +157,9 @@ class MobileWithdrawController extends Controller {
         ctx.throw(400, `提现金额不能高于 ${shopConfig.withdraw_max_amount}`);
       }
 
-      // 假设 withdraw_fee_type 1为比例（如0.03表示3%），2为固定金额
-      if (shopConfig.withdraw_fee_type === 1) {
-        fee = payload.amount * Number(shopConfig.withdraw_fee_value);
-      } else {
-        fee = Number(shopConfig.withdraw_fee_value);
-      }
+      // 没有固定金额的说法，只有提现手续费比例。
+      // 如果后台填写 0.03，则手续费 = 金额 * 0.03 (即3%)。
+      fee = payload.amount * Number(shopConfig.withdraw_fee_value);
     }
     const actualReceiveAmount = payload.amount - fee;
 
@@ -244,7 +242,7 @@ class MobileWithdrawController extends Controller {
             salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
           }
   
-          const msg = `发起提现，用户名称：${userName}，提现金额：${payload.amount}，业务员名称：${salesmanName}`;
+          const msg = `发起提现申请，用户名称：${userName}，提现金额：${Number(payload.amount)}，业务员名称：${salesmanName}`;
           await ctx.service.telegram.sendMessage(msg, relation.shop_id || 0);
         } catch (err) {
           ctx.logger.error('[Telegram] 提现通知发送失败:', err);

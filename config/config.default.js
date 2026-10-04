@@ -30,12 +30,7 @@ module.exports = appInfo => {
     csrf: {
       enable: false, // 前后端分离项目通常关闭 CSRF
     },
-    domainWhiteList: [
-      'https://h5.carrefours.vip',
-      'https://inner.carrefours.vip',
-      'https://outer.carrefours.vip',
-      'http://localhost:8080',
-    ],
+    domainWhiteList: [ '*' ], // 允许所有域名跨域访问，后续依靠 CORS 插件的 origin 函数做动态校验
   };
 
   // JWT 配置

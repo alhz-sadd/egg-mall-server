@@ -13,11 +13,47 @@ class EmployeeController extends Controller {
       query.user_type_in = [ 2, 3 ];
     }
 
+    // 获取域名判断店铺归属
+    let host = ctx.request.header.origin || ctx.request.header.host || '';
+    host = host.replace(/^https?:\/\//, '');
+    
+    // 如果带有端口号，去掉端口号进行匹配
+    const hostWithoutPort = host.split(':')[0];
+    
+    let domainShopId = 0;
+
+    // 先尝试从头部直接获取 shop-id (方便本地调试)
+    domainShopId = ctx.request.header['shop-id'] ? parseInt(ctx.request.header['shop-id'], 10) : 0;
+
+    // 如果没有传 shop-id，通过域名去匹配 admin 绑定的店铺
+    if (!domainShopId && host) {
+      const binding = await ctx.model.ShopH5Binding.findOne({
+        where: { 
+          [ctx.app.Sequelize.Op.or]: [
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${host}%` } },
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } }
+          ],
+          type: 'admin' 
+        },
+      });
+      if (binding) {
+        domainShopId = binding.shop_id;
+      }
+    }
+
+    // 如果前端明确传了 query.shop_id，覆盖域名解析的 domainShopId
+    if (query.shop_id) {
+      domainShopId = Number(query.shop_id);
+    }
+
     // 如果当前登录用户是商家(user_type=2)或业务员(user_type=3)，则强制只能看到自己店铺下的员工
     // 注意：admin-inner 接口主要供 A端管理员使用，但为了安全保留此逻辑
     const currentUser = ctx.state.adminInner;
     if (currentUser && currentUser.shop_id && [ 2, 3 ].includes(Number(currentUser.user_type))) {
       query.shop_id = currentUser.shop_id;
+    } else if (domainShopId) {
+      // 如果是 A端 (user_type=1) 且访问了特定域名，或者前端传了 shop_id，以这个为准过滤
+      query.shop_id = domainShopId;
     }
 
     const result = await ctx.service.adminInnerUser.list(query);

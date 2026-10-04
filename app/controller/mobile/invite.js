@@ -44,35 +44,12 @@ class InviteController extends Controller {
 
     const totalIncome = totalInviteIncomeStatsResult ? Number(totalInviteIncomeStatsResult).toFixed(2) : '0.00';
 
-    // 获取店铺绑定的分享图 (config_type: 7)
-    let shareImageConfig = await ctx.model.SysH5Config.findOne({
-      where: {
-        shop_id: user.shop_id,
-        config_type: 7, // 7-分享图
-        status: 1,
-        is_deleted: 0,
-      },
-    });
-
-    // 如果店铺未绑定，降级使用平台全局分享图
-    if (!shareImageConfig) {
-      shareImageConfig = await ctx.model.SysH5Config.findOne({
-        where: {
-          shop_id: 0,
-          config_type: 7,
-          status: 1,
-          is_deleted: 0,
-        },
-      });
-    }
-
     ctx.body = {
       code: 200,
       message: 'success',
       data: {
         invite_code: inviteCode,
         total_invite_income: totalIncome,
-        share_image: shareImageConfig ? shareImageConfig.cover_image : null,
       },
     };
   }

@@ -232,7 +232,7 @@ class AdminOuterRechargeController extends Controller {
             salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
           }
   
-          const msg = `充值成功，用户名称：${userName}，充值金额：${recharge.amount}，业务员名称：${salesmanName}`;
+          const msg = `充值成功，用户名称：${userName}，充值金额：${Number(recharge.amount)}，业务员名称：${salesmanName}`;
           await ctx.service.telegram.sendMessage(msg, recharge.shop_id || 0);
         } catch (err) {
           ctx.logger.error('[Telegram] 充值成功通知发送失败:', err);

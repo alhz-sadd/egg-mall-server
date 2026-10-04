@@ -65,9 +65,34 @@ class UserController extends Controller {
     ctx.assert(loginPhone, 422, '手机号不能为空');
     ctx.assert(loginPassword, 422, '密码不能为空');
 
+    // 获取域名判断店铺归属
+    let host = ctx.request.header.origin || ctx.request.header.host || '';
+    host = host.replace(/^https?:\/\//, '');
+    
+    // 如果带有端口号，去掉端口号进行匹配
+    const hostWithoutPort = host.split(':')[0];
+    
+    let shopId = ctx.request.header['shop-id'] ? parseInt(ctx.request.header['shop-id'], 10) : 0;
+
+    if (!shopId && host) {
+      const binding = await ctx.model.ShopH5Binding.findOne({
+        where: { 
+          [ctx.app.Sequelize.Op.or]: [
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${host}%` } },
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } }
+          ],
+          type: 'h5' 
+        },
+      });
+      if (binding) {
+        shopId = binding.shop_id;
+      }
+    }
+
     const meta = {
       ip: ctx.ip || ctx.request.ip || '127.0.0.1',
       userAgent: ctx.get('user-agent') || '',
+      shopId,
     };
     const result = await service.user.login({ user_phone: loginPhone, user_password: loginPassword }, meta);
 

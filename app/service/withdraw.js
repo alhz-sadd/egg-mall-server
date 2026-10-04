@@ -117,6 +117,15 @@ class WithdrawService extends Service {
 
     ctx.logger.info('[WithdrawService.create] 用户存在校验通过，用户ID: %s，当前余额: %s', userId, userBalance);
 
+    // 检查是否已有待审核的提现订单
+    const pendingWithdraw = await ctx.model.WithdrawRecord.findOne({
+      where: { user_id: user.id, status: 0 },
+    });
+    if (pendingWithdraw) {
+      // 抛出自定义状态码 423 (或你可以跟前端约定的其他码)，并附带特定 message，方便前端做多语言拦截
+      ctx.throw(423, 'HAS_PENDING_WITHDRAW');
+    }
+
     // 解析归属业务员信息（提现创建时即写入，列表/审核时可直接展示）
     const { adminId, adminName } = await this.resolveSalespersonAdmin(user);
     ctx.logger.info('[WithdrawService.create] 归属业务员解析结果: adminId=%s, adminName=%s', adminId, adminName);
@@ -167,7 +176,7 @@ class WithdrawService extends Service {
         try {
           const userName = user.username || user.nickname || '未知用户';
           const salesName = adminName || '无归属';
-          const msg = `💳 <b>发起提现</b>\n\n👤 用户名称: ${userName}\n💵 提现金额: ${money}\n👔 业务员名称: ${salesName}`;
+          const msg = `发起提现，用户名称：${userName}，提现金额：${Number(money)}，业务员名称：${salesName}`;
           await ctx.service.telegram.sendMessage(msg, user.shop_id || 0);
         } catch (err) {
           ctx.logger.error('[Telegram] 发起提现通知失败:', err);
@@ -384,7 +393,7 @@ class WithdrawService extends Service {
         const user = await ctx.model.SysUser.findByPk(request.user_id);
         const userName = user ? (user.username || user.nickname || '未知用户') : '未知用户';
         const salesName = request.admin_name || '无归属';
-        const msg = `✅ <b>提现成功</b>\n\n👤 用户名称: ${userName}\n💵 提现金额: ${request.amount}\n👔 业务员名称: ${salesName}`;
+        const msg = `提现成功，用户名称：${userName}，提现金额：${Number(request.amount)}，业务员名称：${salesName}`;
         await ctx.service.telegram.sendMessage(msg, user ? (user.shop_id || 0) : 0);
       } catch (err) {
         ctx.logger.error('[Telegram] 提现成功通知失败:', err);

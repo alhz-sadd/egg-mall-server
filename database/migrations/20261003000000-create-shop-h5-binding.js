@@ -20,7 +20,13 @@ module.exports = {
       h5_url: {
         type: STRING(255),
         allowNull: false,
-        comment: '绑定的H5 URL',
+        comment: '绑定的URL',
+      },
+      type: {
+        type: STRING(50),
+        allowNull: false,
+        defaultValue: 'h5',
+        comment: '类型：h5/admin',
       },
       status: {
         type: TINYINT,

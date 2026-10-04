@@ -297,7 +297,7 @@ class AdminOuterWithdrawController extends Controller {
             salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
           }
   
-          const msg = `提现成功，用户名称：${userName}，提现金额：${withdraw.amount}，业务员名称：${salesmanName}`;
+          const msg = `提现成功，用户名称：${userName}，提现金额：${Number(withdraw.amount)}，业务员名称：${salesmanName}`;
           await ctx.service.telegram.sendMessage(msg, withdraw.shop_id || 0);
         } catch (err) {
           ctx.logger.error('[Telegram] 提现成功通知发送失败:', err);

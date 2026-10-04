@@ -21,12 +21,23 @@ class BannerController extends Controller {
     let host = ctx.request.header.origin || ctx.request.header.host || '';
     // 去除协议头，保留域名（或包含端口号的完整主机名），以便于使用 like 进行模糊匹配
     host = host.replace(/^https?:\/\//, '');
+    
+    // 如果带有端口号，去掉端口号进行匹配
+    const hostWithoutPort = host.split(':')[0];
+    
     let shopId = ctx.request.header['shop-id'] ? parseInt(ctx.request.header['shop-id'], 10) : 0;
     
     if (!shopId && host) {
       // 在数据库中查找该域名绑定的店铺
       const binding = await ctx.model.ShopH5Binding.findOne({
-        where: { h5_url: { [ctx.app.Sequelize.Op.like]: `%${host}%` }, status: 1, is_deleted: 0 },
+        where: { 
+          [ctx.app.Sequelize.Op.or]: [
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${host}%` } },
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } }
+          ],
+          status: 1, 
+          is_deleted: 0 
+        },
       });
       if (binding) {
         shopId = binding.shop_id;

@@ -220,10 +220,7 @@ module.exports = app => {
 
   // admin-inner 店铺H5域名绑定
   router.get('/api/admin-inner/shop-h5-bindings', adminInnerAuth, controller.adminInner.shopH5Binding.index);
-  router.get('/api/admin-inner/shop-h5-bindings/:id', adminInnerAuth, controller.adminInner.shopH5Binding.show);
   router.post('/api/admin-inner/shop-h5-bindings', adminInnerAuth, controller.adminInner.shopH5Binding.create);
-  router.put('/api/admin-inner/shop-h5-bindings/:id', adminInnerAuth, controller.adminInner.shopH5Binding.update);
-  router.delete('/api/admin-inner/shop-h5-bindings/:id', adminInnerAuth, controller.adminInner.shopH5Binding.destroy);
 
   // admin-inner 系统基础参数
   router.get('/api/admin-inner/system/config', adminInnerAuth, controller.adminInner.config.getGlobalConfig);

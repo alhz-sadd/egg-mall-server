@@ -5,197 +5,119 @@ const { Op } = require('sequelize');
 
 class ShopH5BindingService extends Service {
   /**
-   * 获取店铺H5绑定列表
-   * @param query
+   * 获取店铺绑定的域名
+   * @param {number} shop_id 
    */
-  async getList(query) {
-    const { ctx, app } = this;
-    const { page = 1, page_size = 10, shop_id, h5_url, status } = query;
-
-    const where = { is_deleted: 0 };
-
-    if (shop_id !== undefined && shop_id !== '') {
-      where.shop_id = shop_id;
-    }
-
-    if (h5_url !== undefined && h5_url !== '') {
-      where.h5_url = {
-        [Op.like]: `%${h5_url}%`,
-      };
-    }
-
-    if (status !== undefined && status !== '') {
-      where.status = status;
-    }
-
-    const limit = parseInt(page_size);
-    const offset = (parseInt(page) - 1) * limit;
-
-    const { count, rows } = await ctx.model.ShopH5Binding.findAndCountAll({
-      where,
-      limit,
-      offset,
-      order: [[ 'id', 'DESC' ]],
-      include: [
-        {
-          model: ctx.model.Shop,
-          as: 'shop',
-          attributes: [ 'shop_name', 'shop_no' ],
-          where: { is_deleted: 0 },
-          required: false,
-        },
-      ],
+  async getShopBindings(shop_id) {
+    const { ctx } = this;
+    const rows = await ctx.model.ShopH5Binding.findAll({
+      where: { shop_id },
+      attributes: ['h5_url', 'type'],
     });
 
+    const h5_domains = rows.filter(r => r.type === 'h5').map(r => r.h5_url).join('\n');
+    const admin_domains = rows.filter(r => r.type === 'admin').map(r => r.h5_url).join('\n');
+
     return {
-      list: rows,
-      pagination: {
-        total: count,
-        page: parseInt(page),
-        page_size: limit,
-      },
+      h5_domains,
+      admin_domains,
     };
   }
 
   /**
-   * 获取详情
-   * @param id
+   * 保存店铺绑定域名
+   * @param {Object} data 
    */
-  async getDetail(id) {
+  async saveShopBindings(data) {
     const { ctx } = this;
-    const item = await ctx.model.ShopH5Binding.findOne({
-      where: { id, is_deleted: 0 },
-      include: [
-        {
-          model: ctx.model.Shop,
-          as: 'shop',
-          attributes: [ 'shop_name', 'shop_no' ],
-          where: { is_deleted: 0 },
-          required: false,
-        },
-      ],
-    });
-
-    if (!item) {
-      ctx.throw(404, '绑定记录不存在');
-    }
-
-    return item;
-  }
-
-  /**
-   * 创建绑定
-   * @param data
-   */
-  async create(data) {
-    const { ctx } = this;
-    const { shop_id, h5_url, status, remark } = data;
+    const { shop_id, h5_domains, admin_domains } = data;
 
     // 检查店铺是否存在
     const shop = await ctx.model.Shop.findOne({
-      where: { shop_id, is_deleted: 0 },
+      where: { shop_id },
     });
 
     if (!shop) {
       ctx.throw(404, '关联的店铺不存在');
     }
 
-    // 检查URL是否已经存在
-    const exist = await ctx.model.ShopH5Binding.findOne({
-      where: { h5_url, is_deleted: 0 },
-    });
-
-    if (exist) {
-      ctx.throw(400, `该H5 URL已被绑定，请勿重复绑定 (已被店铺ID: ${exist.shop_id} 占用)`);
-    }
-
-    const userId = ctx.state.user ? ctx.state.user.user_id : null;
-
-    const result = await ctx.model.ShopH5Binding.create({
-      shop_id,
-      h5_url,
-      status: status !== undefined ? status : 1,
-      remark,
-      create_user_id: userId,
-      update_user_id: userId,
-    });
-
-    return result;
-  }
-
-  /**
-   * 更新绑定
-   * @param id
-   * @param data
-   */
-  async update(id, data) {
-    const { ctx } = this;
-    const { shop_id, h5_url, status, remark } = data;
-
-    const item = await ctx.model.ShopH5Binding.findOne({
-      where: { id, is_deleted: 0 },
-    });
-
-    if (!item) {
-      ctx.throw(404, '绑定记录不存在');
-    }
-
-    // 如果更新了URL，检查是否冲突
-    if (h5_url && h5_url !== item.h5_url) {
-      const exist = await ctx.model.ShopH5Binding.findOne({
-        where: { h5_url, is_deleted: 0 },
-      });
-
-      if (exist) {
-        ctx.throw(400, `该H5 URL已被其他记录绑定 (已被店铺ID: ${exist.shop_id} 占用)`);
-      }
-    }
-
-    // 如果更新了店铺，检查是否存在
-    if (shop_id && shop_id !== item.shop_id) {
-      const shop = await ctx.model.Shop.findOne({
-        where: { shop_id, is_deleted: 0 },
-      });
-
-      if (!shop) {
-        ctx.throw(404, '关联的店铺不存在');
-      }
-    }
-
-    const userId = ctx.state.user ? ctx.state.user.user_id : null;
-
-    const updateData = {
-      update_user_id: userId,
+    // 解析域名
+    const parseDomains = (str) => {
+      if (!str) return [];
+      return str.split('\n').map(d => d.trim()).filter(d => d);
     };
 
-    if (shop_id !== undefined) updateData.shop_id = shop_id;
-    if (h5_url !== undefined) updateData.h5_url = h5_url;
-    if (status !== undefined) updateData.status = status;
-    if (remark !== undefined) updateData.remark = remark;
+    const h5List = parseDomains(h5_domains);
+    const adminList = parseDomains(admin_domains);
+    const allUrls = [...h5List, ...adminList];
 
-    await item.update(updateData);
-
-    return item;
-  }
-
-  /**
-   * 删除绑定
-   * @param id
-   */
-  async delete(id) {
-    const { ctx } = this;
-    const item = await ctx.model.ShopH5Binding.findOne({
-      where: { id, is_deleted: 0 },
-    });
-
-    if (!item) {
-      ctx.throw(404, '绑定记录不存在');
+    // 检查是否有域名被其他店铺占用
+    if (allUrls.length > 0) {
+      const exists = await ctx.model.ShopH5Binding.findAll({
+        where: {
+          h5_url: { [Op.in]: allUrls },
+          shop_id: { [Op.ne]: shop_id }
+        },
+      });
+      if (exists && exists.length > 0) {
+        ctx.throw(400, `域名 ${exists[0].h5_url} 已被其他店铺(ID: ${exists[0].shop_id})占用`);
+      }
     }
 
-    // 物理删除数据
-    await item.destroy();
+    const userId = ctx.state.user ? ctx.state.user.user_id : null;
 
-    return true;
+    // 开启事务处理
+    const transaction = await ctx.model.transaction();
+    try {
+      // 1. 获取当前店铺所有绑定的旧数据
+      const oldBindings = await ctx.model.ShopH5Binding.findAll({
+        where: { shop_id },
+        transaction
+      });
+      
+      if (oldBindings.length > 0) {
+        // 提取旧记录的ID进行硬删除（物理删除），让域名彻底释放
+        const oldIds = oldBindings.map(item => item.id);
+        await ctx.model.ShopH5Binding.destroy({
+          where: { id: { [Op.in]: oldIds } },
+          force: true, // 强制物理删除
+          transaction
+        });
+      }
+
+      // 2. 插入新的绑定
+      const records = [];
+      for (const url of h5List) {
+        records.push({
+          shop_id,
+          h5_url: url,
+          type: 'h5',
+          status: 1,
+          create_user_id: userId,
+          update_user_id: userId,
+        });
+      }
+      for (const url of adminList) {
+        records.push({
+          shop_id,
+          h5_url: url,
+          type: 'admin',
+          status: 1,
+          create_user_id: userId,
+          update_user_id: userId,
+        });
+      }
+
+      if (records.length > 0) {
+        await ctx.model.ShopH5Binding.bulkCreate(records, { transaction });
+      }
+
+      await transaction.commit();
+      return true;
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
   }
 }
 

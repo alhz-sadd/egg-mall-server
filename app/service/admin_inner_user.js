@@ -261,13 +261,20 @@ class AdminInnerUserService extends Service {
     const { ctx } = this;
     const { username, password, user_type, shop_id, role_id, status, nickname, phone, email, avatar, remark } = payload;
 
-    // 检查账号是否存在
+    // 检查账号在同店铺下是否存在 (A端管理员 shop_id 视为 null，也需要排重)
+    const whereCondition = { username, is_deleted: 0 };
+    if (shop_id) {
+      whereCondition.shop_id = Number(shop_id);
+    } else {
+      whereCondition.shop_id = null;
+    }
+
     const existing = await ctx.model.SysUser.findOne({
-      where: { username, is_deleted: 0 },
+      where: whereCondition,
       transaction: options.transaction,
     });
     if (existing) {
-      ctx.throw(422, '账号已存在');
+      ctx.throw(422, '该环境下账号已存在');
     }
 
     const hashedPassword = await ctx.genHash(password);

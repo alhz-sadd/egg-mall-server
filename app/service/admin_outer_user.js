@@ -7,6 +7,34 @@ class AdminOuterUserService extends Service {
     const { ctx } = this;
     const { username, password, googleCode } = payload;
 
+    // 获取域名判断店铺归属
+    let host = ctx.request.header.origin || ctx.request.header.host || '';
+    host = host.replace(/^https?:\/\//, '');
+    
+    // 如果带有端口号，去掉端口号进行匹配（因为本地开发通常带端口，线上可能也带）
+    const hostWithoutPort = host.split(':')[0];
+    
+    let shopId = ctx.request.header['shop-id'] ? parseInt(ctx.request.header['shop-id'], 10) : 0;
+
+    if (!shopId && host) {
+      const binding = await ctx.model.ShopH5Binding.findOne({
+        where: { 
+          [ctx.app.Sequelize.Op.or]: [
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${host}%` } },
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } }
+          ],
+          type: 'admin' 
+        },
+      });
+      if (binding) {
+        shopId = binding.shop_id;
+      }
+    }
+
+    if (!shopId) {
+      ctx.throw(403, '非法访问：该域名未绑定任何后台');
+    }
+
     // 使用统一的方法获取真实的客户端 IP
     const realIp = ctx.ip || ctx.request.ip || '127.0.0.1';
 
@@ -32,6 +60,7 @@ class AdminOuterUserService extends Service {
     const adminOuter = await ctx.model.SysUser.findOne({
       where: {
         username,
+        shop_id: shopId,
         user_type: { [ctx.model.Sequelize.Op.in]: [ 2, 3 ] }, // 允许店长(2)和业务员(3)登录
         is_deleted: 0,
       },
@@ -172,6 +201,14 @@ class AdminOuterUserService extends Service {
   async create(payload) {
     const { ctx } = this;
     const { username, password, nickname, phone, shop_id, user_type, created_by } = payload;
+
+    // 检查账号在当前店铺是否已存在
+    const existing = await ctx.model.SysUser.findOne({
+      where: { username, shop_id, is_deleted: 0 },
+    });
+    if (existing) {
+      ctx.throw(422, '该店铺下账号已存在');
+    }
 
     const hashedPassword = await ctx.genHash(password);
 
