@@ -18,10 +18,10 @@ class UserController extends Controller {
     const { ctx, service } = this;
     const { phone, password, confirm_password, invite_code, user_phone, user_password, user_invite_code } = ctx.request.body;
 
-    // 兼容两种参数名
-    const registerPhone = user_phone || phone;
+    // 兼容两种参数名，并确保是字符串后去除首尾空格
+    const registerPhone = typeof (user_phone || phone) === 'string' ? (user_phone || phone).trim() : String(user_phone || phone || '').trim();
     const registerPassword = user_password || password;
-    const registerInviteCode = user_invite_code || invite_code;
+    const registerInviteCode = typeof (user_invite_code || invite_code) === 'string' ? (user_invite_code || invite_code).trim() : String(user_invite_code || invite_code || '').trim();
 
     // 基础参数校验
     ctx.assert(registerPhone, 422, ctx.__('user.phone_empty'));

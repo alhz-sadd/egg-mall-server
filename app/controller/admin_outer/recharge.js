@@ -144,7 +144,7 @@ class AdminOuterRechargeController extends Controller {
   async auditSuccess() {
     const { ctx } = this;
     const { id } = ctx.params;
-    const { operate_password } = ctx.request.body;
+    const { operate_password, user_receive_amount } = ctx.request.body;
     const adminOuter = ctx.state.adminOuter;
 
     if (!adminOuter || !adminOuter.shop_id) {
@@ -176,12 +176,28 @@ class AdminOuterRechargeController extends Controller {
       ctx.throw(403, '无权审核非本人名下的订单');
     }
 
+    let final_receive_amount = recharge.user_receive_amount;
+    let final_amount = recharge.amount; // 如果修改了实际到账，可能需要同步更新订单金额，以保持逻辑一致（根据业务需求，通常修改到账金额也会意味着确认金额的变化）
+    if (user_receive_amount !== undefined && user_receive_amount !== null && user_receive_amount !== '') {
+      let parsedAmount = Number(user_receive_amount);
+      if (isNaN(parsedAmount)) {
+        ctx.throw(400, '到账金额必须是有效的数字');
+      }
+      if (parsedAmount < 0) {
+        parsedAmount = 0; // 小于0的情况直接归0，防止扣减用户余额
+      }
+      final_receive_amount = parsedAmount;
+      final_amount = parsedAmount; // 更新订单上的总金额为实际到账金额
+    }
+
     const transaction = await ctx.model.transaction();
     try {
       await recharge.update({
         status: 2, // 2审核通过
         audit_user_id: adminOuter.user_id,
         audit_time: new Date(),
+        user_receive_amount: final_receive_amount,
+        amount: final_amount, // 更新订单金额，这样后台和记录展示的金额就是400
       }, { transaction });
 
       const wallet = await ctx.model.UserWallet.findOne({
@@ -196,9 +212,9 @@ class AdminOuterRechargeController extends Controller {
 
       // 充值通过，增加用户余额
       await ctx.model.UserWallet.update({
-        voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${recharge.user_receive_amount}`),
-        balance: ctx.app.Sequelize.literal(`balance + ${recharge.user_receive_amount}`),
-        total_recharge_amount: ctx.app.Sequelize.literal(`total_recharge_amount + ${recharge.user_receive_amount}`),
+        voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${final_receive_amount}`),
+        balance: ctx.app.Sequelize.literal(`balance + ${final_receive_amount}`),
+        total_recharge_amount: ctx.app.Sequelize.literal(`total_recharge_amount + ${final_receive_amount}`),
       }, {
         where: { user_id: recharge.user_id },
         transaction,
@@ -211,10 +227,10 @@ class AdminOuterRechargeController extends Controller {
         biz_type: 1, // 充值
         related_order_id: recharge.id,
         log_no: recharge.order_no + '_S',
-        amount: recharge.user_receive_amount,
+        amount: final_receive_amount,
         balance_type: 1,
         before_balance: Number(wallet.balance),
-        after_balance: Number(wallet.balance) + Number(recharge.user_receive_amount),
+        after_balance: Number(wallet.balance) + Number(final_receive_amount),
         remark: '充值审核通过',
       }, { transaction });
 
@@ -232,7 +248,7 @@ class AdminOuterRechargeController extends Controller {
             salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
           }
   
-          const msg = `充值成功，用户名称：${userName}，充值金额：${Number(recharge.amount)}，业务员名称：${salesmanName}`;
+          const msg = `充值成功，用户名称：${userName}，充值金额：${Number(final_receive_amount)}，业务员名称：${salesmanName}`;
           await ctx.service.telegram.sendMessage(msg, recharge.shop_id || 0);
         } catch (err) {
           ctx.logger.error('[Telegram] 充值成功通知发送失败:', err);
