@@ -409,13 +409,28 @@ class SysLogService extends Service {
     const { ctx } = this;
 
     const map = {};
+    
+    // 优化：一次性查询所有用户的最新登录日志，避免在循环中逐个查询
+    // 利用 MySQL 的子查询或 group by 机制获取每个用户最新的登录记录
+    const latestLogs = await ctx.model.UserLoginLog.findAll({
+      where: {
+        user_id: { [ctx.app.Sequelize.Op.in]: userIds }
+      },
+      attributes: ['user_id', 'login_ip', 'login_location', 'login_time', 'device_type', 'browser', 'os'],
+      order: [['login_time', 'DESC']],
+      raw: true,
+    });
+
+    // 按照 user_id 分组，因为按照 login_time 倒序排列，所以第一个遇到的就是最新的
+    const logMap = {};
+    latestLogs.forEach(log => {
+      if (!logMap[log.user_id]) {
+        logMap[log.user_id] = log;
+      }
+    });
+
     await Promise.all(userIds.map(async uid => {
-      // 1. 从登录日志表查询最新的一条记录
-      const log = await ctx.model.UserLoginLog.findOne({
-        where: { user_id: uid },
-        order: [[ 'login_time', 'DESC' ]],
-        raw: true,
-      });
+      const log = logMap[uid];
 
       if (log) {
         let location = log.login_location;

@@ -588,9 +588,9 @@ class AdminOuterCustomerService extends Service {
         total_commission_amount: (parentIncomeAmountMap ? (parentIncomeAmountMap[row.user_id] || 0) : 0).toFixed(2),
 
         // 登录信息
-        last_login_ip: latestLoginInfo.login_ip || null,
+        last_login_ip: latestLoginInfo.login_ip || row.last_login_ip,
         last_login_location: latestLoginInfo.login_location || null,
-        last_login_time: latestLoginInfo.login_time || null,
+        last_login_time: latestLoginInfo.login_time || row.last_login_time,
 
         parent_customer_user_id: r.parent_customer_user_id || null,
         parent_customer_name: extraUserMap[r.parent_customer_user_id] || null,
