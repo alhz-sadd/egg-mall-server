@@ -134,7 +134,7 @@ class ProductService extends Service {
     const { ctx } = this;
     const product = await ctx.model.Product.findByPk(id);
     if (!product || product.status !== 1) {
-      ctx.throw(404, '商品不存在或已下架');
+      ctx.throw(404, ctx.__('product.product_not_exist_or_offline'));
     }
     return this.formatProduct(product, locale);
   }
@@ -162,7 +162,7 @@ class ProductService extends Service {
     const { ctx } = this;
     const product = await ctx.model.Product.findByPk(id);
     if (!product) {
-      ctx.throw(404, '商品不存在');
+      ctx.throw(404, ctx.__('product.product_not_exist'));
     }
 
     await product.update(payload);
@@ -177,7 +177,7 @@ class ProductService extends Service {
     const { ctx } = this;
     const product = await ctx.model.Product.findByPk(id);
     if (!product) {
-      ctx.throw(404, '商品不存在');
+      ctx.throw(404, ctx.__('product.product_not_exist'));
     }
 
     await product.destroy();
@@ -189,8 +189,8 @@ class ProductService extends Service {
    */
   validatePayload(payload) {
     const { ctx } = this;
-    ctx.assert(payload.title, 422, '商品名称不能为空');
-    ctx.assert(payload.price !== undefined, 422, '商品价格不能为空');
+    ctx.assert(payload.title, 422, ctx.__('product.product_name_empty'));
+    ctx.assert(payload.price !== undefined, 422, ctx.__('product.product_price_empty'));
   }
 
   /**

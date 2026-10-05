@@ -49,7 +49,7 @@ class MobileUserIdentityController extends Controller {
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId; // 根据移动端 auth 中间件的挂载字段
 
     if (!userId) {
-      ctx.throw(401, '未登录');
+      ctx.throw(401, ctx.__('common.not_logged_in'));
     }
 
     const identity = await ctx.model.UserIdentity.findOne({
@@ -60,7 +60,7 @@ class MobileUserIdentityController extends Controller {
     if (!identity) {
       ctx.body = {
         code: 200,
-        message: '获取成功',
+        message: ctx.__('common.fetch_success'),
         data: {
           audit_status: 0, // 未提交
           reject_reason: null,
@@ -79,7 +79,7 @@ class MobileUserIdentityController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '获取成功',
+      message: ctx.__('common.fetch_success'),
       data: {
         audit_status: data.audit_status,
         reject_reason: data.reject_reason,
@@ -101,7 +101,7 @@ class MobileUserIdentityController extends Controller {
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     if (!userId) {
-      ctx.throw(401, '未登录');
+      ctx.throw(401, ctx.__('common.not_logged_in'));
     }
 
     const payload = ctx.request.body;
@@ -121,10 +121,10 @@ class MobileUserIdentityController extends Controller {
 
     if (existIdentity) {
       if (existIdentity.audit_status === 1) {
-        ctx.throw(400, '实名认证资料正在审核中，请勿重复提交');
+        ctx.throw(400, ctx.__('user.identity_under_review'));
       }
       if (existIdentity.audit_status === 2) {
-        ctx.throw(400, '实名认证已通过，请勿重复提交');
+        ctx.throw(400, ctx.__('user.identity_passed'));
       }
       // 如果是驳回 (3)，则允许重新提交，可以将之前的记录软删除，或者直接更新（这里采用软删除旧记录插入新记录，保留历史更清晰）
       if (existIdentity.audit_status === 3) {
@@ -146,7 +146,7 @@ class MobileUserIdentityController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '提交成功',
+      message: ctx.__('common.submit_success'),
     };
   }
 }

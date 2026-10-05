@@ -10,17 +10,17 @@ module.exports = () => {
     const { authorization } = ctx.headers;
 
     if (!authorization) {
-      ctx.throw(401, '缺少登录凭证');
+      ctx.throw(401, ctx.__('common.missing_credentials'));
     }
 
     const parts = authorization.trim().split(' ');
     if (parts.length !== 2 || parts[0].toLowerCase() !== 'bearer') {
-      ctx.throw(401, '登录凭证格式错误');
+      ctx.throw(401, ctx.__('common.credentials_format_error'));
     }
 
     const token = parts[1];
     if (!token) {
-      ctx.throw(401, '登录凭证为空');
+      ctx.throw(401, ctx.__('common.credentials_empty'));
     }
 
     try {

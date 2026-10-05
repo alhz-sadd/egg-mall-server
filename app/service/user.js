@@ -93,7 +93,7 @@ class UserService extends Service {
 
     // 校验两次密码是否一致
     if (user_password !== confirm_password) {
-      ctx.throw(422, '两次输入的密码不一致');
+      ctx.throw(422, ctx.__('auth.pwd_not_match'));
     }
 
     let inviterUserId = null;
@@ -109,7 +109,7 @@ class UserService extends Service {
         where: { invite_code: user_invite_code, is_deleted: 0 },
       });
       if (!inviter) {
-        ctx.throw(422, '邀请码无效');
+        ctx.throw(422, 'auth.referral_code_invalid');
       }
       inviterUserId = inviter.user_id;
 
@@ -151,7 +151,7 @@ class UserService extends Service {
       where: whereCondition,
     });
     if (existPhone) {
-      ctx.throw(409, '该手机号在当前店铺已被注册');
+      ctx.throw(409, ctx.__('auth.phone_registered_shop'));
     }
 
     // 密码加密
@@ -452,7 +452,7 @@ class UserService extends Service {
         login_result: 0, // 失败
         remark: '登录失败：用户不存在',
       });
-      ctx.throw(401, '手机号或密码错误');
+      ctx.throw(401, ctx.__('auth.phone_pwd_error'));
     }
 
     const match = await ctx.compare(user_password, user.password);
@@ -471,7 +471,7 @@ class UserService extends Service {
         login_result: 0,
         remark: '登录失败：密码错误',
       });
-      ctx.throw(401, '手机号或密码错误');
+      ctx.throw(401, ctx.__('auth.phone_pwd_error'));
     }
 
     if (user.status !== 1) {
@@ -489,7 +489,7 @@ class UserService extends Service {
         login_result: 0,
         remark: '登录失败：账号已禁用',
       });
-      ctx.throw(403, '账号已被禁用');
+      ctx.throw(403, ctx.__('user.account_disabled'));
     }
 
     const accessToken = app.jwt.sign(
@@ -567,7 +567,7 @@ class UserService extends Service {
     const { ctx } = this;
     const user = await this.findUserByIdentifier(id);
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     // 查找钱包中的邀请收入
@@ -590,22 +590,22 @@ class UserService extends Service {
     const new_password = payload.new_password || payload.newPassword;
     const confirm_password = payload.confirm_password || payload.confirmPassword;
 
-    ctx.assert(old_password, 422, '旧密码不能为空');
-    ctx.assert(new_password, 422, '新密码不能为空');
-    ctx.assert(confirm_password, 422, '确认密码不能为空');
-    ctx.assert(new_password.length >= 6, 422, '新密码长度不能少于6位');
+    ctx.assert(old_password, 422, ctx.__('auth.old_pwd_empty'));
+    ctx.assert(new_password, 422, ctx.__('auth.new_pwd_empty'));
+    ctx.assert(confirm_password, 422, ctx.__('auth.confirm_pwd_empty'));
+    ctx.assert(new_password.length >= 6, 422, ctx.__('auth.new_pwd_length_error'));
     if (new_password !== confirm_password) {
-      ctx.throw(422, '两次输入的新密码不一致');
+      ctx.throw(422, ctx.__('auth.new_pwd_not_match'));
     }
 
     const user = await this.findUserByIdentifier(id);
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     const match = await ctx.compare(old_password, user.password);
     if (!match) {
-      ctx.throw(422, '旧密码错误');
+      ctx.throw(422, ctx.__('auth.old_pwd_error'));
     }
 
     const hashedPassword = await ctx.genHash(new_password);
@@ -623,24 +623,24 @@ class UserService extends Service {
     const new_password = payload.new_password || payload.newPassword;
     const confirm_password = payload.confirm_password || payload.confirmPassword;
 
-    ctx.assert(new_password, 422, '新密码不能为空');
-    ctx.assert(confirm_password, 422, '确认密码不能为空');
-    ctx.assert(new_password.length >= 6, 422, '新密码长度不能少于6位');
+    ctx.assert(new_password, 422, ctx.__('auth.new_pwd_empty'));
+    ctx.assert(confirm_password, 422, ctx.__('auth.confirm_pwd_empty'));
+    ctx.assert(new_password.length >= 6, 422, ctx.__('auth.new_pwd_length_error'));
     if (new_password !== confirm_password) {
-      ctx.throw(422, '两次输入的新密码不一致');
+      ctx.throw(422, ctx.__('auth.new_pwd_not_match'));
     }
 
     const user = await this.findUserByIdentifier(id);
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     if (user.user_withdraw_password) {
-      ctx.assert(old_password, 422, '旧提现密码不能为空');
+      ctx.assert(old_password, 422, ctx.__('withdraw.old_withdraw_pwd_empty'));
       const isPlain = !user.user_withdraw_password.startsWith('$2a$');
       const match = isPlain ? old_password === user.user_withdraw_password : await ctx.compare(old_password, user.user_withdraw_password);
       if (!match) {
-        ctx.throw(422, '旧提现密码错误');
+        ctx.throw(422, ctx.__('withdraw.old_withdraw_pwd_error'));
       }
     }
 
@@ -657,12 +657,12 @@ class UserService extends Service {
     const { ctx } = this;
     const { vip_level } = payload;
 
-    ctx.assert(vip_level !== undefined, 422, 'VIP等级不能为空');
+    ctx.assert(vip_level !== undefined, 422, ctx.__('user.vip_level_empty'));
     const level = Number(vip_level);
 
     const user = await this.findUserByIdentifier(id);
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     await user.update({ vip_level: level });
@@ -679,7 +679,7 @@ class UserService extends Service {
     const { ctx } = this;
     const user = await this.findUserByIdentifier(id);
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: user.user_id } });
@@ -699,7 +699,7 @@ class UserService extends Service {
       attributes: [ 'receipt_name', 'receipt_phone', 'receipt_address' ],
     });
     if (!user) {
-      this.ctx.throw(404, '用户不存在');
+      this.ctx.throw(404, ctx.__('user.user_not_exist'));
     }
     return user;
   }
@@ -712,7 +712,7 @@ class UserService extends Service {
   async updateReceipt(userId, params) {
     const user = await this.ctx.model.SysUser.findByPk(userId);
     if (!user) {
-      this.ctx.throw(404, '用户不存在');
+      this.ctx.throw(404, ctx.__('user.user_not_exist'));
     }
     await user.update({
       receipt_name: params.receipt_name,
@@ -757,9 +757,9 @@ class UserService extends Service {
     const { ctx } = this;
     const { name, phone, address, is_default = 0 } = payload;
 
-    ctx.assert(name, 422, '姓名不能为空');
-    ctx.assert(phone, 422, '联系方式不能为空');
-    ctx.assert(address, 422, '地址不能为空');
+    ctx.assert(name, 422, ctx.__('user.name_empty'));
+    ctx.assert(phone, 422, ctx.__('user.contact_empty'));
+    ctx.assert(address, 422, ctx.__('address.address_empty'));
 
     const exist = await ctx.model.LogisticsAddress.findOne({
       where: { user_id: userId, status: 1 },
@@ -805,7 +805,7 @@ class UserService extends Service {
       where: { user_id: userId, status: 1 },
     });
     if (!address) {
-      ctx.throw(404, '物流地址不存在');
+      ctx.throw(404, ctx.__('address.logistics_address_not_exist'));
     }
 
     await address.update({ status: 0 });
@@ -821,14 +821,14 @@ class UserService extends Service {
     const { ctx } = this;
     const { real_name, id_number, front_image, back_image } = payload;
 
-    ctx.assert(real_name, 422, '姓名不能为空');
-    ctx.assert(id_number, 422, '证件号不能为空');
-    ctx.assert(front_image, 422, '正面图片不能为空');
-    ctx.assert(back_image, 422, '反面图片不能为空');
+    ctx.assert(real_name, 422, ctx.__('user.name_empty'));
+    ctx.assert(id_number, 422, ctx.__('user.id_card_empty'));
+    ctx.assert(front_image, 422, ctx.__('system.front_image_empty'));
+    ctx.assert(back_image, 422, ctx.__('system.reverse_image_empty'));
 
     const dbUserId = await this.getDbUserId(userId);
     if (!dbUserId) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     // 每个用户仅保留一条有效凭证，上传新凭证时禁用旧凭证
@@ -862,13 +862,13 @@ class UserService extends Service {
     const { ctx } = this;
     const dbUserId = await this.getDbUserId(userId);
     if (!dbUserId) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
     const credential = await ctx.model.UserCredential.findOne({
       where: { user_id: dbUserId, status: 1 },
     });
     if (!credential) {
-      ctx.throw(404, '凭证不存在');
+      ctx.throw(404, ctx.__('recharge.voucher_not_exist'));
     }
 
     await credential.update({ status: 0 });
@@ -885,7 +885,7 @@ class UserService extends Service {
       attributes: [ 'user_id', 'vip_level', 'shop_id' ],
     });
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     // 获取钱包余额
@@ -1261,7 +1261,7 @@ class UserService extends Service {
 
     const user = await this.findUserByIdentifier(userId);
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     // A端管理员 unrestricted (user_type = 1)
@@ -1274,13 +1274,13 @@ class UserService extends Service {
       });
 
       if (!relation) {
-        ctx.throw(403, '当前角色无权操作该会员');
+        ctx.throw(403, ctx.__('admin.unauthorized_role_member'));
       }
 
       // 店长：只需属于本店
       if (operatorRole === 2) {
         if (relation.shop_id !== shopId) {
-          ctx.throw(403, '当前角色无权操作该会员');
+          ctx.throw(403, ctx.__('admin.unauthorized_role_member'));
         }
         return user;
       }
@@ -1291,7 +1291,7 @@ class UserService extends Service {
       if (operatorRole === 3) {
         // 先检查店
         if (relation.shop_id !== shopId) {
-          ctx.throw(403, '当前角色无权操作该会员');
+          ctx.throw(403, ctx.__('admin.unauthorized_role_member'));
         }
 
         // 进一步检查是否在自己的伞下
@@ -1320,14 +1320,14 @@ class UserService extends Service {
         }
 
         if (!isDescendant) {
-          ctx.throw(403, '当前角色无权操作该会员');
+          ctx.throw(403, ctx.__('admin.unauthorized_role_member'));
         }
 
         return user;
       }
     }
 
-    ctx.throw(403, '当前角色无权操作该会员');
+    ctx.throw(403, ctx.__('admin.unauthorized_role_member'));
   }
 
   /**
@@ -1362,7 +1362,7 @@ class UserService extends Service {
     if (payload.user_status !== undefined && payload.user_status !== '') {
       const value = Number(payload.user_status);
       if (![ 0, 1 ].includes(value)) {
-        ctx.throw(422, 'user_status 参数只能是 0 或 1');
+        ctx.throw(422, ctx.__('system.user_status_error'));
       }
       updateData.status = value;
     }
@@ -1383,7 +1383,7 @@ class UserService extends Service {
     }
 
     if (Object.keys(updateData).length === 0) {
-      ctx.throw(422, '至少需要修改一个状态字段');
+      ctx.throw(422, ctx.__('common.at_least_one_status'));
     }
 
     await user.update(updateData);
@@ -1414,7 +1414,7 @@ class UserService extends Service {
     const { ctx } = this;
     const user = await this.checkMemberAccess(userId, operator);
 
-    ctx.assert(userVipLevel !== undefined, 422, 'VIP等级不能为空');
+    ctx.assert(userVipLevel !== undefined, 422, ctx.__('user.vip_level_empty'));
     const level = Number(userVipLevel);
     // ctx.assert([ 1, 2, 3, 4 ].includes(level), 422, 'VIP等级只能是 1-4'); // VIP等级不再硬编码限制为1-4，根据实际vips表配置
 
@@ -1446,7 +1446,7 @@ class UserService extends Service {
   async resetMemberPassword(userId, user_password, operator = {}) {
     const { ctx } = this;
     const user = await this.checkMemberAccess(userId, operator);
-    ctx.assert(user_password, 422, '密码不能为空');
+    ctx.assert(user_password, 422, ctx.__('auth.pwd_empty'));
     const hashedPassword = await ctx.genHash(user_password);
     await user.update({ password: hashedPassword });
     return { user_id: user.user_id, user_name: user.username };
@@ -1462,7 +1462,7 @@ class UserService extends Service {
   async resetMemberWithdrawPassword(userId, user_withdraw_password, operator = {}) {
     const { ctx } = this;
     const user = await this.checkMemberAccess(userId, operator);
-    ctx.assert(user_withdraw_password, 422, '提现密码不能为空');
+    ctx.assert(user_withdraw_password, 422, ctx.__('withdraw.withdraw_pwd_empty'));
     // 提现密码改为明文存储
     await user.update({ user_withdraw_password });
     return { user_id: user.user_id, user_name: user.username };
@@ -1479,7 +1479,7 @@ class UserService extends Service {
     const { ctx } = this;
     const user = await this.checkMemberAccess(userId, operator);
 
-    ctx.assert(withdraw_address, 422, '提现地址不能为空');
+    ctx.assert(withdraw_address, 422, ctx.__('withdraw.withdraw_address_empty'));
 
     const withdrawRecord = await ctx.model.UserWithdraw.findOne({
       where: {
@@ -1488,7 +1488,7 @@ class UserService extends Service {
       },
     });
 
-    ctx.assert(withdrawRecord, 404, '该提现记录不存在或不属于该用户');
+    ctx.assert(withdrawRecord, 404, ctx.__('withdraw.withdraw_record_not_exist'));
 
     await withdrawRecord.update({ user_receive_address: withdraw_address });
 
@@ -1576,7 +1576,7 @@ class UserService extends Service {
     const { ctx } = this;
     const user = await this.findUserByIdentifier(id);
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     // 不允许通过此处修改密码和用户名
@@ -1602,7 +1602,7 @@ class UserService extends Service {
       attributes: [ 'receipt_name', 'receipt_phone', 'receipt_address' ],
     });
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
     return user.toJSON();
   }
@@ -1616,13 +1616,13 @@ class UserService extends Service {
     const { ctx } = this;
     const { receipt_name, receipt_phone, receipt_address } = payload;
 
-    ctx.assert(receipt_name, 422, '收货人姓名不能为空');
-    ctx.assert(receipt_phone, 422, '收货人联系方式不能为空');
-    ctx.assert(receipt_address, 422, '收货地址不能为空');
+    ctx.assert(receipt_name, 422, ctx.__('address.consignee_name_empty'));
+    ctx.assert(receipt_phone, 422, ctx.__('address.consignee_contact_empty'));
+    ctx.assert(receipt_address, 422, ctx.__('address.shipping_address_empty'));
 
     const user = await ctx.model.SysUser.findByPk(userId);
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     await user.update({

@@ -21,7 +21,7 @@ class UploadController extends Controller {
     const files = ctx.request.files;
 
     if (!files || !files.length) {
-      ctx.throw(422, '请上传图片文件');
+      ctx.throw(422, ctx.__('common.please_upload_image'));
     }
 
     const file = files[0];
@@ -32,7 +32,7 @@ class UploadController extends Controller {
 
       ctx.body = {
         code: 200,
-        message: '上传成功',
+        message: ctx.__('common.upload_success'),
         data: result,
       };
     } catch (err) {

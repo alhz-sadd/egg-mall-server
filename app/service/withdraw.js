@@ -102,17 +102,17 @@ class WithdrawService extends Service {
 
     ctx.logger.info('[WithdrawService.create] 用户 %s 发起提现请求，原始金额: %s，提现方式: %s，提现地址: %s', userId, amount, way, address);
 
-    ctx.assert(amount !== undefined && amount !== '', 422, '提现金额不能为空');
+    ctx.assert(amount !== undefined && amount !== '', 422, ctx.__('withdraw.withdraw_amount_empty'));
     const money = Number(amount);
-    ctx.assert(money > 0, 422, '提现金额必须大于0');
+    ctx.assert(money > 0, 422, ctx.__('withdraw.withdraw_amount_error'));
     ctx.logger.info('[WithdrawService.create] 金额校验通过，提现金额: %s', money);
 
     const user = await this.getUserByIdOrCode(userId);
-    ctx.assert(user, 422, '用户不存在');
+    ctx.assert(user, 422, ctx.__('user.user_not_exist'));
 
     // 获取用户钱包
     const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: user.user_id } });
-    ctx.assert(wallet, 422, '用户钱包不存在');
+    ctx.assert(wallet, 422, ctx.__('wallet.wallet_not_exist'));
     const userBalance = Number(wallet.balance || 0);
 
     ctx.logger.info('[WithdrawService.create] 用户存在校验通过，用户ID: %s，当前余额: %s', userId, userBalance);
@@ -123,7 +123,7 @@ class WithdrawService extends Service {
     });
     if (pendingWithdraw) {
       // 抛出自定义状态码 423 (或你可以跟前端约定的其他码)，并附带特定 message，方便前端做多语言拦截
-      ctx.throw(423, 'HAS_PENDING_WITHDRAW');
+      ctx.throw(423, ctx.__('withdraw.has_pending_withdraw'));
     }
 
     // 解析归属业务员信息（提现创建时即写入，列表/审核时可直接展示）
@@ -131,15 +131,15 @@ class WithdrawService extends Service {
     ctx.logger.info('[WithdrawService.create] 归属业务员解析结果: adminId=%s, adminName=%s', adminId, adminName);
 
     // 校验提现密码（兼容历史 bcrypt 密文和当前明文）
-    ctx.assert(user_withdraw_password !== undefined && user_withdraw_password !== '', 422, '提现密码不能为空');
+    ctx.assert(user_withdraw_password !== undefined && user_withdraw_password !== '', 422, ctx.__('withdraw.withdraw_pwd_empty'));
     const isPlain = !user.user_withdraw_password || !user.user_withdraw_password.startsWith('$2a$');
     const match = isPlain ? user_withdraw_password === user.user_withdraw_password : await ctx.compare(user_withdraw_password, user.user_withdraw_password);
     ctx.logger.info('[WithdrawService.create] 提现密码校验结果: %s，密码类型: %s', match ? '通过' : '失败', isPlain ? '明文' : 'bcrypt');
-    ctx.assert(match, 422, '提现密码错误');
+    ctx.assert(match, 422, ctx.__('withdraw.withdraw_pwd_error'));
 
     const balanceEnough = userBalance >= money;
     ctx.logger.info('[WithdrawService.create] 余额校验，当前余额: %s，提现金额: %s，是否充足: %s', userBalance, money, balanceEnough ? '是' : '否');
-    ctx.assert(balanceEnough, 422, '余额不足');
+    ctx.assert(balanceEnough, 422, ctx.__('wallet.balance_not_enough'));
 
     // 简单计算：手续费为提现金额的 3%，到账金额 = 提现金额 - 手续费
     const sxMoney = Number((money * 0.03).toFixed(2));
@@ -336,8 +336,8 @@ class WithdrawService extends Service {
     // 兼容前端传 id 或 withdraw_id
     const recordId = withdraw_id || id || payload.withdrawId;
     const request = await ctx.model.WithdrawRecord.findByPk(recordId);
-    ctx.assert(request, 404, '提现请求不存在');
-    ctx.assert(request.status === 0, 422, '该提现请求已处理');
+    ctx.assert(request, 404, ctx.__('withdraw.withdraw_request_not_exist'));
+    ctx.assert(request.status === 0, 422, ctx.__('withdraw.withdraw_request_processed'));
 
     // 若创建时未写入归属业务员，则尝试根据user_id解析后补齐；仍为空时用审核人兜底
     let finalAdminId = request.admin_id || null;
@@ -350,7 +350,7 @@ class WithdrawService extends Service {
       } else {
         const admin = ctx.state.admin || {};
         if (!admin.adminId) {
-          ctx.throw(401, '未授权操作：无法获取管理员信息');
+          ctx.throw(401, ctx.__('admin.unauthorized_admin_info'));
         }
         const adminId = admin.adminId;
         const adminUser = await ctx.model.AdminUser.findByPk(adminId);
@@ -417,10 +417,10 @@ class WithdrawService extends Service {
     // 兼容前端传 id 或 withdraw_id
     const recordId = withdraw_id || id;
     const request = await ctx.model.WithdrawRecord.findByPk(recordId);
-    ctx.assert(request, 404, '提现请求不存在');
-    ctx.assert(request.status === 0, 422, '该提现请求已处理');
+    ctx.assert(request, 404, ctx.__('withdraw.withdraw_request_not_exist'));
+    ctx.assert(request.status === 0, 422, ctx.__('withdraw.withdraw_request_processed'));
     if (operatorAdminId !== undefined && request.admin_id !== operatorAdminId) {
-      ctx.throw(403, '无权操作该店铺的提现请求');
+      ctx.throw(403, ctx.__('admin.unauthorized_shop_withdraw_req'));
     }
 
     // 若创建时未写入归属业务员，则尝试根据user_id解析后补齐；仍为空时用审核人兜底

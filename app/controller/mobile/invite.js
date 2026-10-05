@@ -23,7 +23,7 @@ class InviteController extends Controller {
     });
 
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     let inviteCode = user.invite_code;

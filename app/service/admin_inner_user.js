@@ -267,6 +267,7 @@ class AdminInnerUserService extends Service {
     if (shop_id) {
       whereCondition.shop_id = Number(shop_id);
     } else {
+      // 当传入了非关联店铺的角色时（比如总后台管理员），限制更严格，或者 shop_id 就是 null
       whereCondition.shop_id = null;
     }
 
@@ -275,7 +276,7 @@ class AdminInnerUserService extends Service {
       transaction: options.transaction,
     });
     if (existing) {
-      ctx.throw(422, '该环境下账号已存在');
+      ctx.throw(422, '已存在同名账号');
     }
 
     const hashedPassword = await ctx.genHash(password);

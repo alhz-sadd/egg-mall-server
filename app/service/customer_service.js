@@ -115,7 +115,7 @@ class CustomerServiceService extends Service {
       where: { id, is_deleted: 0 },
     });
     if (!customerService || customerService.status !== 1) {
-      ctx.throw(404, '客服不存在或已禁用');
+      ctx.throw(404, 'customer_service.not_exist_or_disabled');
     }
     return customerService;
   }

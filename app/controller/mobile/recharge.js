@@ -20,7 +20,7 @@ class MobileRechargeController extends Controller {
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     if (!userId) {
-      ctx.throw(401, '未登录');
+      ctx.throw(401, ctx.__('common.not_logged_in'));
     }
 
     const payload = ctx.request.body;
@@ -32,7 +32,7 @@ class MobileRechargeController extends Controller {
     }, payload);
 
     if (payload.amount <= 0) {
-      ctx.throw(400, '充值金额必须大于0');
+      ctx.throw(400, ctx.__('recharge.recharge_amount_error'));
     }
 
     // 查询用户的归属关系
@@ -41,7 +41,16 @@ class MobileRechargeController extends Controller {
     });
 
     if (!relation || !relation.shop_id) {
-      ctx.throw(400, '当前用户未绑定店铺，无法充值');
+      ctx.throw(400, ctx.__('shop.user_not_bound_shop_recharge'));
+    }
+
+    // 检查是否有待审核的充值订单
+    const pendingRecharge = await ctx.model.UserRecharge.findOne({
+      where: { user_id: userId, status: 1 },
+    });
+    
+    if (pendingRecharge) {
+      ctx.throw(423, ctx.__('recharge.has_pending_recharge'));
     }
 
     // 生成订单号
@@ -96,7 +105,7 @@ class MobileRechargeController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '充值申请已提交',
+      message: ctx.__('recharge.recharge_request_submitted'),
       data: {
         id: newRecharge.id,
         order_no: newRecharge.order_no,
@@ -112,7 +121,7 @@ class MobileRechargeController extends Controller {
     const { ctx } = this;
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
     if (!userId) {
-      ctx.throw(401, '未登录或登录状态已失效');
+      ctx.throw(401, ctx.__('common.not_logged_in'));
     }
     const { page = 1, page_size = 10, status } = ctx.query;
 
@@ -143,7 +152,7 @@ class MobileRechargeController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '获取成功',
+      message: ctx.__('common.fetch_success'),
       data: {
         list: formattedList,
         total: result.count,
@@ -190,7 +199,7 @@ class MobileRechargeController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '获取成功',
+      message: ctx.__('common.fetch_success'),
       data: {
         sales_address: salesAddress,
         shop_pay_channels: payChannels.list,

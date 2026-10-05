@@ -40,12 +40,12 @@ class AddressController extends Controller {
     const { userId } = ctx.state.user;
     const { receiver, phone, province, city, district, detail, is_default } = ctx.request.body;
 
-    ctx.assert(receiver, 422, '收件人不能为空');
-    ctx.assert(phone, 422, '手机号不能为空');
-    ctx.assert(province, 422, '省不能为空');
-    ctx.assert(city, 422, '市不能为空');
-    ctx.assert(district, 422, '区/县不能为空');
-    ctx.assert(detail, 422, '详细地址不能为空');
+    ctx.assert(receiver, 422, ctx.__('address.consignee_empty'));
+    ctx.assert(phone, 422, ctx.__('user.phone_empty'));
+    ctx.assert(province, 422, ctx.__('address.province_empty'));
+    ctx.assert(city, 422, ctx.__('address.city_empty'));
+    ctx.assert(district, 422, ctx.__('address.district_empty'));
+    ctx.assert(detail, 422, ctx.__('address.detail_address_empty'));
 
     const address = await service.address.create(userId, {
       receiver, phone, province, city, district, detail, is_default,
@@ -53,7 +53,7 @@ class AddressController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '地址添加成功',
+      message: ctx.__('address.address_add_success'),
       data: address,
     };
   }
@@ -98,7 +98,7 @@ class AddressController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '地址更新成功',
+      message: ctx.__('address.address_update_success'),
       data: address,
     };
   }
@@ -120,7 +120,7 @@ class AddressController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '地址删除成功',
+      message: ctx.__('address.address_delete_success'),
       data: null,
     };
   }
@@ -142,7 +142,7 @@ class AddressController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '默认地址设置成功',
+      message: ctx.__('address.default_address_set_success'),
       data: address,
     };
   }

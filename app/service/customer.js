@@ -19,7 +19,7 @@ class CustomerService extends Service {
         where: { c_user_id: customerUserId, shop_id: shopId, is_deleted: 0 },
       });
       if (!rel) {
-        ctx.throw(403, '无权查看该客户');
+        ctx.throw(403, ctx.__('admin.unauthorized_view_customer'));
       }
     }
 
@@ -34,7 +34,7 @@ class CustomerService extends Service {
       where: { user_id: customerUserId, is_deleted: 0 },
     });
     if (!userInfo) {
-      ctx.throw(404, '客户不存在');
+      ctx.throw(404, ctx.__('user.customer_not_exist'));
     }
 
     // 调用统一个方法获取最新登录信息
@@ -148,7 +148,7 @@ class CustomerService extends Service {
         where: { c_user_id: customerUserId, shop_id: shopId, is_deleted: 0 },
       });
       if (!rel) {
-        ctx.throw(403, '无权查看该客户信息');
+        ctx.throw(403, ctx.__('admin.unauthorized_view_customer_info'));
       }
     }
 
@@ -231,7 +231,7 @@ class CustomerService extends Service {
     });
 
     if (!currentRelation && shopId) {
-      ctx.throw(403, '无权查看该客户信息');
+      ctx.throw(403, ctx.__('admin.unauthorized_view_customer_info'));
     }
 
     const currentUser = await ctx.model.SysUser.findOne({
@@ -240,7 +240,7 @@ class CustomerService extends Service {
     });
 
     if (!currentUser) {
-      ctx.throw(404, '当前客户不存在');
+      ctx.throw(404, ctx.__('user.current_customer_not_exist'));
     }
 
     const current = {

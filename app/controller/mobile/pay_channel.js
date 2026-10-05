@@ -10,7 +10,7 @@ class MobilePayChannelController extends Controller {
     const user_id = ctx.state.user ? (ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId) : null;
 
     if (!user_id) {
-      ctx.throw(401, '用户未登录');
+      ctx.throw(401, ctx.__('common.not_logged_in'));
     }
 
     ctx.validate({
@@ -24,7 +24,7 @@ class MobilePayChannelController extends Controller {
     });
 
     if (!customerRelation || !customerRelation.shop_id) {
-      ctx.throw(400, '当前用户未绑定店铺');
+      ctx.throw(400, ctx.__('shop.user_not_bound_shop'));
     }
 
     const result = await ctx.service.payChannel.list({

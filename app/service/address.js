@@ -60,7 +60,7 @@ class AddressService extends Service {
       where: { id, user_id: userId },
     });
     if (!address) {
-      ctx.throw(404, '地址不存在');
+      ctx.throw(404, ctx.__('address.address_not_exist'));
     }
     return address;
   }
@@ -109,7 +109,7 @@ class AddressService extends Service {
       where: { address_id: id, user_id: userId, status: { [ctx.model.Sequelize.Op.lt]: 3 } },
     });
     if (unfinishedOrder) {
-      ctx.throw(400, '该地址存在未完成订单，暂不能删除');
+      ctx.throw(400, ctx.__('address.address_has_uncompleted_order'));
     }
 
     await address.destroy();

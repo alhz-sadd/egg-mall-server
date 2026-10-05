@@ -41,16 +41,49 @@ module.exports = () => {
       }
 
       // 进行多语言翻译 (移动端和管理端都可以统一处理)
-      if (ctx.__) {
-        // 先尝试完全匹配翻译
-        let translated = ctx.__(message);
-        // 处理带前缀的参数校验错误
-        if (translated === message && message.startsWith('参数校验失败：')) {
-          const detail = message.replace('参数校验失败：', '');
-          translated = ctx.__('param_error', { msg: detail });
+      
+      // 获取当前语言 (默认英文)
+      let currentLang = 'en-US';
+      if (ctx.locale) {
+        currentLang = ctx.locale;
+      } else {
+        const headerLang = ctx.get('lang') || ctx.get('language') || ctx.get('accept-language');
+        if (headerLang) {
+          const match = headerLang.match(/[a-zA-Z]{2,3}-[a-zA-Z]{2,3}/);
+          if (match) {
+            const parts = match[0].split('-');
+            currentLang = `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
+          } else if (headerLang.toLowerCase().includes('zh')) {
+            currentLang = 'zh-CN';
+          }
         }
-        message = translated;
       }
+      
+      // 动态加载字典，兜底使用 en-US
+      let dict;
+      try {
+        dict = require(`../../config/locale/${currentLang}.js`);
+      } catch (e) {
+        dict = require('../../config/locale/en-US.js');
+      }
+      const fallbackDict = require('../../config/locale/en-US.js');
+      
+      // 手动翻译
+      let translated = dict[message];
+      
+      // 如果没翻译出来（比如字典里没有这个key），尝试用 en-US 兜底
+      if (!translated) {
+        translated = fallbackDict[message] || message;
+      }
+      
+      // 处理带前缀的参数校验错误
+      if (translated === message && message.startsWith('参数校验失败：')) {
+        const detail = message.replace('参数校验失败：', '');
+        const paramErrorTpl = dict['common.param_error'] || '参数校验失败：%{msg}';
+        translated = paramErrorTpl.replace('%{msg}', detail);
+      }
+      
+      message = translated;
 
       // 开发环境可返回详细堆栈
       const detailed = ctx.app.config.errorHandler && ctx.app.config.errorHandler.detailed;

@@ -22,7 +22,7 @@ class MobileSalesRechargeAddressController extends Controller {
       // 没有任何上级，或者上级不是业务员，就不返回地址
       ctx.body = {
         code: 200,
-        message: '获取成功',
+        message: ctx.__('common.fetch_success'),
         data: null,
       };
       return;
@@ -42,7 +42,7 @@ class MobileSalesRechargeAddressController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '获取成功',
+      message: ctx.__('common.fetch_success'),
       data: addressInfo || null,
     };
   }

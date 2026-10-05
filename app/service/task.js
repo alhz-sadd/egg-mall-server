@@ -114,7 +114,7 @@ class TaskService extends Service {
       ],
     });
     if (!task) {
-      ctx.throw(404, '任务不存在或已禁用');
+      ctx.throw(404, ctx.__('task.task_not_exist_disabled'));
     }
     return task;
   }
@@ -142,7 +142,7 @@ class TaskService extends Service {
     const { ctx } = this;
     const task = await ctx.model.Task.findByPk(id);
     if (!task) {
-      ctx.throw(404, '任务不存在');
+      ctx.throw(404, ctx.__('task.task_not_exist'));
     }
 
     await task.update(payload);
@@ -157,7 +157,7 @@ class TaskService extends Service {
     const { ctx } = this;
     const task = await ctx.model.Task.findByPk(id);
     if (!task) {
-      ctx.throw(404, '任务不存在');
+      ctx.throw(404, ctx.__('task.task_not_exist'));
     }
 
     await task.destroy();
@@ -169,8 +169,8 @@ class TaskService extends Service {
    */
   validatePayload(payload) {
     const { ctx } = this;
-    ctx.assert(payload.title, 422, '任务名称不能为空');
-    ctx.assert(payload.price !== undefined, 422, '任务奖励不能为空');
+    ctx.assert(payload.title, 422, ctx.__('task.task_name_empty'));
+    ctx.assert(payload.price !== undefined, 422, ctx.__('task.task_reward_empty'));
   }
 
   /**
@@ -265,8 +265,7 @@ class TaskService extends Service {
     const user = await ctx.model.SysUser.findByPk(userId);
     // 允许业务员(3)和店长(2)也能在移动端登录查看测试
     if (!user || ![ 2, 3, 4 ].includes(user.user_type)) {
-      // 不抛错，而是返回特定的未找到状态，交由上层统一包装 200 HTTP 响应
-      const err = new Error('用户不存在');
+      const err = new Error('user.user_not_exist');
       err.status = 404;
       throw err;
     }
@@ -307,14 +306,14 @@ class TaskService extends Service {
       }
 
       // 没有任何绑定的任务时
-      const err = new Error('任务不存在或已禁用');
+      const err = new Error('task.task_not_exist_disabled');
       err.status = 404;
       throw err;
     }
 
     const shopTask = await ctx.model.ShopTask.findByPk(shopTaskUser.task_id);
     if (!shopTask || shopTask.status !== 1) {
-      const err = new Error('任务不存在或已禁用');
+      const err = new Error('task.task_not_exist_disabled');
       err.status = 404;
       throw err;
     }
@@ -406,7 +405,7 @@ class TaskService extends Service {
 
     const currentItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: nextProgress.task_item_id } });
     if (!currentItem) {
-      ctx.throw(500, '任务子项配置丢失');
+      ctx.throw(500, ctx.__('task.task_sub_config_missing'));
     }
 
     // 6. 选取商品
@@ -499,7 +498,7 @@ class TaskService extends Service {
         }
 
         if (!waresModel) {
-          ctx.throw(500, `暂无匹配的商品可接取，未找到价格大于 ${targetPrice.toFixed(2)} 的商品，请联系客服添加商品`);
+          ctx.throw(500, ctx.__('task.no_match_product_above'));
         }
 
         // 强行把商品价格修改为 用户余额 + 加上追加的金额
@@ -545,7 +544,7 @@ class TaskService extends Service {
         }
 
         if (total === 0) {
-          ctx.throw(500, `暂无匹配的商品可接取，未找到价格在 ${targetGoodsPriceMin.toFixed(2)} - ${targetGoodsPriceMax.toFixed(2)} 之间的商品，请联系客服添加商品`);
+          ctx.throw(500, ctx.__('task.no_match_product_range'));
         }
 
         // ② 生成一个 0 ~ total-1 的随机偏移量 offset
@@ -559,7 +558,7 @@ class TaskService extends Service {
         });
 
         if (!waresModel) {
-          ctx.throw(500, `暂无匹配的商品可接取，未找到价格在 ${targetGoodsPriceMin.toFixed(2)} - ${targetGoodsPriceMax.toFixed(2)} 之间的商品，请联系客服添加商品`);
+          ctx.throw(500, ctx.__('task.no_match_product_range'));
         }
 
         goodsPrice = Number(waresModel.goods_price);

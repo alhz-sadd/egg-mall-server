@@ -15,8 +15,21 @@ module.exports = () => {
 
       // 如果没有通过 query 或 cookie 明确指定语言
       if (!queryLocale && !cookieLocale) {
-        // 如果 header 没有带，或者是默认带了中文（例如浏览器默认），强制使用英文
-        if (!headerLocale || headerLocale.toLowerCase().includes('zh')) {
+        // 先检查自定义的 lang 或 language header
+        const customLang = ctx.get('lang') || ctx.get('language');
+        if (customLang) {
+           ctx.locale = customLang;
+        } else if (headerLocale) {
+           const match = headerLocale.match(/[a-zA-Z]{2,3}-[a-zA-Z]{2,3}/);
+           if (match) {
+             const parts = match[0].split('-');
+             ctx.locale = `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
+           } else if (headerLocale.toLowerCase().includes('zh')) {
+             ctx.locale = 'zh-CN';
+           } else {
+             ctx.locale = 'en-US';
+           }
+        } else {
           ctx.locale = 'en-US';
         }
       }
@@ -27,8 +40,22 @@ module.exports = () => {
     // 仅处理 /api/mobile/ 前缀的接口，翻译成功的响应
     if (ctx.path.startsWith('/api/mobile/') && ctx.body && typeof ctx.body === 'object' && ctx.body.message) {
       const msgKey = ctx.body.message;
-      const translated = ctx.__(msgKey);
-      ctx.body.message = translated || msgKey;
+      
+      let dict;
+      try {
+        dict = require(`../../config/locale/${ctx.locale}.js`);
+      } catch (e) {
+        dict = require('../../config/locale/en-US.js');
+      }
+      const fallbackDict = require('../../config/locale/en-US.js');
+      
+      let translated = dict[msgKey];
+      
+      if (!translated) {
+        translated = fallbackDict[msgKey] || msgKey;
+      }
+      
+      ctx.body.message = translated;
     }
   };
 };

@@ -48,7 +48,7 @@ class VipLevelService extends Service {
     });
 
     if (!item) {
-      ctx.throw(404, '该VIP等级配置不存在');
+      ctx.throw(404, ctx.__('user.vip_config_not_exist'));
     }
 
     return await item.update(payload);
@@ -66,7 +66,7 @@ class VipLevelService extends Service {
     });
 
     if (!item) {
-      ctx.throw(404, '该VIP等级配置不存在');
+      ctx.throw(404, ctx.__('user.vip_config_not_exist'));
     }
 
     await item.destroy();
@@ -114,7 +114,7 @@ class VipLevelService extends Service {
       // 1. 检查店铺是否存在
       const shop = await ctx.model.Shop.findByPk(shop_id, { transaction: t });
       if (!shop) {
-        ctx.throw(404, '店铺不存在');
+        ctx.throw(404, ctx.__('shop.shop_not_exist'));
       }
 
       // 2. 删除该店铺现有的 VIP 配置
@@ -147,7 +147,7 @@ class VipLevelService extends Service {
       where: { user_id, shop_id, is_deleted: 0 },
     });
     if (!user) {
-      ctx.throw(404, '用户不存在或不属于该店铺');
+      ctx.throw(404, ctx.__('user.user_not_belong_shop'));
     }
 
     // 2. 检查 VIP 等级是否存在
@@ -155,7 +155,7 @@ class VipLevelService extends Service {
       where: { shop_id, level: vip_level, is_enable: 1 },
     });
     if (!vip) {
-      ctx.throw(400, '该 VIP 等级未在店铺启用');
+      ctx.throw(400, ctx.__('user.vip_level_not_enabled'));
     }
 
     // 3. 更新用户 VIP 等级

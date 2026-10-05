@@ -61,20 +61,13 @@ class TaskController extends Controller {
       const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
       if (!userId) {
-        ctx.throw(401, '未登录');
+        ctx.throw(401, ctx.__('common.not_logged_in'));
       }
 
       const user = await ctx.model.SysUser.findByPk(userId);
       // 允许业务员(3)和店长(2)也能在移动端登录查看测试，不仅限于C端用户(4)
       if (!user || ![ 2, 3, 4 ].includes(user.user_type)) {
-        // 软返回，不抛出 404 错误
-        ctx.status = 200;
-        ctx.body = {
-          code: 404,
-          message: '用户不存在',
-          data: null,
-        };
-        return;
+        ctx.throw(404, 'user.user_not_exist');
       }
 
       const result = await service.task.getUserTaskInfo(userId, user.user_vip || 1);
@@ -104,7 +97,7 @@ class TaskController extends Controller {
       const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
       if (!userId) {
-        ctx.throw(401, '未登录');
+        ctx.throw(401, ctx.__('common.not_logged_in'));
       }
 
       const result = await service.task.search(userId);

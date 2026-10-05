@@ -15,7 +15,7 @@ class ShopPayChannelController extends Controller {
     const { channel_type } = ctx.query;
 
     if (!channel_type) {
-      ctx.throw(400, 'channel_type 是必填项');
+      ctx.throw(400, ctx.__('recharge.channel_type_required'));
     }
 
     // C端用户的 shop_id 必须通过 customer_relation 获取
@@ -23,7 +23,7 @@ class ShopPayChannelController extends Controller {
     const user_id = ctx.state.user.userId || ctx.state.user.user_id || ctx.state.user.id;
 
     if (!user_id) {
-      ctx.throw(401, '未获取到有效的用户凭证，请重新登录');
+      ctx.throw(401, ctx.__('common.invalid_credentials'));
     }
 
     const relation = await ctx.model.CustomerRelation.findOne({
@@ -31,7 +31,7 @@ class ShopPayChannelController extends Controller {
     });
 
     if (!relation || !relation.shop_id) {
-      ctx.throw(400, '当前用户未绑定店铺');
+      ctx.throw(400, ctx.__('shop.user_not_bound_shop'));
     }
 
     const shop_id = relation.shop_id;

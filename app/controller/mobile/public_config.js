@@ -117,7 +117,7 @@ class PublicConfigController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '获取成功',
+      message: ctx.__('common.fetch_success'),
       data: {
         list: formatted,
         total: count,
@@ -152,7 +152,7 @@ class PublicConfigController extends Controller {
   async getConfigByType() {
     const { ctx } = this;
     const { type } = ctx.query;
-    ctx.assert(type, 422, 'type 不能为空');
+    ctx.assert(type, 422, ctx.__('system.type_empty'));
     const list = await ctx.service.h5Config.getPublicList(Number(type));
     ctx.body = { code: 200, data: this._formatList(list, type) };
   }

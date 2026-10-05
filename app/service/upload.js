@@ -17,7 +17,7 @@ class UploadService extends Service {
   async image(file, dir = 'images') {
     const { ctx, app } = this;
 
-    ctx.assert(file, 422, '请上传图片文件');
+    ctx.assert(file, 422, 'common.please_upload_image');
 
     const ext = path.extname(file.filename || '').toLowerCase();
     const allowedExts = app.config.multipart.fileExtensions || [
@@ -25,7 +25,7 @@ class UploadService extends Service {
     ];
 
     if (!allowedExts.includes(ext)) {
-      ctx.throw(422, `不支持的图片格式，仅允许：${allowedExts.join('、')}`);
+      ctx.throw(422, 'upload.unsupported_image_format');
     }
 
     const maxSizeStr = app.config.multipart.fileSize || '10mb';
@@ -34,7 +34,7 @@ class UploadService extends Service {
 
     const fileSize = file.size || (await fs.promises.stat(file.filepath)).size;
     if (fileSize > maxSize) {
-      ctx.throw(422, `图片大小不能超过 ${Math.floor(maxSize / 1024 / 1024)}MB`);
+      ctx.throw(422, 'upload.image_size_exceed');
     }
 
     // 按日期分目录存储
@@ -52,7 +52,7 @@ class UploadService extends Service {
     } catch (err) {
       ctx.logger.error('OSS 上传失败:', err);
       // 将具体的错误信息抛出，方便在线上环境排查 500 错误的原因
-      ctx.throw(500, `图片上传失败: ${err.message}`);
+      ctx.throw(500, 'upload.image_upload_failed');
     }
 
     return {

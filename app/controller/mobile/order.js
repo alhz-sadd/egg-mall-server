@@ -20,15 +20,15 @@ class OrderController extends Controller {
     const { userId } = ctx.state.user;
     const { address_id, product_id, quantity, remark } = ctx.request.body;
 
-    ctx.assert(address_id, 422, '请选择收货地址');
-    ctx.assert(product_id, 422, '请选择要购买的商品');
-    ctx.assert(quantity > 0, 422, '购买数量必须大于0');
+    ctx.assert(address_id, 422, ctx.__('address.please_select_shipping_address'));
+    ctx.assert(product_id, 422, ctx.__('product.please_select_product'));
+    ctx.assert(quantity > 0, 422, ctx.__('order.buy_quantity_error'));
 
     const order = await service.order.create(userId, { address_id, product_id, quantity, remark });
 
     ctx.body = {
       code: 200,
-      message: '订单创建成功',
+      message: ctx.__('order.order_create_success'),
       data: order,
     };
   }
@@ -96,7 +96,7 @@ class OrderController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '订单取消成功',
+      message: ctx.__('order.order_cancel_success'),
       data: order,
     };
   }
@@ -119,7 +119,7 @@ class OrderController extends Controller {
 
       ctx.body = {
         code: 200,
-        message: '支付成功',
+        message: ctx.__('order.payment_success'),
         data: order,
       };
     } catch (err) {
@@ -146,7 +146,7 @@ class OrderController extends Controller {
       const { userId } = ctx.state.user;
       const { orderId } = ctx.request.body;
 
-      ctx.assert(orderId, 422, '订单号不能为空');
+      ctx.assert(orderId, 422, ctx.__('order.order_no_empty'));
 
       const orderMsg = await service.order.getOrderMsg(orderId, userId);
 
@@ -179,13 +179,13 @@ class OrderController extends Controller {
       const { userId } = ctx.state.user;
       const { orderId } = ctx.request.body;
 
-      ctx.assert(orderId, 422, '订单号不能为空');
+      ctx.assert(orderId, 422, ctx.__('order.order_no_empty'));
 
       const result = await service.order.pay(orderId, userId);
 
       ctx.body = {
         code: 200,
-        message: '支付成功',
+        message: ctx.__('order.payment_success'),
         data: result,
       };
     } catch (err) {

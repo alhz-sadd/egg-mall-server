@@ -185,14 +185,14 @@ class RechargeRequestService extends Service {
 
     ctx.logger.info('[RechargeRequestService.create] 用户 %s 发起充值请求，原始金额: %s，充值方式: %s，审核类型: %s', userId, do_money, pay_way, examine_type);
 
-    ctx.assert(do_money !== undefined && do_money !== '', 422, '充值金额不能为空');
+    ctx.assert(do_money !== undefined && do_money !== '', 422, ctx.__('recharge.recharge_amount_empty'));
 
     const amount = Number(do_money);
-    ctx.assert(amount > 0, 422, '充值金额必须大于0');
+    ctx.assert(amount > 0, 422, ctx.__('recharge.recharge_amount_error'));
     ctx.logger.info('[RechargeRequestService.create] 金额校验通过，充值金额: %s', amount);
 
     const user = await this.getUserByIdOrCode(userId);
-    ctx.assert(user, 422, '用户不存在');
+    ctx.assert(user, 422, ctx.__('user.user_not_exist'));
     ctx.logger.info('[RechargeRequestService.create] 用户存在校验通过，用户ID: %s', user.id);
 
     const first = await this.isFirstRecharge(user.id);
@@ -281,14 +281,14 @@ class RechargeRequestService extends Service {
     const { ctx, service } = this;
     const { recharge_id, remark } = payload;
 
-    ctx.assert(recharge_id, 422, 'recharge_id不能为空');
+    ctx.assert(recharge_id, 422, ctx.__('recharge.recharge_id_empty'));
 
     const request = await ctx.model.UserRecharge.findByPk(Number(recharge_id));
-    ctx.assert(request, 404, '充值请求不存在');
-    ctx.assert(request.status === 1, 422, '该充值请求已处理');
+    ctx.assert(request, 404, ctx.__('recharge.recharge_request_not_exist'));
+    ctx.assert(request.status === 1, 422, ctx.__('recharge.recharge_request_processed'));
 
     const user = await ctx.model.SysUser.findByPk(request.user_id);
-    ctx.assert(user, 422, '用户不存在');
+    ctx.assert(user, 422, ctx.__('user.user_not_exist'));
 
     // 事务：更新请求 + 给用户加余额
     const transaction = await ctx.model.transaction();
@@ -359,12 +359,12 @@ class RechargeRequestService extends Service {
     const { ctx } = this;
     const { recharge_id, remark } = payload;
 
-    ctx.assert(recharge_id, 422, 'recharge_id不能为空');
-    ctx.assert(remark, 422, 'remark不能为空');
+    ctx.assert(recharge_id, 422, ctx.__('recharge.recharge_id_empty'));
+    ctx.assert(remark, 422, ctx.__('system.remark_empty'));
 
     const request = await ctx.model.UserRecharge.findByPk(Number(recharge_id));
-    ctx.assert(request, 404, '充值请求不存在');
-    ctx.assert(request.status === 1, 422, '该充值请求已处理');
+    ctx.assert(request, 404, ctx.__('recharge.recharge_request_not_exist'));
+    ctx.assert(request.status === 1, 422, ctx.__('recharge.recharge_request_processed'));
 
     await request.update({
       status: 3, // 3 审核驳回

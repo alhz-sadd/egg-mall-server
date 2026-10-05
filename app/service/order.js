@@ -21,7 +21,7 @@ class OrderService extends Service {
     // 获取当前请求用户的真实数据库主键ID
     const userObj = await ctx.model.SysUser.findByPk(userId);
     if (!userObj || ![ 2, 3, 4 ].includes(userObj.user_type)) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
     const dbUserId = userObj.user_id;
 
@@ -34,7 +34,7 @@ class OrderService extends Service {
     });
 
     if (!progress) {
-      ctx.throw(404, '任务订单不存在');
+      ctx.throw(404, ctx.__('task.task_order_not_exist'));
     }
 
     const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: progress.task_item_id } });
@@ -118,17 +118,17 @@ class OrderService extends Service {
       where: { id: address_id, user_id: userId },
     });
     if (!address) {
-      ctx.throw(404, '收货地址不存在');
+      ctx.throw(404, ctx.__('address.shipping_address_not_exist'));
     }
 
     const transaction = await ctx.model.transaction();
     try {
       const product = await ctx.model.Product.findByPk(product_id);
       if (!product || product.status !== 1) {
-        throw new Error(`商品「${product ? product.title : '未知'}」已下架`);
+        throw new Error('product.product_not_exist_or_offline');
       }
       if (product.stock < quantity) {
-        throw new Error(`商品「${product.title}」库存不足`);
+        throw new Error('product.product_stock_not_enough');
       }
 
       const totalAmount = Number(product.price) * quantity;
@@ -190,7 +190,7 @@ class OrderService extends Service {
     // 获取当前请求用户的真实数据库主键ID
     const userObj = await ctx.model.SysUser.findByPk(userId);
     if (!userObj || ![ 2, 3, 4 ].includes(userObj.user_type)) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
     const dbUserId = userObj.user_id;
 
@@ -305,7 +305,7 @@ class OrderService extends Service {
       }],
     });
     if (!order) {
-      ctx.throw(404, '订单不存在');
+      ctx.throw(404, ctx.__('order.order_not_exist'));
     }
     return order;
   }
@@ -326,10 +326,10 @@ class OrderService extends Service {
       }],
     });
     if (!order) {
-      ctx.throw(404, '订单不存在');
+      ctx.throw(404, ctx.__('order.order_not_exist'));
     }
     if (order.status !== 0) {
-      ctx.throw(400, '当前订单状态不允许取消');
+      ctx.throw(400, ctx.__('order.order_cannot_cancel'));
     }
 
     const transaction = await ctx.model.transaction();
@@ -370,7 +370,7 @@ class OrderService extends Service {
     // 获取当前请求用户的真实数据库主键ID
     const userObj = await ctx.model.SysUser.findByPk(userId);
     if (!userObj || ![ 2, 3, 4 ].includes(userObj.user_type)) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
     const dbUserId = userObj.user_id;
 
@@ -382,7 +382,7 @@ class OrderService extends Service {
     });
 
     if (!progress) {
-      ctx.throw(404, '订单不存在');
+      ctx.throw(404, ctx.__('order.order_not_exist'));
     }
 
     const taskItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: progress.task_item_id } });
@@ -449,7 +449,7 @@ class OrderService extends Service {
     // 1. 获取真实用户ID
     const userObj = await ctx.model.SysUser.findByPk(userId);
     if (!userObj || ![ 2, 3, 4 ].includes(userObj.user_type)) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
     const dbUserId = userObj.user_id;
 
@@ -464,7 +464,7 @@ class OrderService extends Service {
     });
 
     if (!progress) {
-      ctx.throw(404, '订单不存在或已支付');
+      ctx.throw(404, ctx.__('order.order_not_exist_or_paid'));
     }
 
     const orderAmount = Number(progress.goods_price);
@@ -481,7 +481,7 @@ class OrderService extends Service {
     ctx.logger.info(`[支付订单] userId: ${dbUserId}, orderAmount: ${orderAmount}, actualBalance: ${actualBalance}, userWallet: ${JSON.stringify(userWallet)}`);
 
     if (actualBalance < orderAmount) {
-      ctx.throw(400, `余额不足，无法支付订单。当前余额: ${actualBalance}, 订单金额: ${orderAmount}`);
+      ctx.throw(400, ctx.__('order.balance_not_enough_pay'));
     }
 
     // 4. 获取对应的任务配置和上级信息 (用于计算动态返佣)
@@ -782,10 +782,10 @@ class OrderService extends Service {
       include: [{ model: ctx.model.OrderItem, as: 'items' }],
     });
     if (!order) {
-      ctx.throw(404, '订单不存在');
+      ctx.throw(404, ctx.__('order.order_not_exist'));
     }
     if (adminId !== undefined && order.admin_id !== adminId) {
-      ctx.throw(403, '无权操作该店铺订单');
+      ctx.throw(403, ctx.__('admin.unauthorized_shop_order'));
     }
 
     const transaction = await ctx.model.transaction();

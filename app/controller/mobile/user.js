@@ -24,10 +24,10 @@ class UserController extends Controller {
     const registerInviteCode = user_invite_code || invite_code;
 
     // 基础参数校验
-    ctx.assert(registerPhone, 422, '手机号不能为空');
-    ctx.assert(registerPassword, 422, '密码不能为空');
-    ctx.assert(registerPassword.length >= 6, 422, '密码长度不能少于6位');
-    ctx.assert(confirm_password, 422, '确认密码不能为空');
+    ctx.assert(registerPhone, 422, ctx.__('user.phone_empty'));
+    ctx.assert(registerPassword, 422, ctx.__('auth.pwd_empty'));
+    ctx.assert(registerPassword.length >= 6, 422, ctx.__('auth.pwd_length_error'));
+    ctx.assert(confirm_password, 422, ctx.__('auth.confirm_pwd_empty'));
 
     // 获取注册 IP
     const clientIp = ctx.ip || ctx.request.ip || '127.0.0.1';
@@ -42,7 +42,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '注册成功',
+      message: ctx.__('auth.register_success'),
       data: user,
     };
   }
@@ -62,8 +62,8 @@ class UserController extends Controller {
     const loginPhone = user_phone || phone;
     const loginPassword = user_password || password;
 
-    ctx.assert(loginPhone, 422, '手机号不能为空');
-    ctx.assert(loginPassword, 422, '密码不能为空');
+    ctx.assert(loginPhone, 422, ctx.__('user.phone_empty'));
+    ctx.assert(loginPassword, 422, ctx.__('auth.pwd_empty'));
 
     // 获取域名判断店铺归属
     let host = ctx.request.header.origin || ctx.request.header.host || '';
@@ -98,7 +98,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '登录成功',
+      message: ctx.__('auth.login_success'),
       data: result,
     };
   }
@@ -124,7 +124,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '退出成功',
+      message: ctx.__('auth.logout_success'),
       data: null,
     };
   }
@@ -142,7 +142,7 @@ class UserController extends Controller {
 
     const user = await service.user.findById(userId);
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     // 补充 VIP 等级详情
@@ -206,7 +206,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: 'VIP等级修改成功',
+      message: ctx.__('user.vip_level_update_success'),
       data: user,
     };
   }
@@ -267,7 +267,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '物流地址保存成功',
+      message: ctx.__('address.logistics_address_save_success'),
       data: result,
     };
   }
@@ -287,7 +287,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '物流地址删除成功',
+      message: ctx.__('address.logistics_address_delete_success'),
       data: null,
     };
   }
@@ -308,7 +308,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '凭证上传成功',
+      message: ctx.__('recharge.voucher_upload_success'),
       data: result,
     };
   }
@@ -328,7 +328,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '凭证删除成功',
+      message: ctx.__('recharge.voucher_delete_success'),
       data: null,
     };
   }
@@ -407,9 +407,9 @@ class UserController extends Controller {
   async updateReceipt() {
     const { ctx, service } = this;
     const rule = {
-      receipt_name: { type: 'string', required: true, message: '收货人姓名必填' },
-      receipt_phone: { type: 'string', required: true, message: '收货人手机号必填' },
-      receipt_address: { type: 'string', required: true, message: '收货地址必填' },
+      receipt_name: { type: 'string', required: true, message: ctx.__('address.consignee_name_required') },
+      receipt_phone: { type: 'string', required: true, message: ctx.__('address.consignee_phone_required') },
+      receipt_address: { type: 'string', required: true, message: ctx.__('address.shipping_address_required') },
     };
     ctx.validate(rule);
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
@@ -418,7 +418,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '收货信息保存成功',
+      message: ctx.__('address.shipping_info_save_success'),
       data: result,
     };
   }
@@ -439,7 +439,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '登录密码修改成功',
+      message: ctx.__('user.login_pwd_update_success'),
       data: null,
     };
   }
@@ -460,7 +460,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '提现密码修改成功',
+      message: ctx.__('withdraw.withdraw_pwd_update_success'),
       data: null,
     };
   }
@@ -481,7 +481,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '更新成功',
+      message: ctx.__('common.update_success'),
       data: user,
     };
   }
@@ -522,7 +522,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '收货信息保存成功',
+      message: ctx.__('address.shipping_info_save_success'),
       data: null,
     };
   }
@@ -545,7 +545,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '获取成功',
+      message: ctx.__('common.fetch_success'),
       data: result,
     };
   }
@@ -604,8 +604,8 @@ class UserController extends Controller {
     const { ctx } = this;
     const { username, password } = ctx.request.body;
 
-    ctx.assert(username, 422, '账号不能为空');
-    ctx.assert(password, 422, '密码不能为空');
+    ctx.assert(username, 422, ctx.__('user.account_empty'));
+    ctx.assert(password, 422, ctx.__('auth.pwd_empty'));
 
     const crypto = require('crypto');
     const hashedPassword = crypto.createHash('md5').update(password).digest('hex');
@@ -640,7 +640,7 @@ class UserController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: 'C端账号创建成功',
+      message: ctx.__('user.c_account_create_success'),
       data: user.toJSON(),
     };
   }

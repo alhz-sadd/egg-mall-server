@@ -13,7 +13,7 @@ class VipLevelController extends Controller {
     // 获取用户信息以获取 shop_id
     const user = await ctx.model.SysUser.findByPk(userId);
     if (!user) {
-      ctx.throw(404, '用户不存在');
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
     if (!user.shop_id) {

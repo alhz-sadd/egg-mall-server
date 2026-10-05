@@ -20,7 +20,7 @@ class MobileWithdrawController extends Controller {
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     if (!userId) {
-      ctx.throw(401, '未登录');
+      ctx.throw(401, ctx.__('common.not_logged_in'));
     }
 
     const payload = ctx.request.body;
@@ -43,7 +43,7 @@ class MobileWithdrawController extends Controller {
     }, payload);
 
     if (payload.amount <= 0) {
-      ctx.throw(400, '提现金额必须大于0');
+      ctx.throw(400, ctx.__('withdraw.withdraw_amount_error'));
     }
 
     const user = await ctx.model.SysUser.findOne({
@@ -52,7 +52,7 @@ class MobileWithdrawController extends Controller {
 
     // 修复：数据库中提现密码的字段名是 user_withdraw_password
     if (!user || !user.user_withdraw_password) {
-      ctx.throw(400, '请先设置提现密码');
+      ctx.throw(400, ctx.__('withdraw.please_set_withdraw_pwd'));
     }
 
     // 验证提现密码 (假设使用 md5，需要根据实际密码加密规则调整)
@@ -60,7 +60,7 @@ class MobileWithdrawController extends Controller {
     const hashedPwd = crypto.createHash('md5').update(payload.withdraw_pwd).digest('hex');
     // 如果系统使用的是带 salt 的，需调整
     if (user.user_withdraw_password !== hashedPwd && user.user_withdraw_password !== payload.withdraw_pwd) {
-      ctx.throw(400, '提现密码错误');
+      ctx.throw(400, ctx.__('withdraw.withdraw_pwd_error'));
     }
 
     // 查询用户的归属关系
@@ -69,16 +69,12 @@ class MobileWithdrawController extends Controller {
     });
 
     if (!relation || !relation.shop_id) {
-      ctx.throw(400, '当前用户未绑定店铺，无法提现');
+      ctx.throw(400, ctx.__('shop.user_not_bound_shop_withdraw'));
     }
 
     // 1. 如果用户的提现状态是未开启状态，则永远提现不了
     if (user.withdrawal_status === 0) {
-      ctx.body = {
-        code: 4001,
-        message: '您的账号已被限制提现',
-      };
-      return;
+      ctx.throw(400, 'withdraw.account_restricted_withdraw');
     }
 
     // 4. 如果用户临时提现状态是开启的情况下，不管什么设置 都可以提现
@@ -103,11 +99,7 @@ class MobileWithdrawController extends Controller {
 
       if (activeTask) {
         // 只要用户开启任务，就不允许提现
-        ctx.body = {
-          code: 4001,
-          message: '您的任务未完成，完成整个任务模板后才可提现',
-        };
-        return;
+        ctx.throw(400, 'withdraw.tasks_incomplete_withdraw');
       }
       // 3. 店铺如果设置了需要完成任务后才能提现，就必须至少完成过一个任务订单才能提现
       if (shopConfig && shopConfig.withdraw_first_need_task === 1) {
@@ -121,11 +113,7 @@ class MobileWithdrawController extends Controller {
         });
 
         if (!completedTaskItem) {
-          ctx.body = {
-            code: 4001,
-            message: '请先完成任务模板后再进行提现',
-          };
-          return;
+          ctx.throw(400, 'withdraw.complete_task_before_withdraw');
         }
       }
 
@@ -139,11 +127,7 @@ class MobileWithdrawController extends Controller {
         });
 
         if (!identity) {
-          ctx.body = {
-            code: 4001,
-            message: '请先完成实名认证后再进行提现',
-          };
-          return;
+          ctx.throw(400, 'withdraw.complete_identity_before_withdraw');
         }
       }
     }
@@ -151,10 +135,10 @@ class MobileWithdrawController extends Controller {
     let fee = 0;
     if (shopConfig) {
       if (payload.amount < shopConfig.withdraw_min_amount) {
-        ctx.throw(400, `提现金额不能低于 ${shopConfig.withdraw_min_amount}`);
+        ctx.throw(400, ctx.__('withdraw.withdraw_amount_min'));
       }
       if (payload.amount > shopConfig.withdraw_max_amount) {
-        ctx.throw(400, `提现金额不能高于 ${shopConfig.withdraw_max_amount}`);
+        ctx.throw(400, ctx.__('withdraw.withdraw_amount_max'));
       }
 
       // 没有固定金额的说法，只有提现手续费比例。
@@ -251,7 +235,7 @@ class MobileWithdrawController extends Controller {
 
       ctx.body = {
         code: 200,
-        message: '提现申请已提交',
+        message: ctx.__('withdraw.withdraw_request_submitted'),
         data: {
           id: withdraw.id,
           order_no: withdraw.order_no,
@@ -291,7 +275,7 @@ class MobileWithdrawController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '获取成功',
+      message: ctx.__('common.fetch_success'),
       data: {
         list: result.rows,
         total: result.count,
@@ -309,7 +293,7 @@ class MobileWithdrawController extends Controller {
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     if (!userId) {
-      ctx.throw(401, '未登录或登录状态已失效');
+      ctx.throw(401, ctx.__('common.not_logged_in'));
     }
 
     const user = await ctx.model.SysUser.findOne({
@@ -362,7 +346,7 @@ class MobileWithdrawController extends Controller {
 
     ctx.body = {
       code: 200,
-      message: '获取成功',
+      message: ctx.__('common.fetch_success'),
       data: {
         has_withdraw_pwd: !!(user && user.user_withdraw_password),
         withdraw_fee_type: feeType,
