@@ -550,6 +550,21 @@ class AdminOuterCustomerService extends Service {
       const firstRechargeInfo = firstRechargeMap[row.user_id] || {};
       const latestLoginInfo = loginLogMapResult[row.user_id] || {};
 
+      // 新增：判断当前登录 IP 是否在其它客户中也存在（仅当前分页/返回集合内的简易判定，也可做全表判定）
+      // 这里我们在全表范围内通过当前登录 IP 去统计是否大于 1
+      let is_ip_duplicate = false;
+      const currentLoginIp = latestLoginInfo.login_ip || row.last_login_ip;
+      if (currentLoginIp) {
+        const ipCount = await ctx.model.SysUser.count({
+          where: {
+            last_login_ip: currentLoginIp,
+            is_deleted: 0,
+            shop_id: currentUser.shop_id, // 限制同店铺下
+          },
+        });
+        is_ip_duplicate = ipCount > 1;
+      }
+
       return {
         ...row.toJSON(),
 
@@ -557,12 +572,13 @@ class AdminOuterCustomerService extends Service {
         register_location: await ctx.service.user.resolveIpLocation(row.register_ip),
 
         // 登录信息 (从最新登录日志获取)
-        login_ip: latestLoginInfo.login_ip || row.last_login_ip,
+        login_ip: currentLoginIp,
         login_location: latestLoginInfo.login_location || '未知',
         login_time: latestLoginInfo.login_time || row.last_login_time,
         device_type: latestLoginInfo.device_type,
         browser: latestLoginInfo.browser,
         os: latestLoginInfo.os,
+        is_ip_duplicate, // 返回 IP 是否重复的布尔值
 
         // 真实钱包表查询出的可用资产
         voucher_balance: Number(w.voucher_balance || 0).toFixed(2),
