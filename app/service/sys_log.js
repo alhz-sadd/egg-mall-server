@@ -38,6 +38,7 @@ const BUSINESS_RULES = [
   { method: 'PUT', pattern: /^\/api\/mobile\/orders\/[^\/]+\/cancel(\?|$)/, businessType: 1, title: '取消订单' },
   { method: 'POST', pattern: /^\/api\/mobile\/orders(\?|$)/, businessType: 0, title: '创建订单' },
   { method: 'POST', pattern: /^\/api\/mobile\/finishOrder(\?|$)/, businessType: 1, title: '完成任务订单' },
+  { method: 'POST', pattern: /^\/api\/mobile\/orderMsg(\?|$)/, businessType: 9, title: '获取订单详情' },
 
   // === 4. 账号与资料管理 ===
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/profile\/updatePwd(\?|$)/, businessType: 1, title: '修改后台密码' },
@@ -658,6 +659,7 @@ class SysLogService extends Service {
         login_result: data.login_result,
         login_time: this.formatDate(data.login_time),
         nickname: data.user ? data.user.nickname : null,
+        user_type: data.user ? data.user.user_type : null,
       });
     }
 
@@ -726,7 +728,7 @@ class SysLogService extends Service {
    */
   async adminLoginLogs(query = {}, adminUser = null) {
     const { ctx, app } = this;
-    const { username, login_result, login_ip, login_location, device_type, page = 1, page_size = 10, shop_id } = query;
+    const { username, login_result, login_ip, login_location, device_type, page = 1, page_size = 10, shop_id, user_type } = query;
     const { Op } = app.Sequelize;
 
     const where = {};
@@ -740,28 +742,56 @@ class SysLogService extends Service {
     if (adminUser) {
       if (adminUser.user_type === 1) { // A端
         if (shop_id) {
-          // A端想要查看指定店铺的登录日志 (只看该店铺的 B 端用户：店长 2 和 业务员 3)
+          // A端想要查看指定店铺的登录日志
+          const userTypeCondition = user_type ? Number(user_type) : { [Op.in]: [ 2, 3, 4 ] };
           const shopUsers = await ctx.model.SysUser.findAll({
-            where: { shop_id: Number(shop_id), user_type: { [Op.in]: [ 2, 3 ] } },
+            where: { shop_id: Number(shop_id), user_type: userTypeCondition },
             attributes: [ 'user_id' ],
           });
-          where.admin_id = { [Op.in]: shopUsers.map(u => u.user_id) };
+          where.user_id = { [Op.in]: shopUsers.map(u => u.user_id) };
         } else {
-          // A端默认只看自己的 (A端管理员账号)
-          where.login_type = 1;
+          // A端未传 shop_id 时
+          if (user_type) {
+            const users = await ctx.model.SysUser.findAll({
+              where: { user_type: Number(user_type) },
+              attributes: [ 'user_id' ],
+            });
+            where.user_id = { [Op.in]: users.map(u => u.user_id) };
+          } else {
+            // A端默认只看自己的 (A端管理员账号)
+            where.login_type = 1;
+          }
         }
       } else { // B端
-        // B端只能看本店子账号的登录日志
+        // B端只能看本店子账号的登录日志（也放开C端用户的查看）
+        const userTypeCondition = user_type ? Number(user_type) : { [Op.in]: [ 2, 3, 4 ] };
         const shopUsers = await ctx.model.SysUser.findAll({
-          where: { shop_id: adminUser.shop_id, user_type: { [Op.in]: [ 2, 3 ] } },
+          where: { shop_id: adminUser.shop_id, user_type: userTypeCondition },
           attributes: [ 'user_id' ],
         });
-        where.admin_id = { [Op.in]: shopUsers.map(u => u.user_id) };
+        where.user_id = { [Op.in]: shopUsers.map(u => u.user_id) };
       }
     }
 
-    const { count, rows } = await ctx.model.AdminLoginLog.findAndCountAll({
+    const include = [];
+    if (adminUser && adminUser.user_type === 1 && !shop_id && !user_type) {
+      include.push({
+        model: ctx.model.SysUser,
+        as: 'user',
+        where: { user_type: 1 },
+        attributes: [ 'nickname', 'shop_id', 'user_type' ],
+      });
+    } else {
+      include.push({
+        model: ctx.model.SysUser,
+        as: 'user',
+        attributes: [ 'nickname', 'shop_id', 'user_type' ],
+      });
+    }
+
+    const { count, rows } = await ctx.model.UserLoginLog.findAndCountAll({
       where,
+      include,
       order: [[ 'login_time', 'DESC' ]],
       offset: (page - 1) * page_size,
       limit: Number(page_size),
@@ -779,7 +809,7 @@ class SysLogService extends Service {
       list.push({
         id: data.id,
         log_no: data.log_no,
-        user_id: data.admin_id,
+        user_id: data.user_id,
         username: data.username,
         login_ip: data.login_ip,
         login_location: loc,
@@ -789,6 +819,8 @@ class SysLogService extends Service {
         login_type: data.login_type,
         login_result: data.login_result,
         login_time: this.formatDate(data.login_time),
+        nickname: data.user ? data.user.nickname : null,
+        user_type: data.user ? data.user.user_type : null,
       });
     }
 
@@ -907,7 +939,7 @@ class SysLogService extends Service {
    */
   async adminOperationLogs(query = {}, adminUser = null) {
     const { ctx, app } = this;
-    const { module, oper_name, oper_type, status, page = 1, page_size = 10, shop_id } = query;
+    const { module, oper_name, oper_type, status, page = 1, page_size = 10, shop_id, user_type } = query;
     const { Op } = app.Sequelize;
 
     const where = {};
@@ -921,27 +953,52 @@ class SysLogService extends Service {
       if (adminUser.user_type === 1) { // A端
         if (shop_id) {
           // A端想要查看指定店铺的日志
+          const userTypeCondition = user_type ? Number(user_type) : { [Op.in]: [ 2, 3, 4 ] };
           const shopUsers = await ctx.model.SysUser.findAll({
-            where: { shop_id: Number(shop_id), user_type: { [Op.in]: [ 2, 3 ] } },
+            where: { shop_id: Number(shop_id), user_type: userTypeCondition },
             attributes: [ 'user_id' ],
           });
-          where.admin_id = { [Op.in]: shopUsers.map(u => u.user_id) };
+          where.user_id = { [Op.in]: shopUsers.map(u => u.user_id) };
         } else {
-          // A端默认只看自己的 (oper_user_type = 1 代表 A 端操作)
-          where.oper_type = 1;
+          // A端默认只看自己的 (通过 user_type 过滤，需要关联 SysUser)
+          if (user_type) {
+            const users = await ctx.model.SysUser.findAll({
+              where: { user_type: Number(user_type) },
+              attributes: [ 'user_id' ],
+            });
+            where.user_id = { [Op.in]: users.map(u => u.user_id) };
+          }
         }
       } else { // B端
         // B端只能看本店的
+        const userTypeCondition = user_type ? Number(user_type) : { [Op.in]: [ 2, 3, 4 ] };
         const shopUsers = await ctx.model.SysUser.findAll({
-          where: { shop_id: adminUser.shop_id, user_type: { [Op.in]: [ 2, 3 ] } },
+          where: { shop_id: adminUser.shop_id, user_type: userTypeCondition },
           attributes: [ 'user_id' ],
         });
-        where.admin_id = { [Op.in]: shopUsers.map(u => u.user_id) };
+        where.user_id = { [Op.in]: shopUsers.map(u => u.user_id) };
       }
     }
 
-    const { count, rows } = await ctx.model.AdminOperationLog.findAndCountAll({
+    const include = [];
+    if (adminUser && adminUser.user_type === 1 && !shop_id && !user_type) {
+      include.push({
+        model: ctx.model.SysUser,
+        as: 'user',
+        where: { user_type: 1 },
+        attributes: [ 'nickname', 'shop_id', 'user_type' ],
+      });
+    } else {
+      include.push({
+        model: ctx.model.SysUser,
+        as: 'user',
+        attributes: [ 'nickname', 'shop_id', 'user_type' ],
+      });
+    }
+
+    const { count, rows } = await ctx.model.SysOperLog.findAndCountAll({
       where,
+      include,
       order: [[ 'oper_time', 'DESC' ]],
       offset: (page - 1) * page_size,
       limit: Number(page_size),
@@ -950,14 +1007,23 @@ class SysLogService extends Service {
     const list = [];
     for (const item of rows) {
       const data = item.toJSON();
+      const typeMap = { 0: '新增', 1: '修改', 2: '删除', 3: '授权', 4: '导出', 5: '导入', 6: '强退', 7: '生成代码', 8: '清空数据', 9: '其他' };
+
+      let params = {};
+      try {
+        params = data.oper_param ? (typeof data.oper_param === 'string' ? JSON.parse(data.oper_param) : data.oper_param) : {};
+      } catch (e) {
+        params = data.oper_param;
+      }
+
       list.push({
         id: data.id,
         log_no: `AOP${data.id}`,
         module: data.title,
         oper_type: data.business_type,
         oper_desc: data.method,
-        oper_id: data.admin_id,
-        oper_user_type: data.oper_type,
+        oper_id: data.user_id,
+        oper_user_type: data.user ? data.user.user_type : null,
         oper_name: data.username,
         oper_ip: data.oper_ip,
         oper_location: data.oper_location || await this.resolveIpLocation(data.oper_ip),
@@ -970,7 +1036,7 @@ class SysLogService extends Service {
         request_info: {
           req_module: data.title,
           req_url: data.oper_url,
-          req_params: data.oper_param ? JSON.parse(data.oper_param) : null,
+          req_params: params,
           req_method: data.request_method,
           res_body: data.json_result,
           res_status: data.status,

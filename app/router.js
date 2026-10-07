@@ -145,7 +145,8 @@ module.exports = app => {
   router.put('/api/admin-inner/users/reset-pwd', adminInnerAuth, controller.adminInner.auth.resetUserPwd);
   router.put('/api/admin-inner/users/reset-google', adminInnerAuth, controller.adminInner.auth.resetUserGoogle);
 
-  // admin-inner VIP 等级管理
+  // admin-inner VIP等级模板
+  router.get('/api/admin-inner/shops/:shop_id/vip-levels', adminInnerAuth, controller.adminInner.vipLevel.shopVipList); // 新增：A端获取指定店铺的VIP模板列表
   router.get('/api/admin-inner/vip-levels', adminInnerAuth, controller.adminInner.vipLevel.index);
   router.get('/api/admin-inner/shop-vip-levels', adminInnerAuth, controller.adminInner.vipLevel.index);
   router.post('/api/admin-inner/vip-levels', adminInnerAuth, controller.adminInner.vipLevel.create);
@@ -163,6 +164,8 @@ module.exports = app => {
   router.get('/api/admin-inner/merchants/all', adminInnerAuth, controller.adminInner.merchant.allMerchants);
   router.get('/api/admin-inner/merchants/:id', adminInnerAuth, controller.adminInner.merchant.show);
   router.get('/api/admin-inner/merchants/:id/statistics', adminInnerAuth, controller.adminInner.merchant.statistics);
+  // 新增接口：获取店铺下所有业务员的业绩统计信息
+  router.get('/api/admin-inner/merchants/:id/salespersons/statistics', adminInnerAuth, controller.adminInner.merchant.salespersonStatistics);
   router.get('/api/admin-inner/merchants/:id/roles', adminInnerAuth, controller.adminInner.merchant.roles);
   router.get('/api/admin-inner/merchants/:id/configs', adminInnerAuth, controller.adminInner.config.getStoreConfig);
   router.put('/api/admin-inner/merchants/:id/configs', adminInnerAuth, controller.adminInner.config.updateStoreConfig);
@@ -196,13 +199,7 @@ module.exports = app => {
   router.delete('/api/admin-inner/shops/:shop_id/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeRemove);
   router.post('/api/admin-inner/shops/:shop_id/notices/bind', adminInnerAuth, controller.adminInner.h5Config.noticeBind);
 
-  // admin-inner 指定店铺分享图管理
-  router.get('/api/admin-inner/shops/:shop_id/share-images', adminInnerAuth, controller.adminInner.h5Config.shareImageList);
-  router.post('/api/admin-inner/shops/:shop_id/share-images', adminInnerAuth, controller.adminInner.h5Config.shareImageAdd);
-  router.put('/api/admin-inner/shops/:shop_id/share-images/:id', adminInnerAuth, controller.adminInner.h5Config.shareImageEdit);
-  router.put('/api/admin-inner/shops/:shop_id/share-images/:id/status', adminInnerAuth, controller.adminInner.h5Config.shareImageUpdateStatus);
-  router.delete('/api/admin-inner/shops/:shop_id/share-images/:id', adminInnerAuth, controller.adminInner.h5Config.shareImageRemove);
-  router.post('/api/admin-inner/shops/:shop_id/share-images/bind', adminInnerAuth, controller.adminInner.h5Config.shareImageBind);
+
 
   // admin-inner 指定店铺轮播图模板管理
   router.get('/api/admin-inner/shops/:shop_id/banners', adminInnerAuth, controller.adminInner.banner.adminGet);
@@ -332,6 +329,7 @@ module.exports = app => {
   router.get('/api/admin-inner/employees/:id/performance', adminInnerAuth, controller.adminInner.employee.performance);
 
   // admin-inner 客户
+  router.get('/api/admin-inner/shops/:shop_id/customers', adminInnerAuth, controller.adminInner.customer.index); // 新增：A端分页获取店铺C端用户列表
   router.get('/api/admin-inner/customers/active-info', adminInnerAuth, controller.adminInner.customer.activeInfo);
   router.put('/api/admin-inner/customers/:id/withdraw-password', adminInnerAuth, controller.adminInner.customer.updateWithdrawPassword);
   router.get('/api/admin-inner/customers/:customerUserId/login-log/list', adminInnerAuth, controller.adminInner.customer.loginLogList);
@@ -368,11 +366,7 @@ module.exports = app => {
   router.put('/api/admin-inner/h5-config/service-entries/:id', adminInnerAuth, controller.adminInner.h5Config.serviceEntryEdit);
   router.delete('/api/admin-inner/h5-config/service-entries/:id', adminInnerAuth, controller.adminInner.h5Config.serviceEntryRemove);
 
-  // admin-inner H5分享图配置 (支持全局和店铺隔离)
-  router.get('/api/admin-inner/h5-config/share-images', adminInnerAuth, controller.adminInner.h5Config.shareImageList);
-  router.post('/api/admin-inner/h5-config/share-images', adminInnerAuth, controller.adminInner.h5Config.shareImageAdd);
-  router.put('/api/admin-inner/h5-config/share-images/:id', adminInnerAuth, controller.adminInner.h5Config.shareImageEdit);
-  router.delete('/api/admin-inner/h5-config/share-images/:id', adminInnerAuth, controller.adminInner.h5Config.shareImageRemove);
+
 
   // admin-inner H5客服配置
   router.get('/api/admin-inner/h5-services', adminInnerAuth, controller.adminInner.h5Service.list);
@@ -520,6 +514,7 @@ module.exports = app => {
   router.post('/api/dev/create-mobile-user', controller.mobile.user.createMobileUser);
 
   // A端 充提渠道管理
+  router.get('/api/admin-inner/shops/:shop_id/pay-channels', adminInnerAuth, controller.adminInner.payChannel.shopChannelList); // 新增：获取指定店铺的充值提现模板
   router.get('/api/admin-inner/pay-channels', adminInnerAuth, controller.adminInner.payChannel.index);
   router.post('/api/admin-inner/pay-channels', adminInnerAuth, controller.adminInner.payChannel.create);
   router.put('/api/admin-inner/pay-channels/:id', adminInnerAuth, controller.adminInner.payChannel.update);

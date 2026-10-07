@@ -17,6 +17,25 @@ class VipLevelController extends Controller {
   }
 
   /**
+   * 获取指定店铺的VIP模板列表 (A端专用)
+   */
+  async shopVipList() {
+    const { ctx, service } = this;
+    const shop_id = Number(ctx.params.shop_id);
+
+    if (!shop_id) {
+      ctx.throw(400, '缺少店铺ID参数');
+    }
+
+    const list = await service.vipLevel.list({ shop_id });
+    ctx.body = {
+      code: 200,
+      message: '获取成功',
+      data: list,
+    };
+  }
+
+  /**
    * 新增平台VIP模板
    */
   async create() {

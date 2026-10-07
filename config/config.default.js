@@ -35,7 +35,7 @@ module.exports = appInfo => {
 
   // JWT 配置
   config.jwt = {
-    secret: process.env.JWT_SECRET || 'your_jwt_secret_change_in_production',
+    secret: process.env.JWT_SECRET || 'a_very_secure_and_random_string_for_production',
     expiresIn: '7h', // Access Token 过期时间
     refreshExpiresIn: '30d', // Refresh Token 过期时间
   };
@@ -60,8 +60,8 @@ module.exports = appInfo => {
   // OSS 配置
   config.oss = {
     client: {
-      accessKeyId: process.env.OSS_ACCESS_KEY_ID || 'your_access_key_id',
-      accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET || 'your_access_key_secret',
+      accessKeyId: process.env.OSS_ACCESS_KEY_ID || '',
+      accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET || '',
       endpoint: process.env.OSS_ENDPOINT || 'oss-cn-hongkong.aliyuncs.com', // 注意：香港节点应该是 oss-cn-hongkong
       bucket: process.env.OSS_BUCKET || 'mall-assect',
       secure: true, // 强制返回 https 协议的 URL

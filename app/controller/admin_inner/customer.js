@@ -4,6 +4,38 @@ const Controller = require('egg').Controller;
 
 class AdminInnerCustomerController extends Controller {
   /**
+   * 获取店铺的C端用户列表 (A端专用)
+   */
+  async index() {
+    const { ctx, service } = this;
+    const { shop_id } = ctx.params;
+    
+    if (!shop_id) {
+      ctx.throw(400, '缺少店铺ID参数');
+    }
+
+    try {
+      // 传递 user_type: 1 表示这是平台管理员在查询，所以不受业务员过滤等限制
+      const result = await service.adminOuterCustomer.getCustomerList(ctx.query, { 
+        user_type: 1, 
+        shop_id 
+      });
+      ctx.body = {
+        code: 200,
+        message: '获取成功',
+        data: result,
+      };
+    } catch (error) {
+      ctx.logger.error('[AdminInnerCustomerController.index] 获取店铺C端用户列表失败', error);
+      ctx.body = {
+        code: 500,
+        message: '获取C端用户列表失败',
+        data: null,
+      };
+    }
+  }
+
+  /**
    * 获取C端用户活跃信息
    */
   async activeInfo() {

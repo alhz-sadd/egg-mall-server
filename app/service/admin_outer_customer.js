@@ -196,7 +196,14 @@ class AdminOuterCustomerService extends Service {
     let hasPermission = false;
     let allRelations = [];
 
-    if (currentUser.user_type === 3) { // 业务员
+    if (currentUser.user_type === 1) { // A端平台管理员，可以看该店铺下所有C端用户
+      allRelations = await ctx.model.CustomerRelation.findAll({
+        where: { shop_id: currentUser.shop_id, is_deleted: 0 },
+        attributes: [ 'c_user_id', 'parent_customer_user_id' ],
+        raw: true,
+      });
+      hasPermission = true;
+    } else if (currentUser.user_type === 3) { // 业务员
       allRelations = await ctx.model.CustomerRelation.findAll({
         where: { root_salesman_user_id: currentUser.user_id, is_deleted: 0 },
         attributes: [ 'c_user_id', 'parent_customer_user_id' ],
@@ -373,7 +380,7 @@ class AdminOuterCustomerService extends Service {
 
       const wallets = await ctx.model.UserWallet.findAll({
         where: { user_id: { [Op.in]: userIds } },
-        attributes: [ 'user_id', 'balance', 'static_income', 'dynamic_income', 'total_recharge_amount', 'total_withdraw_amount' ],
+        attributes: [ 'user_id', 'balance', 'voucher_balance', 'static_income', 'dynamic_income', 'total_recharge_amount', 'total_withdraw_amount' ],
         raw: true, // 使用 raw: true 避免实例的 getter 带来的隐式问题
       });
       wallets.forEach(w => {
@@ -550,11 +557,11 @@ class AdminOuterCustomerService extends Service {
       const firstRechargeInfo = firstRechargeMap[row.user_id] || {};
       const latestLoginInfo = loginLogMapResult[row.user_id] || {};
 
-      // 新增：判断当前登录 IP 是否在其它客户中也存在（仅当前分页/返回集合内的简易判定，也可做全表判定）
-      // 这里我们在全表范围内通过当前登录 IP 去统计是否大于 1
+      // 新增：判断当前登录 IP 是否在其它客户中也存在
+      // 前提是当前用户的 login_ip 必须有值，为空或 null 不参与查重
       let is_ip_duplicate = false;
       const currentLoginIp = latestLoginInfo.login_ip || row.last_login_ip;
-      if (currentLoginIp) {
+      if (currentLoginIp && currentLoginIp.trim() !== '') {
         const ipCount = await ctx.model.SysUser.count({
           where: {
             last_login_ip: currentLoginIp,

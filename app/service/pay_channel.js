@@ -106,7 +106,31 @@ class PayChannelService extends Service {
       delete payload.channel_type;
     }
 
-    return await channel.update(payload);
+    await channel.update(payload);
+
+    // 如果更新的是全局模板 (shop_id = 0)，则同步给所有绑定了它的店铺渠道
+    if (shop_id === 0) {
+      // 提取出需要同步的字段
+      const syncPayload = {};
+      const syncFields = [ 'channel_type', 'channel_code', 'channel_name', 'is_enable', 'sort', 'remark' ];
+      syncFields.forEach(field => {
+        if (payload[field] !== undefined) {
+          syncPayload[field] = payload[field];
+        }
+      });
+
+      if (Object.keys(syncPayload).length > 0) {
+        await ctx.model.ShopPayChannel.update(
+          {
+            ...syncPayload,
+            update_time: new Date(),
+          },
+          { where: { source_template_id: id } }
+        );
+      }
+    }
+
+    return channel;
   }
 
   /**
@@ -152,6 +176,7 @@ class PayChannelService extends Service {
     const newChannels = templates.map(tpl => {
       return {
         shop_id: new_shop_id,
+        source_template_id: tpl.id, // 记录来源模板ID
         channel_type: tpl.channel_type,
         channel_code: tpl.channel_code,
         channel_name: tpl.channel_name,

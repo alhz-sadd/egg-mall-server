@@ -236,9 +236,10 @@ class AdminOuterWithdrawController extends Controller {
     const transaction = await ctx.model.transaction();
     try {
       // 1. 更新订单状态
+      const final_audit_type = audit_type !== undefined ? audit_type : 2; // 默认或者没传就给2(虚拟)
       await withdraw.update({
         status: 2, // 2审核通过
-        audit_type,
+        audit_type: final_audit_type,
         audit_user_id: adminOuter.user_id,
         audit_time: new Date(),
       }, { transaction });

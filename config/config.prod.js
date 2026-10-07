@@ -23,7 +23,7 @@ module.exports = () => {
     proxy: true,
     maxProxyCount: 1, // 告诉 Egg.js 前面有 1 层代理 (Nginx)
     jwt: {
-      secret: process.env.JWT_SECRET || 'your_jwt_secret_change_in_production',
+      secret: process.env.JWT_SECRET || 'a_very_secure_and_random_string_for_production',
     },
     redis: {
       client: {

@@ -144,7 +144,7 @@ class AdminOuterRechargeController extends Controller {
   async auditSuccess() {
     const { ctx } = this;
     const { id } = ctx.params;
-    const { operate_password, user_receive_amount } = ctx.request.body;
+    const { operate_password, user_receive_amount, audit_type } = ctx.request.body;
     const adminOuter = ctx.state.adminOuter;
 
     if (!adminOuter || !adminOuter.shop_id) {
@@ -190,6 +190,8 @@ class AdminOuterRechargeController extends Controller {
       final_amount = parsedAmount; // 更新订单上的总金额为实际到账金额
     }
 
+    const final_audit_type = audit_type !== undefined ? audit_type : 2; // 默认或者没传就给2(虚拟)
+
     const transaction = await ctx.model.transaction();
     try {
       await recharge.update({
@@ -198,6 +200,7 @@ class AdminOuterRechargeController extends Controller {
         audit_time: new Date(),
         user_receive_amount: final_receive_amount,
         amount: final_amount, // 更新订单金额，这样后台和记录展示的金额就是400
+        audit_type: final_audit_type, // 保存审核类型
       }, { transaction });
 
       const wallet = await ctx.model.UserWallet.findOne({

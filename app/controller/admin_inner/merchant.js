@@ -359,8 +359,9 @@ class MerchantController extends Controller {
    * 获取店铺总数据接口
    */
   async statistics() {
-    const { ctx } = this;
+    const { ctx, app } = this;
     const { id } = ctx.params;
+    const { time_range } = ctx.query; // time_range: all, this_month, last_month
 
     // 尝试按商家 ID 或 店铺 ID 查找 shopId
     let shopId;
@@ -387,30 +388,64 @@ class MerchantController extends Controller {
       ctx.throw(404, '找不到店铺信息');
     }
 
+    const { Op } = require('sequelize');
+
+    // 解析时间范围
+    let timeWhere = {};
+    if (time_range === 'this_month') {
+      const start = new Date();
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setMonth(end.getMonth() + 1);
+      end.setDate(0);
+      end.setHours(23, 59, 59, 999);
+      timeWhere = { [Op.between]: [ start, end ] };
+    } else if (time_range === 'last_month') {
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1);
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setDate(0);
+      end.setHours(23, 59, 59, 999);
+      timeWhere = { [Op.between]: [ start, end ] };
+    }
+
+    // 构建各表的时间查询条件
+    const rechargeTimeWhere = timeWhere[Op.between] ? { update_time: timeWhere } : {};
+    const withdrawTimeWhere = timeWhere[Op.between] ? { update_time: timeWhere } : {};
+    const orderTimeWhere = timeWhere[Op.between] ? { create_time: timeWhere } : {};
+    const userTimeWhere = timeWhere[Op.between] ? { create_time: timeWhere } : {};
+
     // 1. 业务员数量
     const salesperson_count = await ctx.model.SysUser.count({
-      where: { shop_id: shopId, user_type: 3, is_deleted: 0 },
+      where: { shop_id: shopId, user_type: 3, is_deleted: 0, ...userTimeWhere },
     });
 
-    // 2. 店长数量
+    // 2. 店长数量 (店长数量通常不按时间筛选，因为是一个店铺的固有属性，但这里保持统一如果需要)
     const shop_manager_count = await ctx.model.SysUser.count({
       where: { shop_id: shopId, user_type: 2, is_deleted: 0 },
     });
 
     // 3. 总的c端用户数量
     const total_c_user_count = await ctx.model.SysUser.count({
-      where: { shop_id: shopId, user_type: 4, is_deleted: 0 },
+      where: { shop_id: shopId, user_type: 4, is_deleted: 0, ...userTimeWhere },
     });
 
-    // 4~8. 充值相关统计
+    // 4. 充值统计 (只统计审核通过的 status=2，分为真实和虚拟)
+    // 真实充值：审核并选择真实充值的通过情况下，才计算 (audit_type = 1)
+    // 虚拟充值：审核并选择不是真实充值，或者审核方式没填写的情况 (audit_type != 1 或 null)
     let real_recharge_count = 0;
     let real_recharge_amount = 0;
+    let mock_recharge_count = 0;
+    let mock_recharge_amount = 0;
     let total_recharge_count = 0;
     let total_recharge_amount = 0;
 
     if (ctx.model.UserRecharge) {
       const rechargeRecords = await ctx.model.UserRecharge.findAll({
-        where: { shop_id: shopId, status: 2 },
+        where: { shop_id: shopId, status: 2, ...rechargeTimeWhere },
         attributes: [ 'user_receive_amount', 'audit_type' ],
         raw: true,
       });
@@ -420,42 +455,47 @@ class MerchantController extends Controller {
         total_recharge_count++;
         total_recharge_amount += amount;
 
-        if (record.audit_type === 1 || record.audit_type === null) {
+        if (Number(record.audit_type) === 1) {
           real_recharge_count++;
           real_recharge_amount += amount;
+        } else {
+          mock_recharge_count++;
+          mock_recharge_amount += amount;
         }
       });
     }
 
-    if (ctx.model.UserWalletLog) {
-      const cUsers = await ctx.model.SysUser.findAll({
-        where: { shop_id: shopId, user_type: 4, is_deleted: 0 },
-        attributes: [ 'user_id' ],
+    // 5. 提现统计 (只统计审核通过的 status=2，分为真实和虚拟)
+    let real_withdraw_count = 0;
+    let real_withdraw_amount = 0;
+    let mock_withdraw_count = 0;
+    let mock_withdraw_amount = 0;
+    let total_withdraw_count = 0;
+    let total_withdraw_amount = 0;
+
+    if (ctx.model.UserWithdraw) {
+      const withdrawRecords = await ctx.model.UserWithdraw.findAll({
+        where: { shop_id: shopId, status: 2, ...withdrawTimeWhere },
+        attributes: [ 'amount', 'audit_type' ],
         raw: true,
       });
-      const cUserIds = cUsers.map(u => u.user_id);
 
-      if (cUserIds.length > 0) {
-        const walletLogs = await ctx.model.UserWalletLog.findAll({
-          where: {
-            user_id: { [ctx.app.Sequelize.Op.in]: cUserIds },
-            biz_type: 1,
-            balance_type: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] },
-          },
-          attributes: [ 'amount' ],
-          raw: true,
-        });
-        for (const log of walletLogs) {
-          const amount = Number(log.amount) || 0;
-          if (amount > 0) {
-            total_recharge_count++;
-            total_recharge_amount += amount;
-          }
+      withdrawRecords.forEach(record => {
+        const amount = Number(record.amount) || 0;
+        total_withdraw_count++;
+        total_withdraw_amount += amount;
+
+        if (Number(record.audit_type) === 1) {
+          real_withdraw_count++;
+          real_withdraw_amount += amount;
+        } else {
+          mock_withdraw_count++;
+          mock_withdraw_amount += amount;
         }
-      }
+      });
     }
 
-    // 9. 上传实名的用户数量
+    // 6. 上传实名的用户数量
     let kyc_verified_count = 0;
     if (ctx.model.UserIdentity) {
       kyc_verified_count = await ctx.model.UserIdentity.count({
@@ -466,15 +506,13 @@ class MerchantController extends Controller {
           required: true,
           attributes: [],
         }],
-        where: { audit_status: 2 },
+        where: { audit_status: 2, ...userTimeWhere },
       });
     }
 
-    // 10. 店铺所有订单数
+    // 7. 店铺所有订单数
     let total_order_count = 0;
-    if (ctx.model.ShopTaskUserItemProgress && ctx.model.ShopTask) {
-      // 通过 task_item_id -> shop_task_item -> shop_task -> shop_id 的路径查询
-      // 或者更简单的方式，直接找到该店铺的所有C端用户，然后查询这些用户的订单
+    if (ctx.model.ShopTaskUserItemProgress) {
       const cUsersForOrders = await ctx.model.SysUser.findAll({
         where: { shop_id: shopId, user_type: 4, is_deleted: 0 },
         attributes: [ 'user_id' ],
@@ -484,25 +522,131 @@ class MerchantController extends Controller {
 
       if (cUserIdsForOrders.length > 0) {
         total_order_count = await ctx.model.ShopTaskUserItemProgress.count({
-          where: { user_id: { [ctx.app.Sequelize.Op.in]: cUserIdsForOrders } },
+          where: { 
+            user_id: { [Op.in]: cUserIdsForOrders },
+            ...orderTimeWhere
+          },
         });
       }
     }
 
-    // ============================================
-    // 以下为组装下级业务员业绩列表 list 的逻辑
-    // ============================================
+    ctx.body = {
+      code: 200,
+      message: 'success',
+      data: {
+        stat: {
+          salesperson_count,
+          shop_manager_count,
+          total_c_user_count,
+          
+          total_recharge_count,
+          total_recharge_amount: Number(total_recharge_amount.toFixed(2)),
+          real_recharge_amount: Number(real_recharge_amount.toFixed(2)),
+          real_recharge_count,
+          mock_recharge_amount: Number(mock_recharge_amount.toFixed(2)),
+          mock_recharge_count,
+          
+          total_withdraw_count,
+          total_withdraw_amount: Number(total_withdraw_amount.toFixed(2)),
+          real_withdraw_amount: Number(real_withdraw_amount.toFixed(2)),
+          real_withdraw_count,
+          mock_withdraw_amount: Number(mock_withdraw_amount.toFixed(2)),
+          mock_withdraw_count,
+          
+          kyc_verified_count,
+          total_order_count,
+        },
+      },
+    };
+  }
+
+  /**
+   * 获取店铺下所有业务员的业绩统计信息 (新接口)
+   */
+  async salespersonStatistics() {
+    const { ctx } = this;
+    const { id } = ctx.params;
+    const { page = 1, page_size = 10, keyword, time_range } = ctx.query;
+
+    // 尝试按商家 ID 或 店铺 ID 查找 shopId
+    let shopId;
+    const merchant = await ctx.model.SysUser.findOne({
+      where: { user_id: id, user_type: 2, is_deleted: 0 },
+      attributes: [ 'shop_id' ],
+      raw: true,
+    });
+
+    if (merchant) {
+      shopId = merchant.shop_id;
+    } else {
+      const shop = await ctx.model.Shop.findOne({
+        where: { shop_id: id, is_deleted: 0 },
+        attributes: [ 'shop_id' ],
+        raw: true,
+      });
+      if (shop) {
+        shopId = shop.shop_id;
+      }
+    }
+
+    if (!shopId) {
+      ctx.throw(404, '找不到店铺信息');
+    }
+
     const { Op } = require('sequelize');
-    const salespersons = await ctx.model.SysUser.findAll({
-      where: { shop_id: shopId, user_type: 3, is_deleted: 0 },
+
+    // 解析时间范围
+    let timeWhere = {};
+    if (time_range === 'this_month') {
+      const start = new Date();
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setMonth(end.getMonth() + 1);
+      end.setDate(0);
+      end.setHours(23, 59, 59, 999);
+      timeWhere = { [Op.between]: [ start, end ] };
+    } else if (time_range === 'last_month') {
+      const start = new Date();
+      start.setMonth(start.getMonth() - 1);
+      start.setDate(1);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setDate(0);
+      end.setHours(23, 59, 59, 999);
+      timeWhere = { [Op.between]: [ start, end ] };
+    }
+
+    const rechargeTimeWhere = timeWhere[Op.between] ? { update_time: timeWhere } : {};
+    const withdrawTimeWhere = timeWhere[Op.between] ? { update_time: timeWhere } : {};
+    const relationTimeWhere = timeWhere[Op.between] ? { create_time: timeWhere } : {};
+
+    // 构建业务员的查询条件
+    const spWhere = { shop_id: shopId, user_type: 3, is_deleted: 0 };
+    if (keyword) {
+      spWhere[Op.or] = [
+        { username: { [Op.like]: `%${keyword}%` } },
+        { nickname: { [Op.like]: `%${keyword}%` } }
+      ];
+    }
+
+    // 分页获取业务员
+    const offset = (Number(page) - 1) * Number(page_size);
+    const limit = Number(page_size);
+
+    const { count, rows: salespersons } = await ctx.model.SysUser.findAndCountAll({
+      where: spWhere,
       attributes: [ 'user_id', 'username', 'nickname' ],
+      offset,
+      limit,
       raw: true,
     });
 
     const list = [];
     for (const sp of salespersons) {
+      // 查找归属于该业务员的C端用户关系
       const relations = await ctx.model.CustomerRelation.findAll({
-        where: { salesman_user_id: sp.user_id, is_deleted: 0 },
+        where: { salesman_user_id: sp.user_id, is_deleted: 0, ...relationTimeWhere },
         attributes: [ 'c_user_id' ],
         raw: true,
       });
@@ -510,18 +654,27 @@ class MerchantController extends Controller {
       const userIds = relations.map(u => u.c_user_id);
       const userCount = userIds.length;
 
-      let spTopUpCount = 0;
-      let spTopUpAmount = 0;
+      let spTotalRechargeAmount = 0;
+      let spTotalRechargeCount = 0;
       let spRealRechargeAmount = 0;
       let spRealRechargeCount = 0;
       let spMockRechargeAmount = 0;
       let spMockRechargeCount = 0;
 
+      let spTotalWithdrawAmount = 0;
+      let spTotalWithdrawCount = 0;
+      let spRealWithdrawAmount = 0;
+      let spRealWithdrawCount = 0;
+      let spMockWithdrawAmount = 0;
+      let spMockWithdrawCount = 0;
+
       if (userIds.length > 0) {
+        // 1. 统计该业务员名下用户的充值数据
         const recharges = await ctx.model.UserRecharge.findAll({
           where: {
             user_id: { [Op.in]: userIds },
             status: 2,
+            ...rechargeTimeWhere
           },
           attributes: [ 'user_receive_amount', 'audit_type' ],
           raw: true,
@@ -529,30 +682,42 @@ class MerchantController extends Controller {
 
         for (const record of recharges) {
           const amount = Number(record.user_receive_amount || 0);
-          if (record.audit_type === 1 || record.audit_type === null) {
+          spTotalRechargeAmount += amount;
+          spTotalRechargeCount += 1;
+
+          if (Number(record.audit_type) === 1) {
             spRealRechargeAmount += amount;
             spRealRechargeCount += 1;
-          } else if (record.audit_type === 2) {
+          } else {
             spMockRechargeAmount += amount;
             spMockRechargeCount += 1;
           }
         }
 
-        const walletLogs = await ctx.model.UserWalletLog.findAll({
-          where: {
-            user_id: { [Op.in]: userIds },
-            biz_type: 1,
-            balance_type: { [Op.in]: [ 1, 2 ] },
-          },
-          attributes: [ 'amount' ],
-          raw: true,
-        });
+        // 2. 统计该业务员名下用户的提现数据
+        if (ctx.model.UserWithdraw) {
+          const withdraws = await ctx.model.UserWithdraw.findAll({
+            where: {
+              user_id: { [Op.in]: userIds },
+              status: 2,
+              ...withdrawTimeWhere
+            },
+            attributes: [ 'amount', 'audit_type' ],
+            raw: true,
+          });
 
-        for (const log of walletLogs) {
-          const amount = Number(log.amount || 0);
-          if (amount > 0) {
-            spTopUpAmount += amount;
-            spTopUpCount += 1;
+          for (const record of withdraws) {
+            const amount = Number(record.amount || 0);
+            spTotalWithdrawAmount += amount;
+            spTotalWithdrawCount += 1;
+
+            if (Number(record.audit_type) === 1) {
+              spRealWithdrawAmount += amount;
+              spRealWithdrawCount += 1;
+            } else {
+              spMockWithdrawAmount += amount;
+              spMockWithdrawCount += 1;
+            }
           }
         }
       }
@@ -561,13 +726,23 @@ class MerchantController extends Controller {
         salesperson_id: sp.user_id,
         salesperson_username: sp.username,
         salesperson_nickname: sp.nickname,
-        user_count: userCount,
-        top_up_count: spTopUpCount,
-        top_up_amount: Number(spTopUpAmount.toFixed(2)),
-        real_recharge_amount: Number(spRealRechargeAmount.toFixed(2)),
+        user_count: userCount, // 该业务员名下的新增用户数
+        
+        // 充值数据
+        total_recharge_count: spTotalRechargeCount,
+        total_recharge_amount: Number(spTotalRechargeAmount.toFixed(2)),
         real_recharge_count: spRealRechargeCount,
-        mock_recharge_amount: Number(spMockRechargeAmount.toFixed(2)),
+        real_recharge_amount: Number(spRealRechargeAmount.toFixed(2)),
         mock_recharge_count: spMockRechargeCount,
+        mock_recharge_amount: Number(spMockRechargeAmount.toFixed(2)),
+        
+        // 提现数据
+        total_withdraw_count: spTotalWithdrawCount,
+        total_withdraw_amount: Number(spTotalWithdrawAmount.toFixed(2)),
+        real_withdraw_count: spRealWithdrawCount,
+        real_withdraw_amount: Number(spRealWithdrawAmount.toFixed(2)),
+        mock_withdraw_count: spMockWithdrawCount,
+        mock_withdraw_amount: Number(spMockWithdrawAmount.toFixed(2)),
       });
     }
 
@@ -576,16 +751,11 @@ class MerchantController extends Controller {
       message: 'success',
       data: {
         list,
-        stat: {
-          salesperson_count,
-          shop_manager_count,
-          total_c_user_count,
-          total_recharge_count,
-          total_recharge_amount: Number(total_recharge_amount.toFixed(2)),
-          real_recharge_amount: Number(real_recharge_amount.toFixed(2)),
-          real_recharge_count,
-          kyc_verified_count,
-          total_order_count,
+        pagination: {
+          total: count,
+          page: Number(page),
+          page_size: Number(page_size),
+          total_pages: Math.ceil(count / limit),
         },
       },
     };

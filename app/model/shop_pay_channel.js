@@ -17,6 +17,12 @@ module.exports = app => {
       defaultValue: 0,
       comment: '归属店铺ID。0代表A端设置的全局模板',
     },
+    source_template_id: {
+      type: BIGINT,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '来源模板ID，用于同步A端修改',
+    },
     channel_type: {
       type: TINYINT,
       allowNull: false,

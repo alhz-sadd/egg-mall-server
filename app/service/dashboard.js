@@ -45,10 +45,11 @@ class DashboardService extends Service {
 
     };
 
-    // 辅助方法：获取充值金额
+    // 辅助方法：获取充值金额 (仅统计真实充值 audit_type = 1)
     const getRechargeAmount = async (startTime, endTime) => {
       const whereCondition = {
         status: 2, // 2审核通过
+        audit_type: 1, // 1真实充值
         audit_time: {
           [Op.between]: [ startTime, endTime ],
         },
@@ -72,10 +73,40 @@ class DashboardService extends Service {
       return Number(sum || 0);
     };
 
-    // 辅助方法：获取提现金额
+    // 辅助方法：获取充值人数 (仅统计真实充值 audit_type = 1)
+    const getRechargeUserCount = async (startTime, endTime) => {
+      const whereCondition = {
+        status: 2, // 2审核通过
+        audit_type: 1, // 1真实充值
+        audit_time: {
+          [Op.between]: [ startTime, endTime ],
+        },
+      };
+
+      if (shopId) {
+        // 先查出该店铺下的所有用户
+        const customers = await ctx.model.CustomerRelation.findAll({
+          where: { shop_id: shopId },
+          attributes: [ 'c_user_id' ],
+          raw: true,
+        });
+        const userIds = customers.map(c => c.c_user_id);
+        if (userIds.length === 0) return 0;
+        whereCondition.user_id = { [Op.in]: userIds };
+      }
+
+      // 为了防止数据库表非常大时 count 缓慢，这里使用了简单的 count，因为 Sequelize 的 findAndCountAll 或简单的 count 在大多数情况下都能较好地利用索引。
+      const count = await ctx.model.UserRecharge.count({
+        distinct: true,
+        col: 'user_id',
+        where: whereCondition,
+      });
+      return count || 0;
+    };
     const getWithdrawAmount = async (startTime, endTime) => {
       const whereCondition = {
         status: 2, // 2审核通过
+        audit_type: 1, // 1真实提现
         audit_time: {
           [Op.between]: [ startTime, endTime ],
         },
@@ -140,9 +171,7 @@ class DashboardService extends Service {
     const todayRegisterCount = await getRegisterCount(todayStart, todayEnd);
     const todayRechargeAmount = await getRechargeAmount(todayStart, todayEnd);
     const todayWithdrawAmount = await getWithdrawAmount(todayStart, todayEnd);
-    // 业绩量：充值量 + 提现量 （或者根据业务需要只是充值量，这里用充值+提现作为示例，可以和用户确认，或者按老代码）
-    const todayPerformanceAmount = todayRechargeAmount + todayWithdrawAmount;
-    const todayCommissionAmount = await getCommissionAmount(todayStart, todayEnd);
+    const todayRechargeUserCount = await getRechargeUserCount(todayStart, todayEnd);
 
     // 首次充值人数与再次充值人数
     // 先获取商户下的所有用户
@@ -156,9 +185,10 @@ class DashboardService extends Service {
       shopUserIds = customers.map(c => c.c_user_id);
     }
 
-    // 首次充值人数：今日内审核通过，且 is_first_recharge = 1 的独立用户数
+    // 首次充值人数：今日内审核通过，且 is_first_recharge = 1，且 audit_type = 1 的独立用户数
     let firstRechargeWhere = {
       status: 2,
+      audit_type: 1, // 只算真实的首次充值
       is_first_recharge: 1,
       audit_time: {
         [Op.between]: [ todayStart, todayEnd ],
@@ -178,9 +208,10 @@ class DashboardService extends Service {
       where: firstRechargeWhere,
     }) : 0;
 
-    // 再次充值人数：今日内审核通过，且 is_first_recharge = 0 的独立用户数
+    // 再次充值人数：今日内审核通过，且 is_first_recharge = 0，且 audit_type = 1 的独立用户数
     let repeatRechargeWhere = {
       status: 2,
+      audit_type: 1, // 只算真实的再次充值
       is_first_recharge: 0,
       audit_time: {
         [Op.between]: [ todayStart, todayEnd ],
@@ -201,52 +232,22 @@ class DashboardService extends Service {
     }) : 0;
 
     // --- 本月数据 ---
-    const monthRegisterCount = await getRegisterCount(monthStart, monthEnd);
     const monthRechargeAmount = await getRechargeAmount(monthStart, monthEnd);
     const monthWithdrawAmount = await getWithdrawAmount(monthStart, monthEnd);
-    const monthCommissionAmount = await getCommissionAmount(monthStart, monthEnd);
-
-    // --- 待审核数据 ---
-    let rechargePendingWhere = { status: 1 };
-    let withdrawPendingWhere = { status: 1 };
-    if (shopId) {
-      if (shopUserIds.length === 0) {
-        rechargePendingWhere = null;
-        withdrawPendingWhere = null;
-      } else {
-        rechargePendingWhere.user_id = { [Op.in]: shopUserIds };
-        withdrawPendingWhere.user_id = { [Op.in]: shopUserIds };
-      }
-    }
-
-    const rechargePendingCount = rechargePendingWhere ? await ctx.model.UserRecharge.count({
-      where: rechargePendingWhere,
-    }) : 0;
-
-    const withdrawPendingCount = withdrawPendingWhere ? await ctx.model.UserWithdraw.count({
-      where: withdrawPendingWhere,
-    }) : 0;
 
     return {
       today: {
         register_count: todayRegisterCount,
         recharge_amount: todayRechargeAmount,
         withdraw_amount: todayWithdrawAmount,
-        performance_amount: todayPerformanceAmount,
+        recharge_user_count: todayRechargeUserCount,
         first_recharge_count: todayFirstRechargeCount,
         repeat_recharge_count: todayRepeatRechargeCount,
-        commission_amount: todayCommissionAmount,
       },
       month: {
-        register_count: monthRegisterCount,
         recharge_amount: monthRechargeAmount,
         withdraw_amount: monthWithdrawAmount,
-        commission_amount: monthCommissionAmount,
-      },
-      review: {
-        recharge_pending_count: rechargePendingCount,
-        withdraw_pending_count: withdrawPendingCount,
-      },
+      }
     };
   }
 }

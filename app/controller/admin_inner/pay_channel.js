@@ -26,6 +26,33 @@ class AdminInnerPayChannelController extends Controller {
     };
   }
 
+  /**
+   * 获取指定店铺的充值提现模板列表 (A端专用)
+   */
+  async shopChannelList() {
+    const { ctx } = this;
+    const { channel_type, page, page_size, is_enable } = ctx.query;
+    const shop_id = Number(ctx.params.shop_id);
+
+    if (!shop_id) {
+      ctx.throw(400, '缺少店铺ID参数');
+    }
+
+    const result = await ctx.service.payChannel.list({
+      shop_id,
+      channel_type,
+      page,
+      page_size,
+      is_enable,
+    });
+
+    ctx.body = {
+      code: 200,
+      message: '获取成功',
+      data: result,
+    };
+  }
+
   async create() {
     const { ctx } = this;
     const { channel_type, channel_code, channel_name, is_enable, sort, remark } = ctx.request.body;

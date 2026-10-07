@@ -310,6 +310,15 @@ class AdminInnerUserService extends Service {
       }, options);
     }
 
+    // 处理业务员的充值地址
+    if (Number(user_type) === 3 && payload.recharge_address) {
+      await ctx.model.SalesRechargeAddress.create({
+        sales_user_id: user.user_id,
+        shop_id: user.shop_id,
+        address: payload.recharge_address,
+      }, options);
+    }
+
     return user;
   }
 

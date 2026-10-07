@@ -19,37 +19,6 @@ class ShopController extends Controller {
     }
 
     // 统计数据 (按规范补充)
-    // 1. 注册统计
-    let total_register_count = 0;
-    if (ctx.model.CustomerRelation) {
-      total_register_count = await ctx.model.CustomerRelation.count({
-        where: { shop_id: id },
-      });
-    }
-
-    // 2. 充值统计
-    let total_recharge_amount = 0;
-    let total_recharge_users = 0;
-    let total_recharge_count = 0;
-    if (ctx.model.UserRecharge) {
-      const [ amountSum, userCount, count ] = await Promise.all([
-        ctx.model.UserRecharge.sum('amount', {
-          where: { shop_id: id, status: 2 },
-        }),
-        ctx.model.UserRecharge.count({
-          distinct: true,
-          col: 'user_id',
-          where: { shop_id: id, status: 2 },
-        }),
-        ctx.model.UserRecharge.count({
-          where: { shop_id: id, status: 2 },
-        }),
-      ]);
-      total_recharge_amount = amountSum || 0;
-      total_recharge_users = userCount || 0;
-      total_recharge_count = count || 0;
-    }
-
     // 3. 提现统计
     let total_withdraw_amount = 0;
     let total_withdraw_users = 0;
@@ -73,15 +42,6 @@ class ShopController extends Controller {
       total_withdraw_count = count || 0;
     }
 
-    // 4. 支付通道
-    let pay_channels = [];
-    if (ctx.model.ShopPayChannel) {
-      pay_channels = await ctx.model.ShopPayChannel.findAll({
-        where: { shop_id: id, is_enable: 1 },
-        raw: true,
-      });
-    }
-
     // 5. VIP 等级
     let vips = [];
     if (ctx.model.ShopVipLevel) {
@@ -91,37 +51,17 @@ class ShopController extends Controller {
       });
     }
 
-    // 6. 店铺配置
-    let config = null;
-    if (ctx.model.ShopConfig) {
-      config = await ctx.model.ShopConfig.findOne({
-        where: { shop_id: id },
-      });
-    }
-
     ctx.body = {
       code: 200,
       message: '获取成功',
       data: {
         ...shop.toJSON(),
-        register_data: {
-          total_register_count,
-          yesterday_register_count: 0, // 占位，后续可扩展
-          today_register_count: 0,
-        },
-        recharge_data: {
-          total_recharge_amount: Number(total_recharge_amount),
-          total_recharge_users,
-          total_recharge_count,
-        },
         withdraw_data: {
           total_withdraw_amount: Number(total_withdraw_amount),
           total_withdraw_users,
           total_withdraw_count,
         },
-        pay_channels,
         vips,
-        config,
       },
     };
   }
@@ -256,7 +196,7 @@ class ShopController extends Controller {
 
     ctx.validate({
       shop_id: { type: 'int', required: true, convertType: 'int' },
-      type: { type: 'string', required: true }, // 可选值: 'banner', 'rule', 'share_image', 'service', 'all'
+      type: { type: 'string', required: true }, // 可选值: 'banner', 'rule', 'service', 'all'
     }, ctx.request.body);
 
     // 校验店铺是否存在
@@ -281,21 +221,18 @@ class ShopController extends Controller {
       case 'rule':
         configTypesToImport.push(3);
         break;
-      case 'share_image':
-        configTypesToImport.push(7);
-        break;
       case 'service':
         importService = true;
         break;
       case 'all':
-        configTypesToImport.push(1, 3, 7);
+        configTypesToImport.push(1, 3);
         importService = true;
         break;
       default:
         ctx.throw(400, '不支持的模板类型');
     }
 
-    // 1. 导入 H5 配置 (Banner、规则、分享图)
+    // 1. 导入 H5 配置 (Banner、规则)
     if (configTypesToImport.length > 0) {
       await ctx.service.h5Config.importGlobalConfigs(shop_id, adminId, configTypesToImport);
     }

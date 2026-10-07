@@ -106,11 +106,36 @@ class H5ConfigService extends Service {
     const item = await ctx.model.SysH5Config.findOne({ where: { id, is_deleted: 0 } });
     ctx.assert(item, 404, '配置不存在');
 
-    return await item.update({
+    await item.update({
       ...payload,
       update_user_id: adminId,
       update_time: new Date(),
     });
+
+    // 如果更新的是全局模板 (shop_id = 0)，则同步给所有绑定了它的店铺模板
+    if (item.shop_id === 0) {
+      // 提取出需要同步的字段
+      const syncPayload = {};
+      const syncFields = [ 'title', 'cover_image', 'content', 'extra', 'sort', 'status' ];
+      syncFields.forEach(field => {
+        if (payload[field] !== undefined) {
+          syncPayload[field] = payload[field];
+        }
+      });
+
+      if (Object.keys(syncPayload).length > 0) {
+        await ctx.model.SysH5Config.update(
+          {
+            ...syncPayload,
+            update_user_id: adminId,
+            update_time: new Date(),
+          },
+          { where: { source_template_id: item.id, config_type: item.config_type, is_deleted: 0 } }
+        );
+      }
+    }
+
+    return item;
   }
 
   /**
@@ -130,12 +155,12 @@ class H5ConfigService extends Service {
   }
 
   /**
-   * 导入全局配置模板到指定店铺 (Banner、规则、分享图等)
+   * 导入全局配置模板到指定店铺 (Banner、规则等)
    * @param {number} shopId 店铺ID
    * @param {number} adminId 操作人ID
    * @param {Array<number>} configTypes 需要导入的配置类型数组
    */
-  async importGlobalConfigs(shopId, adminId, configTypes = [ 1, 3, 7 ]) {
+  async importGlobalConfigs(shopId, adminId, configTypes = [ 1, 3 ]) {
     const { ctx } = this;
 
     // 1. 获取全局配置 (shop_id = 0)
@@ -168,6 +193,7 @@ class H5ConfigService extends Service {
     const newConfigs = globalConfigs.map(item => {
       return {
         shop_id: shopId,
+        source_template_id: item.id, // 记录来源模板ID
         config_type: item.config_type,
         title: item.title,
         cover_image: item.cover_image,

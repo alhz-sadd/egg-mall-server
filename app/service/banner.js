@@ -115,6 +115,22 @@ class BannerService extends Service {
         content,
         status: targetStatus,
       });
+
+      // 如果是全局模板 (shop_id = 0) 被更新，同步到所有绑定了该模板的店铺
+      if (shopId === 0 && currentTemplate.config_type === 1) {
+        await ctx.model.SysH5Config.update(
+          {
+            title,
+            sort,
+            content,
+            status: targetStatus,
+            update_user_id: ctx.state.adminInner ? ctx.state.adminInner.adminInnerId : null,
+            update_time: new Date(),
+          },
+          { where: { source_template_id: currentTemplate.id, config_type: 1, is_deleted: 0 } }
+        );
+      }
+
     } else {
       currentTemplate = await ctx.model.SysH5Config.create({
         config_type: 1,
@@ -123,6 +139,7 @@ class BannerService extends Service {
         content,
         status: targetStatus,
         shop_id: shopId,
+        source_template_id: shopId === 0 ? 0 : (payload.source_template_id || 0), // 新建时，如果不是全局模板，可指定来源
       });
     }
 
@@ -207,6 +224,7 @@ class BannerService extends Service {
       content: template.content,
       status: 1,
       shop_id: shopId,
+      source_template_id: templateId, // 记录来源模板ID
     });
 
     return newTemplate;

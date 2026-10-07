@@ -102,7 +102,7 @@ class H5ConfigController extends Controller {
 
     // 必填字段校验与默认值 (数据库 title 不能为空)
     if (!body.title) {
-      const typeNames = { 1: 'Banner', 2: '公告', 3: '规则', 6: '服务入口', 7: '分享图' };
+      const typeNames = { 1: 'Banner', 2: '公告', 3: '规则', 6: '服务入口' };
       body.title = '未命名' + (typeNames[configType] || '配置');
     }
 
@@ -245,6 +245,7 @@ class H5ConfigController extends Controller {
       sort: template.sort,
       status: 1,
       shop_id: shopId,
+      source_template_id: template_id, // 记录来源模板ID
       create_user_id: adminId,
       update_user_id: adminId,
     });
@@ -293,34 +294,6 @@ class H5ConfigController extends Controller {
   async serviceEntryEdit() { await this._edit(); }
   async serviceEntryRemove() { await this._remove(); }
 
-  // 分享图
-  async shareImageList() { await this._list(7); }
-  
-  async shareImageAdd() {
-    const { ctx } = this;
-    const body = ctx.request.body;
-    ctx.assert(body.title, 422, '模板名称不能为空');
-    ctx.assert(body.cover_image || body.image || body.imageUrl, 422, '分享图不能为空');
-    await this._add(7);
-  }
-  
-  async shareImageEdit() {
-    const { ctx } = this;
-    const body = ctx.request.body;
-    if (body.title !== undefined) {
-      ctx.assert(body.title, 422, '模板名称不能为空');
-    }
-    if (body.cover_image !== undefined || body.image !== undefined || body.imageUrl !== undefined) {
-      ctx.assert(body.cover_image || body.image || body.imageUrl, 422, '分享图不能为空');
-    }
-    await this._edit();
-  }
-  
-  async shareImageRemove() { await this._remove(); }
-  
-  async shareImageUpdateStatus() { await this._updateStatus(7); }
-
-  async shareImageBind() { await this._bindTemplate(7, '分享图模板'); }
 }
 
 module.exports = H5ConfigController;
