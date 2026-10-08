@@ -80,6 +80,17 @@ class MobileWithdrawController extends Controller {
     // 4. 如果用户临时提现状态是开启的情况下，不管什么设置 都可以提现
     const isTempWithdrawAllowed = user.temp_withdraw_status === 1;
 
+    // 如果没有开启临时提现，则需要检查是否有待审核的提现订单
+    if (!isTempWithdrawAllowed) {
+      const pendingWithdraw = await ctx.model.UserWithdraw.findOne({
+        where: { user_id: userId, status: 1 },
+      });
+
+      if (pendingWithdraw) {
+        ctx.throw(423, ctx.__('withdraw.has_pending_withdraw'));
+      }
+    }
+
     // 获取手续费配置
     const shopConfig = await ctx.model.ShopConfig.findOne({
       where: { shop_id: relation.shop_id },
@@ -87,33 +98,34 @@ class MobileWithdrawController extends Controller {
 
     if (!isTempWithdrawAllowed) {
       // 检查用户任务状态
-      const Op = this.app.Sequelize.Op;
+      const isTaskWithdrawLogicOn = shopConfig && shopConfig.withdraw_first_need_task === 1;
 
-      // 2. 用户任务中，不允许提现 (status 为 1)
-      const activeTask = await ctx.model.ShopTaskUser.findOne({
-        where: {
-          user_id: userId,
-          status: 1,
-        },
-      });
-
-      if (activeTask) {
-        // 只要用户开启任务，就不允许提现
-        ctx.throw(400, 'withdraw.tasks_incomplete_withdraw');
-      }
-      // 3. 店铺如果设置了需要完成任务后才能提现，就必须至少完成过一个任务订单才能提现
-      if (shopConfig && shopConfig.withdraw_first_need_task === 1) {
-        // 根据新需求：只要用户完成过一个任务订单(status为1)，就跳过此限制
-        const completedTaskItem = await ctx.model.ShopTaskUserItemProgress.findOne({
-          where: {
+      if (isTaskWithdrawLogicOn) {
+        // 开启完成任务提现逻辑：
+        // 必须有绑定的模板，且最新绑定的模板状态必须是已完成(2)
+        const latestTaskUser = await ctx.model.ShopTaskUser.findOne({
+          where: { 
             user_id: userId,
-            status: 1, // 1表示已完成
-            is_deleted: 0,
           },
+          order: [['id', 'DESC']],
         });
 
-        if (!completedTaskItem) {
-          ctx.throw(400, 'withdraw.complete_task_before_withdraw');
+        // task_status: 0已绑定 1任务进行中 2全部完成 3已过期截止
+        if (!latestTaskUser || latestTaskUser.task_status !== 2) {
+          ctx.throw(400, 'withdraw.tasks_incomplete_withdraw');
+        }
+      } else {
+        // 关闭完成任务提现逻辑：
+        // 用户也必须完成一次任务模板后才能提现
+        const hasCompletedTemplate = await ctx.model.ShopTaskUser.findOne({
+          where: {
+            user_id: userId,
+            task_status: 2,
+          }
+        });
+
+        if (!hasCompletedTemplate) {
+          ctx.throw(400, 'withdraw.tasks_incomplete_withdraw');
         }
       }
 

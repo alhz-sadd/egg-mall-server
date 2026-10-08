@@ -310,6 +310,13 @@ class TaskService extends Service {
       throw err;
     }
 
+    // 4. 检查余额是否满足最小金额 (使用总余额 balance)
+    // 注意：我们将这段逻辑前置到了生成订单之前，这样如果没有达到门槛金额，
+    // 前端就能正确得到 { task_status: 1 } (余额不足状态) 而不会去走搜索逻辑
+    if (totalBalance < Number(shopTask.min_amount)) {
+      return { sequence_no: 0, task_status: 1, wares: {}, order: {}, is_lucky: 0 };
+    }
+
     // 3. 检查是否有未支付订单 (is_processing = 1, status = 0)
     const unpaidProgress = await ctx.model.ShopTaskUserItemProgress.findOne({
       where: {
@@ -373,10 +380,7 @@ class TaskService extends Service {
       };
     }
 
-    // 4. 检查余额是否满足最小金额 (使用总余额 balance)
-    if (totalBalance < Number(shopTask.min_amount)) {
-      return { sequence_no: 0, task_status: 1, wares: {}, order: {}, is_lucky: 0 };
-    }
+    // (原 4. 检查余额逻辑已移动到 3. 上方)
 
     // 5. 获取当前要进行的任务子项 (status = 0, is_processing = 0)
     const nextProgress = await ctx.model.ShopTaskUserItemProgress.findOne({
@@ -490,7 +494,7 @@ class TaskService extends Service {
         }
 
         if (!waresModel) {
-          ctx.throw(500, ctx.__('task.no_match_product_above'));
+          ctx.throw(500, ctx.__('task.no_match_product_above') || '没有找到合适的商品');
         }
 
         // 强行把商品价格修改为 用户余额 + 加上追加的金额
@@ -536,7 +540,16 @@ class TaskService extends Service {
         }
 
         if (total === 0) {
-          ctx.throw(500, ctx.__('task.no_match_product_range'));
+          // 兜底策略：如果按价格区间找不到任何商品，放弃价格区间限制，随机返回一个商品，避免前端一直报错 500
+          ctx.logger.warn(`[TaskService.search] 价格区间匹配失败 -> userId: ${userId}, 余额: ${totalBalance}, targetGoodsPriceMin: ${targetGoodsPriceMin}, targetGoodsPriceMax: ${targetGoodsPriceMax}. 启动兜底策略(无视价格)...`);
+          delete goodsWhere.goods_price;
+          total = await ctx.model.GoodsTask.count({
+            where: goodsWhere,
+          });
+          
+          if (total === 0) {
+            ctx.throw(500, ctx.__('task.no_match_product_range'));
+          }
         }
 
         // ② 生成一个 0 ~ total-1 的随机偏移量 offset
@@ -550,7 +563,7 @@ class TaskService extends Service {
         });
 
         if (!waresModel) {
-          ctx.throw(500, ctx.__('task.no_match_product_range'));
+          ctx.throw(500, ctx.__('task.no_match_product_range') || '没有匹配的商品');
         }
 
         goodsPrice = Number(waresModel.goods_price);

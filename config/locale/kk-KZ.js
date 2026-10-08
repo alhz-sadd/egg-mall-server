@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Алдымен шығару құпия сөзін орнатыңыз",
   "withdraw.account_restricted_withdraw": "Тіркелгіңізден қаражат шығару шектелген",
   "withdraw.complete_task_before_withdraw": "Қаражатты шығармас бұрын тапсырма үлгісін аяқтаңыз",
-  "withdraw.tasks_incomplete_withdraw": "Тапсырмаларыңыз аяқталмаған. Қаражатты шығармас бұрын барлық тапсырма үлгісін аяқтаңыз",
+  "withdraw.tasks_incomplete_withdraw": "Тапсырманы аяқтағаннан кейін ғана қаражат шығара аласыз",
   "withdraw.complete_identity_before_withdraw": "Қаражатты шығармас бұрын жеке басты растауды аяқтаңыз",
   "withdraw.has_pending_withdraw": "Сізде қаралып жатқан қаражатты шығару тапсырысы бар, күте тұрыңыз",
   "address.address_not_exist": "Мекенжай жоқ",

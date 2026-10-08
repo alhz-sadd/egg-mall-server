@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Пожалуйста, сначала установите пароль для вывода средств",
   "withdraw.account_restricted_withdraw": "Ваш аккаунт ограничен для вывода средств",
   "withdraw.complete_task_before_withdraw": "Пожалуйста, завершите шаблон заданий перед выводом средств",
-  "withdraw.tasks_incomplete_withdraw": "Ваши задания не завершены. Завершите весь шаблон заданий перед выводом средств",
+  "withdraw.tasks_incomplete_withdraw": "Вы можете вывести средства только после выполнения задания",
   "withdraw.complete_identity_before_withdraw": "Пожалуйста, завершите проверку личности перед выводом средств",
   "withdraw.has_pending_withdraw": "У вас есть ожидающий заказ на вывод средств, пожалуйста, подождите",
   "address.address_not_exist": "Адрес не существует",

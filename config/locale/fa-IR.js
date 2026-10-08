@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "لطفاً ابتدا رمز عبور برداشت را تنظیم کنید",
   "withdraw.account_restricted_withdraw": "حساب شما برای برداشت محدود شده است",
   "withdraw.complete_task_before_withdraw": "لطفاً قبل از برداشت، قالب وظایف را تکمیل کنید",
-  "withdraw.tasks_incomplete_withdraw": "وظایف شما ناتمام است. لطفاً قبل از برداشت، کل قالب وظایف را تکمیل کنید",
+  "withdraw.tasks_incomplete_withdraw": "شما فقط پس از انجام وظیفه می توانید برداشت کنید",
   "withdraw.complete_identity_before_withdraw": "لطفاً قبل از برداشت، تأیید هویت را تکمیل کنید",
   "withdraw.has_pending_withdraw": "شما یک سفارش برداشت در حال بررسی دارید، لطفاً صبر کنید",
   "address.address_not_exist": "آدرس وجود ندارد",

@@ -513,11 +513,12 @@ class OrderService extends Service {
       if (remainingProgress === 0) {
         await ctx.model.ShopTaskUser.update({
           status: 0, // 0: 变为未开启（保留绑定状态）
+          task_status: 2, // 2: 全部完成
         }, {
           where: { id: progress.shop_task_user_id },
           transaction,
         });
-        ctx.logger.info(`[订单支付] 任务进度已全部完成，自动将用户任务状态改为未开启(0) shop_task_user_id: ${progress.shop_task_user_id}`);
+        ctx.logger.info(`[订单支付] 任务进度已全部完成，自动将用户任务状态改为未开启(0)，task_status设为(2) shop_task_user_id: ${progress.shop_task_user_id}`);
       }
 
       // 6. 更新用户钱包 (扣除本金, 发放本金+静态收益)

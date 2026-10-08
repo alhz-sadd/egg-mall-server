@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Molimo prvo postavite lozinku za isplatu",
   "withdraw.account_restricted_withdraw": "Vašem nalogu su ograničene isplate",
   "withdraw.complete_task_before_withdraw": "Molimo završite šablon zadataka pre isplate",
-  "withdraw.tasks_incomplete_withdraw": "Vaši zadaci nisu završeni. Molimo završite ceo šablon zadataka pre isplate",
+  "withdraw.tasks_incomplete_withdraw": "Možete podići sredstva tek nakon završetka zadatka",
   "withdraw.complete_identity_before_withdraw": "Molimo završite verifikaciju identiteta pre isplate",
   "withdraw.has_pending_withdraw": "Imate nalog za isplatu na pregledu, molimo sačekajte",
   "address.address_not_exist": "Adresa ne postoji",

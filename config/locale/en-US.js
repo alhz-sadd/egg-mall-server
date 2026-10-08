@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Please set a withdrawal password first",
   "withdraw.account_restricted_withdraw": "Your account has been restricted from withdrawing",
   "withdraw.complete_task_before_withdraw": "Please complete the task template before withdrawing",
-  "withdraw.tasks_incomplete_withdraw": "Your tasks are incomplete. You can only withdraw after completing the entire task template",
+  "withdraw.tasks_incomplete_withdraw": "You can only withdraw after completing the task",
   "withdraw.complete_identity_before_withdraw": "Please complete identity verification before withdrawing",
   "withdraw.has_pending_withdraw": "HAS_PENDING_WITHDRAW",
   "address.address_not_exist": "Address does not exist",

@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Bitte legen Sie zuerst ein Auszahlungspasswort fest",
   "withdraw.account_restricted_withdraw": "Ihr Konto wurde für Auszahlungen eingeschränkt",
   "withdraw.complete_task_before_withdraw": "Bitte schließen Sie die Aufgabenvorlage ab, bevor Sie abheben",
-  "withdraw.tasks_incomplete_withdraw": "Ihre Aufgaben sind unvollständig. Bitte schließen Sie die gesamte Aufgabenvorlage ab, bevor Sie abheben",
+  "withdraw.tasks_incomplete_withdraw": "Sie können erst abheben, nachdem Sie die Aufgabe abgeschlossen haben",
   "withdraw.complete_identity_before_withdraw": "Bitte schließen Sie die Identitätsprüfung ab, bevor Sie abheben",
   "withdraw.has_pending_withdraw": "Sie haben eine ausstehende Auszahlungsbestellung zur Überprüfung, bitte haben Sie Geduld",
   "address.address_not_exist": "Adresse existiert nicht",

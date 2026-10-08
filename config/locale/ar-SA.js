@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "يرجى تعيين كلمة مرور السحب أولاً",
   "withdraw.account_restricted_withdraw": "تم تقييد حسابك من عمليات السحب",
   "withdraw.complete_task_before_withdraw": "يرجى إكمال قالب المهام قبل السحب",
-  "withdraw.tasks_incomplete_withdraw": "مهامك غير مكتملة. يرجى إكمال قالب المهام بالكامل قبل السحب",
+  "withdraw.tasks_incomplete_withdraw": "يمكنك السحب فقط بعد إكمال المهمة",
   "withdraw.complete_identity_before_withdraw": "يرجى إكمال التحقق من الهوية قبل السحب",
   "withdraw.has_pending_withdraw": "لديك طلب سحب قيد المراجعة، يرجى الانتظار",
   "address.address_not_exist": "العنوان غير موجود",

@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Lütfen önce bir para çekme şifresi belirleyin",
   "withdraw.account_restricted_withdraw": "Hesabınızın para çekme işlemleri kısıtlandı",
   "withdraw.complete_task_before_withdraw": "Para çekmeden önce lütfen görev şablonunu tamamlayın",
-  "withdraw.tasks_incomplete_withdraw": "Görevleriniz tamamlanmadı. Lütfen para çekmeden önce tüm görev şablonunu tamamlayın",
+  "withdraw.tasks_incomplete_withdraw": "Yalnızca görevi tamamladıktan sonra para çekebilirsiniz",
   "withdraw.complete_identity_before_withdraw": "Lütfen para çekmeden önce kimlik doğrulamasını tamamlayın",
   "withdraw.has_pending_withdraw": "İncelenmeyi bekleyen bir para çekme siparişiniz var, lütfen bekleyin",
   "address.address_not_exist": "Adres mevcut değil",

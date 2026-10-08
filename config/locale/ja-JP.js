@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "まず出金パスワードを設定してください",
   "withdraw.account_restricted_withdraw": "アカウントの出金が制限されています",
   "withdraw.complete_task_before_withdraw": "出金する前にタスクテンプレートを完了してください",
-  "withdraw.tasks_incomplete_withdraw": "タスクが未完了です。出金する前にタスクテンプレート全体を完了してください",
+  "withdraw.tasks_incomplete_withdraw": "タスクを完了した後にのみ出金できます",
   "withdraw.complete_identity_before_withdraw": "出金する前に本人確認を完了してください",
   "withdraw.has_pending_withdraw": "審査待ちの出金注文があります。お待ちください",
   "address.address_not_exist": "住所が存在しません",

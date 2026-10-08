@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Ilki bilen pul çekmek parolyny düzüň",
   "withdraw.account_restricted_withdraw": "Siziň hasabyňyzdan pul çekmek çäklendirilen",
   "withdraw.complete_task_before_withdraw": "Pul çekmezden ozal tabşyryk şablonyny tamamlaň",
-  "withdraw.tasks_incomplete_withdraw": "Tabşyryklaryňyz tamamlanmady. Pul çekmezden ozal ähli tabşyryk şablonyny tamamlaň",
+  "withdraw.tasks_incomplete_withdraw": "Hûn tenê dikarin piştî qedandina peywirê drav derxînin",
   "withdraw.complete_identity_before_withdraw": "Pul çekmezden ozal şahsyýeti tassyklamagy tamamlaň",
   "withdraw.has_pending_withdraw": "Garaşylýan pul çekmek sargydyňyz bar, garaşmagyňyzy haýyş edýäris",
   "address.address_not_exist": "Salgy ýok",

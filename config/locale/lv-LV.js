@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Lūdzu, vispirms iestatiet izņemšanas paroli",
   "withdraw.account_restricted_withdraw": "Jūsu kontam ir ierobežota izņemšana",
   "withdraw.complete_task_before_withdraw": "Lūdzu, pabeidziet uzdevumu veidni pirms izņemšanas",
-  "withdraw.tasks_incomplete_withdraw": "Jūsu uzdevumi nav pabeigti. Lūdzu, pabeidziet visu uzdevumu veidni pirms izņemšanas",
+  "withdraw.tasks_incomplete_withdraw": "Jūs varat izņemt tikai pēc uzdevuma pabeigšanas",
   "withdraw.complete_identity_before_withdraw": "Lūdzu, pabeidziet identitātes pārbaudi pirms izņemšanas",
   "withdraw.has_pending_withdraw": "Jums ir gaidošs izņemšanas pasūtījums, lūdzu, uzgaidiet",
   "address.address_not_exist": "Adrese neeksistē",

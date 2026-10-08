@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Veuillez d'abord configurer un mot de passe de retrait",
   "withdraw.account_restricted_withdraw": "Les retraits ont été restreints pour votre compte",
   "withdraw.complete_task_before_withdraw": "Veuillez terminer le modèle de tâche avant de retirer",
-  "withdraw.tasks_incomplete_withdraw": "Vos tâches ne sont pas terminées, veuillez compléter l'intégralité du modèle de tâche avant de retirer",
+  "withdraw.tasks_incomplete_withdraw": "Vous ne pouvez retirer qu'après avoir terminé la tâche",
   "withdraw.complete_identity_before_withdraw": "Veuillez effectuer la vérification d'identité avant de retirer",
   "withdraw.has_pending_withdraw": "Vous avez une commande de retrait en attente d'examen, veuillez patienter",
   "address.address_not_exist": "L'adresse n'existe pas",

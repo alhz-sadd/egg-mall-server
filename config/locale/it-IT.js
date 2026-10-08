@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Imposta prima una password di prelievo",
   "withdraw.account_restricted_withdraw": "Il tuo account è stato limitato per i prelievi",
   "withdraw.complete_task_before_withdraw": "Completa il modello di attività prima di prelevare",
-  "withdraw.tasks_incomplete_withdraw": "Le tue attività sono incomplete. Completa l'intero modello di attività prima di prelevare",
+  "withdraw.tasks_incomplete_withdraw": "Puoi prelevare solo dopo aver completato l'attività",
   "withdraw.complete_identity_before_withdraw": "Completa la verifica dell'identità prima di prelevare",
   "withdraw.has_pending_withdraw": "Hai un ordine di prelievo in attesa di revisione, attendi",
   "address.address_not_exist": "L'indirizzo non esiste",

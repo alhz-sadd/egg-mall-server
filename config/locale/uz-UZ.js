@@ -77,7 +77,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Iltimos, avval pul yechish parolini o'rnating",
   "withdraw.account_restricted_withdraw": "Hisobingiz pul yechishdan cheklangan",
   "withdraw.complete_task_before_withdraw": "Pul yechishdan oldin topshiriq shablonini bajaring",
-  "withdraw.tasks_incomplete_withdraw": "Topshiriqlaringiz tugallanmagan, pul yechish uchun to'liq shablonni bajaring",
+  "withdraw.tasks_incomplete_withdraw": "Faqat vazifani bajargandan so'ng pul yechishingiz mumkin",
   "withdraw.complete_identity_before_withdraw": "Pul yechishdan oldin haqiqiylikni tasdiqlashdan o'ting",
   "withdraw.has_pending_withdraw": "Sizda ko'rib chiqilayotgan pul yechish buyurtmasi bor, iltimos kuting",
   "address.address_not_exist": "Manzil mavjud emas",

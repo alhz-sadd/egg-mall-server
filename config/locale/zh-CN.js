@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "请先设置提现密码",
   "withdraw.account_restricted_withdraw": "您的账号已被限制提现",
   "withdraw.complete_task_before_withdraw": "请先完成任务模板后再进行提现",
-  "withdraw.tasks_incomplete_withdraw": "您的任务未完成，完成整个任务模板后才可提现",
+  "withdraw.tasks_incomplete_withdraw": "完成任务后才能提现",
   "withdraw.complete_identity_before_withdraw": "请先完成实名认证后再进行提现",
   "withdraw.has_pending_withdraw": "您有待审核的提现订单，请耐心等待",
   "address.address_not_exist": "地址不存在",

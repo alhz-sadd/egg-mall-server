@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "Por favor, defina uma senha de saque primeiro",
   "withdraw.account_restricted_withdraw": "Sua conta foi restrita para saques",
   "withdraw.complete_task_before_withdraw": "Conclua o modelo de tarefas antes de sacar",
-  "withdraw.tasks_incomplete_withdraw": "Suas tarefas não estão concluídas. Conclua todo o modelo de tarefas antes de sacar",
+  "withdraw.tasks_incomplete_withdraw": "Você só pode sacar depois de concluir a tarefa",
   "withdraw.complete_identity_before_withdraw": "Conclua a verificação de identidade antes de sacar",
   "withdraw.has_pending_withdraw": "Você tem um pedido de saque pendente, aguarde",
   "address.address_not_exist": "O endereço não existe",

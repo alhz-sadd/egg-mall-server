@@ -79,7 +79,7 @@ module.exports = {
   "withdraw.please_set_withdraw_pwd": "먼저 출금 비밀번호를 설정해주세요",
   "withdraw.account_restricted_withdraw": "계정의 출금이 제한되었습니다",
   "withdraw.complete_task_before_withdraw": "출금하기 전에 작업 템플릿을 완료해주세요",
-  "withdraw.tasks_incomplete_withdraw": "작업이 완료되지 않았습니다. 출금하기 전에 전체 작업 템플릿을 완료해주세요",
+  "withdraw.tasks_incomplete_withdraw": "작업을 완료한 후에만 출금할 수 있습니다",
   "withdraw.complete_identity_before_withdraw": "출금하기 전에 신원 확인을 완료해주세요",
   "withdraw.has_pending_withdraw": "검토 대기 중인 출금 주문이 있습니다. 잠시 기다려 주세요",
   "address.address_not_exist": "주소가 존재하지 않습니다",
