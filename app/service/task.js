@@ -186,34 +186,22 @@ class TaskService extends Service {
     // userId 已经是 SysUser 的主键 ID
     const dbUserId = userId;
 
-    const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
-
-    // 从统计表获取今日收益
     const todayStr = dayjs().format('YYYY-MM-DD');
-    const todayStat = await ctx.model.UserTaskStat.findOne({
-      where: {
-        user_id: dbUserId,
-        stat_date: todayStr,
-      },
-    });
-    const todayIncomeVal = todayStat ? Number(todayStat.task_income || 0) : 0;
-
-    // 从统计表获取昨日收益
     const yesterdayStr = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
-    const yesterdayStat = await ctx.model.UserTaskStat.findOne({
-      where: {
-        user_id: dbUserId,
-        stat_date: yesterdayStr,
-      },
-    });
-    const yesterdayIncomeVal = yesterdayStat ? Number(yesterdayStat.task_income || 0) : 0;
 
-    // 从进度表计算已完成订单数 (修改: 仅统计当前活动任务模板下的订单，而不是该用户历史所有订单)
-    // 获取最新的一条绑定的任务记录（包含已绑定但未开启、或者已开启的）
-    const currentTaskUser = await ctx.model.ShopTaskUser.findOne({
-      where: { user_id: dbUserId, status: { [ctx.app.Sequelize.Op.in]: [ 0, 1 ] } }, // 0: 已绑定, 1: 任务进行中
-      order: [[ 'id', 'DESC' ]],
-    });
+    // 1. 使用 Promise.all 并行执行无依赖的查询，大幅提升接口响应速度
+    const [userWallet, todayStat, yesterdayStat, currentTaskUser] = await Promise.all([
+      ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } }),
+      ctx.model.UserTaskStat.findOne({ where: { user_id: dbUserId, stat_date: todayStr } }),
+      ctx.model.UserTaskStat.findOne({ where: { user_id: dbUserId, stat_date: yesterdayStr } }),
+      ctx.model.ShopTaskUser.findOne({
+        where: { user_id: dbUserId, status: { [ctx.app.Sequelize.Op.in]: [ 0, 1 ] } }, // 0: 已绑定, 1: 任务进行中
+        order: [[ 'id', 'DESC' ]],
+      })
+    ]);
+
+    const todayIncomeVal = todayStat ? Number(todayStat.task_income || 0) : 0;
+    const yesterdayIncomeVal = yesterdayStat ? Number(yesterdayStat.task_income || 0) : 0;
 
     let overNum = 0;
     let isOpen = 0; // 是否已开启任务 0=未开启 1=已开启
@@ -224,30 +212,34 @@ class TaskService extends Service {
         isOpen = 1;
       }
 
-      // 仅统计当前活动任务下的已完成订单数
-      overNum = await ctx.model.ShopTaskUserItemProgress.count({
-        where: {
-          shop_task_user_id: currentTaskUser.id,
-          user_id: dbUserId,
-          status: 1, // 已完成
-        },
-      });
+      // 2. 将后续依赖 currentTaskUser 的查询也改为并行执行
+      const [overNumResult, taskResult] = await Promise.all([
+        ctx.model.ShopTaskUserItemProgress.count({
+          where: {
+            shop_task_user_id: currentTaskUser.id,
+            user_id: dbUserId,
+            status: 1, // 已完成
+          },
+        }),
+        ctx.model.ShopTask.findByPk(currentTaskUser.task_id)
+      ]);
 
-      const task = await ctx.model.ShopTask.findByPk(currentTaskUser.task_id);
-      if (task) {
-        sumNum = Number(task.task_count || 0);
+      overNum = overNumResult;
+      
+      if (taskResult) {
+        sumNum = Number(taskResult.task_count || 0);
       }
     }
 
-    let hasMoney = 0;
+    let hasMoney = '0.00';
     if (userWallet) {
       const balance = Number(userWallet.balance || 0);
-      hasMoney = balance;
+      hasMoney = balance.toFixed(2);
     }
 
     return {
       freeze_voucher_balance: userWallet ? Number(userWallet.freeze_voucher_balance || 0).toFixed(2) : '0.00', // 冻结金额
-      has_money: hasMoney.toFixed(2),
+      has_money: hasMoney,
       num: sumNum, // 当前任务总数量
       over_num: overNum || 0,
       revenue_today: todayIncomeVal.toFixed(2), // 今日收益

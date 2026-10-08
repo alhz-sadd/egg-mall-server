@@ -36,9 +36,10 @@ class UploadController extends Controller {
         data: result,
       };
     } catch (err) {
-      // 出现异常时清理临时文件，避免磁盘堆积
-      await ctx.cleanupRequestFiles();
       throw err;
+    } finally {
+      // 无论成功还是失败，都清理临时文件，避免磁盘堆积
+      await ctx.cleanupRequestFiles();
     }
   }
 }

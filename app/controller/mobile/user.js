@@ -140,7 +140,12 @@ class UserController extends Controller {
     const { ctx, service } = this;
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
-    const user = await service.user.findById(userId);
+    // 1. 并行获取用户信息和钱包信息，提升接口响应速度
+    const [user, wallet] = await Promise.all([
+      service.user.findById(userId),
+      ctx.model.UserWallet.findOne({ where: { user_id: userId } })
+    ]);
+
     if (!user) {
       ctx.throw(404, ctx.__('user.user_not_exist'));
     }
@@ -156,11 +161,11 @@ class UserController extends Controller {
     }
 
     // 补充用户余额
-    const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
     if (wallet) {
-      user.balance = Number(wallet.balance || 0);
+      // 强制转换为两位小数的字符串，避免前端 0 被判断为 false 导致不渲染
+      user.balance = Number(wallet.balance || 0).toFixed(2);
     } else {
-      user.balance = 0;
+      user.balance = '0.00';
     }
 
     ctx.body = {
