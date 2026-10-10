@@ -53,6 +53,7 @@ const BUSINESS_RULES = [
   { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt(\?|$)/, businessType: 1, title: '修改收货信息' },
   { method: 'POST', pattern: /^\/api\/mobile\/users\/credential(\?|$)/, businessType: 0, title: '上传凭证' },
   { method: 'DELETE', pattern: /^\/api\/mobile\/users\/credential(\?|$)/, businessType: 2, title: '删除凭证' },
+  { method: 'GET', pattern: /^\/api\/mobile\/account\/info(\?|$)/, businessType: 9, title: '个人中心' },
 
   // === 5. C端收货地址 ===
   { method: 'POST', pattern: /^\/api\/mobile\/addresses(\?|$)/, businessType: 0, title: '新增收货地址' },
@@ -909,7 +910,7 @@ class SysLogService extends Service {
         oper_desc: `${data.title} - ${typeMap[data.business_type] || '操作'}`,
         oper_id: data.user_id,
         oper_user_type: data.user ? data.user.user_type : null,
-        oper_name: data.username || (data.user ? data.user.nickname : '未知'),
+        oper_name: (data.user && data.user.nickname) ? data.user.nickname : (data.username || '未知'),
         oper_ip: data.oper_ip,
         oper_location: data.oper_location || await this.resolveIpLocation(data.oper_ip),
         status: data.status,
@@ -1034,7 +1035,7 @@ class SysLogService extends Service {
         oper_desc: data.method,
         oper_id: data.user_id,
         oper_user_type: data.user ? data.user.user_type : null,
-        oper_name: data.username,
+        oper_name: (data.user && data.user.nickname) ? data.user.nickname : (data.username || '未知'),
         oper_ip: data.oper_ip,
         oper_location: data.oper_location || await this.resolveIpLocation(data.oper_ip),
         device_type: data.device_type,

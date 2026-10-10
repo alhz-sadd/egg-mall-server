@@ -285,6 +285,11 @@ module.exports = app => {
   router.delete('/api/admin-inner/login-logs/clear', adminInnerAuth, controller.adminInner.loginLog.clear);
 
 
+  // admin-inner 提现管理
+  router.get('/api/admin-inner/withdraw/list', adminInnerAuth, controller.adminInner.withdraw.index);
+  // admin-inner 充值管理
+  router.get('/api/admin-inner/recharge/list', adminInnerAuth, controller.adminInner.recharge.index);
+
   // admin-inner 系统菜单
   router.get('/api/admin-inner/system/menu', adminInnerAuth, controller.adminInner.sysMenu.index);
   router.get('/api/admin-inner/system/menu/:id', adminInnerAuth, controller.adminInner.sysMenu.show);

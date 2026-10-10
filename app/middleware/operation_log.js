@@ -82,25 +82,32 @@ module.exports = () => {
       }
 
       // 所有操作日志统一记录到 sys_oper_log 表
-      await ctx.service.sysLog.recordOperationLog({
-        userId: operId,
-        username: operName,
-        title: businessTypeInfo.title,
-        businessType: businessTypeInfo.businessType,
-        operUrl: ctx.url,
-        requestMethod: ctx.method,
-        operParam: params,
-        jsonResult: ctx.body || (originalError ? { error: originalError.message } : {}), // 如果有错误，把错误信息记下来
-        operIp: ip,
-        operLocation: location,
-        device_type: parsedUa.deviceType,
-        browser: parsedUa.browser,
-        os: parsedUa.os,
-        status: (ctx.status >= 200 && ctx.status < 400 && !originalError) ? 0 : 1, // 只要有抛出异常就是失败
-        errorMsg: originalError ? originalError.message : (ctx.status >= 400 && ctx.body ? ctx.body.message : null),
-        costTime: cost,
-        // 可以在 oper_desc 里追加标识，方便调试
-        oper_desc: `${businessTypeInfo.title} - ${ctx.method}`,
+      // 采用 ctx.runInBackground 异步执行，不阻塞主流程的接口响应
+      ctx.runInBackground(async () => {
+        try {
+          await ctx.service.sysLog.recordOperationLog({
+            userId: operId,
+            username: operName,
+            title: businessTypeInfo.title,
+            businessType: businessTypeInfo.businessType,
+            operUrl: ctx.url,
+            requestMethod: ctx.method,
+            operParam: params,
+            jsonResult: ctx.body || (originalError ? { error: originalError.message } : {}), // 如果有错误，把错误信息记下来
+            operIp: ip,
+            operLocation: location,
+            device_type: parsedUa.deviceType,
+            browser: parsedUa.browser,
+            os: parsedUa.os,
+            status: (ctx.status >= 200 && ctx.status < 400 && !originalError) ? 0 : 1, // 只要有抛出异常就是失败
+            errorMsg: originalError ? originalError.message : (ctx.status >= 400 && ctx.body ? ctx.body.message : null),
+            costTime: cost,
+            // 可以在 oper_desc 里追加标识，方便调试
+            oper_desc: `${businessTypeInfo.title} - ${ctx.method}`,
+          });
+        } catch (innerErr) {
+          ctx.logger.error('[operationLog] 异步记录操作日志失败：', innerErr.message);
+        }
       });
     } catch (err) {
       ctx.logger.error('[operationLog] 记录操作日志失败：', err.message);
