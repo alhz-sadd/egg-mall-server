@@ -589,7 +589,9 @@ class SysLogService extends Service {
 
     const where = {};
     if (username) where.username = { [Op.like]: `%${username}%` };
-    if (login_result !== undefined && login_result !== '') where.login_result = Number(login_result);
+    if (login_result !== undefined && login_result !== '') {
+      where.login_result = Number(login_result);
+    }
     if (login_ip) where.login_ip = { [Op.like]: `%${login_ip}%` };
     if (login_location) where.login_location = { [Op.like]: `%${login_location}%` };
     if (device_type !== undefined && device_type !== '') where.device_type = Number(device_type);
@@ -728,12 +730,15 @@ class SysLogService extends Service {
    */
   async adminLoginLogs(query = {}, adminUser = null) {
     const { ctx, app } = this;
-    const { username, login_result, login_ip, login_location, device_type, page = 1, page_size = 10, shop_id, user_type } = query;
+    const { username, login_result, login_ip, login_location, device_type, page = 1, page_size = 10, shop_id, user_type, user_id } = query;
     const { Op } = app.Sequelize;
 
     const where = {};
     if (username) where.username = { [Op.like]: `%${username}%` };
-    if (login_result !== undefined && login_result !== '') where.login_result = Number(login_result);
+    if (user_id) where.user_id = Number(user_id);
+    if (login_result !== undefined && login_result !== '') {
+      where.login_result = Number(login_result);
+    }
     if (login_ip) where.login_ip = { [Op.like]: `%${login_ip}%` };
     if (login_location) where.login_location = { [Op.like]: `%${login_location}%` };
     if (device_type !== undefined && device_type !== '') where.device_type = Number(device_type);
@@ -939,14 +944,19 @@ class SysLogService extends Service {
    */
   async adminOperationLogs(query = {}, adminUser = null) {
     const { ctx, app } = this;
-    const { module, oper_name, oper_type, status, page = 1, page_size = 10, shop_id, user_type } = query;
+    const { module, oper_name, oper_type, status, page = 1, page_size = 10, shop_id, user_type, user_id } = query;
     const { Op } = app.Sequelize;
 
     const where = {};
     if (module) where.module = { [Op.like]: `%${module}%` };
     if (oper_name) where.username = { [Op.like]: `%${oper_name}%` };
+    if (user_id) where.user_id = Number(user_id);
     if (oper_type !== undefined && oper_type !== '') where.business_type = Number(oper_type);
-    if (status !== undefined && status !== '') where.status = Number(status);
+    
+    // 原来过滤掉了失败状态或者只按条件查，现在我们放宽条件，确保前端无论传不传都能查出失败的
+    if (status !== undefined && status !== '') {
+      where.status = Number(status);
+    }
 
     // 权限与数据隔离
     if (adminUser) {

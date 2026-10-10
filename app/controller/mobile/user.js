@@ -138,12 +138,12 @@ class UserController extends Controller {
    */
   async current() {
     const { ctx, service } = this;
-    
+
     // 强制禁用移动端 GET 请求缓存
     ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     ctx.set('Pragma', 'no-cache');
     ctx.set('Expires', '0');
-    
+
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     // 1. 并行获取用户信息和钱包信息，提升接口响应速度

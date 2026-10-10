@@ -15,9 +15,9 @@ class CleanLog extends Subscription {
   async subscribe() {
     const { ctx } = this;
     // Egg 默认集成了 moment (如果没有可以直接用 Date)
-    // 为了保险起见，使用原生的 Date 来计算 3 个月前的时间
-    const threeMonthsAgo = new Date();
-    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    // 为了保险起见，使用原生的 Date 来计算 1 个月前的时间
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
     const { Op } = ctx.app.Sequelize;
 
@@ -26,7 +26,7 @@ class CleanLog extends Subscription {
       const operLogCount = await ctx.model.SysOperLog.count({
         where: {
           oper_time: {
-            [Op.lt]: threeMonthsAgo,
+            [Op.lt]: oneMonthAgo,
           },
         },
       });
@@ -42,7 +42,7 @@ class CleanLog extends Subscription {
           const affectedRows = await ctx.model.SysOperLog.destroy({
             where: {
               oper_time: {
-                [Op.lt]: threeMonthsAgo,
+                [Op.lt]: oneMonthAgo,
               },
             },
             limit,
@@ -60,7 +60,7 @@ class CleanLog extends Subscription {
       const loginLogCount = await ctx.model.UserLoginLog.count({
         where: {
           login_time: {
-            [Op.lt]: threeMonthsAgo,
+            [Op.lt]: oneMonthAgo,
           },
         },
       });
@@ -74,7 +74,7 @@ class CleanLog extends Subscription {
           const affectedRows = await ctx.model.UserLoginLog.destroy({
             where: {
               login_time: {
-                [Op.lt]: threeMonthsAgo,
+                [Op.lt]: oneMonthAgo,
               },
             },
             limit,
@@ -88,7 +88,7 @@ class CleanLog extends Subscription {
         }
       }
 
-      ctx.logger.info(`[自动清理日志] 成功清理 3 个月前的日志。操作日志: ${operLogDeleted} 条，登录日志: ${loginLogDeleted} 条`);
+      ctx.logger.info(`[自动清理日志] 成功清理 1 个月前的日志。操作日志: ${operLogDeleted} 条，登录日志: ${loginLogDeleted} 条`);
     } catch (error) {
       ctx.logger.error('[自动清理日志] 清理日志失败:', error);
     }

@@ -284,7 +284,13 @@ class TaskService extends Service {
         where: { user_id: userId, status: 0 },
         order: [[ 'id', 'DESC' ]],
       });
+
+      // 注意：这里需要区分，如果 status 是 0 但 task_status 是 2，说明他刚做完了一轮，
+      // 对于接任务界面，可以返回 3(代表已完成/待重新开启)，如果仅仅是 0，那就是还没做过
       if (boundTask) {
+        if (boundTask.task_status === 2) {
+          return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
+        }
         return { sequence_no: 0, task_status: 0, wares: {}, order: {}, is_lucky: 0 };
       }
 

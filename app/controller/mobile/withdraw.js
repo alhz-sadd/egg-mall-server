@@ -119,7 +119,8 @@ class MobileWithdrawController extends Controller {
         });
 
         // task_status: 0已绑定 1任务进行中 2全部完成 3已过期截止
-        if (!latestTaskUser || latestTaskUser.task_status !== 2) {
+        // 兼容处理：只要 status == 2 或 task_status == 2 都认为已完成
+        if (!latestTaskUser || (latestTaskUser.status !== 2 && latestTaskUser.task_status !== 2)) {
           ctx.throw(400, 'withdraw.tasks_incomplete_withdraw');
         }
       } else {
@@ -128,7 +129,10 @@ class MobileWithdrawController extends Controller {
         const hasCompletedTemplate = await ctx.model.ShopTaskUser.findOne({
           where: {
             user_id: userId,
-            task_status: 2,
+            [ctx.app.Sequelize.Op.or]: [
+              { status: 2 },
+              { task_status: 2 },
+            ],
           },
         });
 

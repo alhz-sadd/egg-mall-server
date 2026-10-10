@@ -8,10 +8,17 @@
 module.exports = () => {
   return async function operationLog(ctx, next) {
     const start = Date.now();
-    await next();
+    let originalError = null;
+
+    try {
+      await next();
+    } catch (err) {
+      originalError = err; // 捕获后面的中间件或 Controller 抛出的异常
+    }
 
     // 记录管理端和C端的写操作
     if (!ctx.service.sysLog.shouldLog(ctx.method, ctx.url)) {
+      if (originalError) throw originalError; // 如果不需要记录日志，直接把错误向上抛出
       return;
     }
 
@@ -83,20 +90,25 @@ module.exports = () => {
         operUrl: ctx.url,
         requestMethod: ctx.method,
         operParam: params,
-        jsonResult: ctx.body,
+        jsonResult: ctx.body || (originalError ? { error: originalError.message } : {}), // 如果有错误，把错误信息记下来
         operIp: ip,
         operLocation: location,
         device_type: parsedUa.deviceType,
         browser: parsedUa.browser,
         os: parsedUa.os,
-        status: ctx.status >= 200 && ctx.status < 400 ? 0 : 1,
-        errorMsg: ctx.status >= 400 ? (ctx.body && ctx.body.message ? ctx.body.message : '请求异常') : null,
+        status: (ctx.status >= 200 && ctx.status < 400 && !originalError) ? 0 : 1, // 只要有抛出异常就是失败
+        errorMsg: originalError ? originalError.message : (ctx.status >= 400 && ctx.body ? ctx.body.message : null),
         costTime: cost,
         // 可以在 oper_desc 里追加标识，方便调试
         oper_desc: `${businessTypeInfo.title} - ${ctx.method}`,
       });
     } catch (err) {
       ctx.logger.error('[operationLog] 记录操作日志失败：', err.message);
+    }
+
+    // 记完日志后，如果之前有捕获到业务抛出的异常，必须重新抛出去交给 error_handler 去处理
+    if (originalError) {
+      throw originalError;
     }
   };
 };
