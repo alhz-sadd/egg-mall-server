@@ -7,7 +7,7 @@ class H5ConfigController extends Controller {
   async _list(configType) {
     const { ctx } = this;
     const query = { ...ctx.query, config_type: configType };
-    
+
     // 如果路由带有 shop_id，则覆盖；如果没有带，则强制设为0，只返回平台模板
     if (ctx.params.shop_id !== undefined) {
       query.shop_id = ctx.params.shop_id;
@@ -115,7 +115,7 @@ class H5ConfigController extends Controller {
     if (targetStatus === 1 && body.shop_id !== 0) {
       await ctx.model.SysH5Config.update(
         { status: 0 },
-        { where: { config_type: configType, shop_id: body.shop_id, is_deleted: 0 } }
+        { where: { config_type: configType, shop_id: body.shop_id, is_deleted: 0 } },
       );
     }
 
@@ -166,7 +166,7 @@ class H5ConfigController extends Controller {
     if (targetStatus === 1 && body.shop_id !== 0) {
       await ctx.model.SysH5Config.update(
         { status: 0 },
-        { where: { config_type: configType, shop_id: body.shop_id, is_deleted: 0 } }
+        { where: { config_type: configType, shop_id: body.shop_id, is_deleted: 0 } },
       );
     }
 
@@ -199,13 +199,13 @@ class H5ConfigController extends Controller {
     if (Number(status) === 1 && shopId !== 0) {
       await ctx.model.SysH5Config.update(
         { status: 0 },
-        { where: { config_type: configType, shop_id: shopId, is_deleted: 0 } }
+        { where: { config_type: configType, shop_id: shopId, is_deleted: 0 } },
       );
     }
-    
+
     await ctx.model.SysH5Config.update(
       { status: Number(status) },
-      { where: { id, config_type: configType, shop_id: shopId, is_deleted: 0 } }
+      { where: { id, config_type: configType, shop_id: shopId, is_deleted: 0 } },
     );
 
     ctx.body = { code: 200, message: '状态更新成功' };
@@ -230,11 +230,11 @@ class H5ConfigController extends Controller {
     // 禁用当前店铺其他同类型模板
     await ctx.model.SysH5Config.update(
       { status: 0 },
-      { where: { config_type: configType, shop_id: shopId, status: 1, is_deleted: 0 } }
+      { where: { config_type: configType, shop_id: shopId, status: 1, is_deleted: 0 } },
     );
 
     const adminId = ctx.state.adminInner.adminInnerId;
-    
+
     // 创建店铺模板并启用
     const newTemplate = await ctx.model.SysH5Config.create({
       config_type: configType,
@@ -261,7 +261,7 @@ class H5ConfigController extends Controller {
 
   // 公告
   async noticeList() { await this._list(2); }
-  
+
   async noticeAdd() {
     const { ctx } = this;
     if (ctx.request.body.notices && Array.isArray(ctx.request.body.notices)) {

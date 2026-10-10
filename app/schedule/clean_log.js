@@ -50,7 +50,7 @@ class CleanLog extends Subscription {
           if (affectedRows === 0) break;
           operLogDeleted += affectedRows;
           remaining -= affectedRows;
-          
+
           // 每次删除后短暂休眠 50ms，让出数据库资源，防止阻塞正常业务
           await new Promise(resolve => setTimeout(resolve, 50));
         }

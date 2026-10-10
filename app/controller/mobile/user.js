@@ -68,20 +68,20 @@ class UserController extends Controller {
     // 获取域名判断店铺归属
     let host = ctx.request.header.origin || ctx.request.header.host || '';
     host = host.replace(/^https?:\/\//, '');
-    
+
     // 如果带有端口号，去掉端口号进行匹配
     const hostWithoutPort = host.split(':')[0];
-    
+
     let shopId = ctx.request.header['shop-id'] ? parseInt(ctx.request.header['shop-id'], 10) : 0;
 
     if (!shopId && host) {
       const binding = await ctx.model.ShopH5Binding.findOne({
-        where: { 
+        where: {
           [ctx.app.Sequelize.Op.or]: [
             { h5_url: { [ctx.app.Sequelize.Op.like]: `%${host}%` } },
-            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } }
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } },
           ],
-          type: 'h5' 
+          type: 'h5',
         },
       });
       if (binding) {
@@ -138,12 +138,18 @@ class UserController extends Controller {
    */
   async current() {
     const { ctx, service } = this;
+    
+    // 强制禁用移动端 GET 请求缓存
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+    
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     // 1. 并行获取用户信息和钱包信息，提升接口响应速度
-    const [user, wallet] = await Promise.all([
+    const [ user, wallet ] = await Promise.all([
       service.user.findById(userId),
-      ctx.model.UserWallet.findOne({ where: { user_id: userId } })
+      ctx.model.UserWallet.findOne({ where: { user_id: userId } }),
     ]);
 
     if (!user) {

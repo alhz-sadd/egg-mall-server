@@ -19,29 +19,29 @@ class NoticeController extends Controller {
   async index() {
     const { ctx, service } = this;
     const { keyword, page, page_size } = ctx.query;
-    
+
     // 首先尝试从 header 或 query 中获取 origin/host 判断绑定的 H5 域名
     let host = ctx.request.header.origin || ctx.request.header.host || '';
     host = host.replace(/^https?:\/\//, '');
     const hostWithoutPort = host.split(':')[0];
     let shopId = ctx.request.header['shop-id'] ? parseInt(ctx.request.header['shop-id'], 10) : 0;
-    
+
     if (!shopId && host) {
       const binding = await ctx.model.ShopH5Binding.findOne({
-        where: { 
+        where: {
           [ctx.app.Sequelize.Op.or]: [
             { h5_url: { [ctx.app.Sequelize.Op.like]: `%${host}%` } },
-            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } }
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } },
           ],
-          status: 1, 
-          is_deleted: 0 
+          status: 1,
+          is_deleted: 0,
         },
       });
       if (binding) {
         shopId = binding.shop_id;
       }
     }
-    
+
     // 如果没有通过域名找到，退而求其次尝试使用用户 token 里的 shop_id
     if (!shopId) {
       shopId = ctx.state.shop_id || 0;

@@ -10,7 +10,7 @@ class TelegramService extends Service {
    */
   async sendMessage(message, shopId = 0) {
     const { ctx } = this;
-    
+
     // 默认使用平台配置
     let botToken = null;
     let chatId = null;
@@ -18,7 +18,7 @@ class TelegramService extends Service {
     if (shopId !== 0) {
       // 查询店铺配置
       const shopConfig = await ctx.model.ShopConfig.findOne({
-        where: { shop_id: shopId }
+        where: { shop_id: shopId },
       });
       if (shopConfig && shopConfig.telegram_bot_token && shopConfig.telegram_chat_id) {
         botToken = shopConfig.telegram_bot_token;
@@ -28,10 +28,10 @@ class TelegramService extends Service {
 
     // 如果店铺未配置，或 shopId 为 0，则使用系统全局配置
     if (!botToken || !chatId) {
-       // 假设 sys_config 中有一个 type 为 telegram 的配置，这里做个简单示例，如果需要可以后续完善
-       // 由于当前 sys_config 表可能没有特定结构，为了不报错，先从配置文件中读取或者直接提示未配置
-       botToken = ctx.app.config.telegram ? ctx.app.config.telegram.token : null;
-       chatId = ctx.app.config.telegram ? ctx.app.config.telegram.chatId : null;
+      // 假设 sys_config 中有一个 type 为 telegram 的配置，这里做个简单示例，如果需要可以后续完善
+      // 由于当前 sys_config 表可能没有特定结构，为了不报错，先从配置文件中读取或者直接提示未配置
+      botToken = ctx.app.config.telegram ? ctx.app.config.telegram.token : null;
+      chatId = ctx.app.config.telegram ? ctx.app.config.telegram.chatId : null;
     }
 
     if (!botToken || !chatId) {

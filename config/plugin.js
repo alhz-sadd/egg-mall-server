@@ -17,11 +17,11 @@ module.exports = {
     enable: true,
     package: 'egg-jwt',
   },
-  // bcrypt 密码加密插件
-  bcrypt: {
-    enable: true,
-    package: 'egg-bcrypt',
-  },
+  // bcrypt 密码加密插件 已替换为原生 bcrypt 不再使用 egg-bcrypt
+  // bcrypt: {
+  //   enable: true,
+  //   package: 'egg-bcrypt',
+  // },
   // 跨域支持插件
   cors: {
     enable: true,

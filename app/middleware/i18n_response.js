@@ -18,17 +18,17 @@ module.exports = () => {
         // 先检查自定义的 lang 或 language header
         const customLang = ctx.get('lang') || ctx.get('language');
         if (customLang) {
-           ctx.locale = customLang;
+          ctx.locale = customLang;
         } else if (headerLocale) {
-           const match = headerLocale.match(/[a-zA-Z]{2,3}-[a-zA-Z]{2,3}/);
-           if (match) {
-             const parts = match[0].split('-');
-             ctx.locale = `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
-           } else if (headerLocale.toLowerCase().includes('zh')) {
-             ctx.locale = 'zh-CN';
-           } else {
-             ctx.locale = 'en-US';
-           }
+          const match = headerLocale.match(/[a-zA-Z]{2,3}-[a-zA-Z]{2,3}/);
+          if (match) {
+            const parts = match[0].split('-');
+            ctx.locale = `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
+          } else if (headerLocale.toLowerCase().includes('zh')) {
+            ctx.locale = 'zh-CN';
+          } else {
+            ctx.locale = 'en-US';
+          }
         } else {
           ctx.locale = 'en-US';
         }
@@ -40,7 +40,7 @@ module.exports = () => {
     // 仅处理 /api/mobile/ 前缀的接口，翻译成功的响应
     if (ctx.path.startsWith('/api/mobile/') && ctx.body && typeof ctx.body === 'object' && ctx.body.message) {
       const msgKey = ctx.body.message;
-      
+
       let dict;
       try {
         dict = require(`../../config/locale/${ctx.locale}.js`);
@@ -48,13 +48,13 @@ module.exports = () => {
         dict = require('../../config/locale/en-US.js');
       }
       const fallbackDict = require('../../config/locale/en-US.js');
-      
+
       let translated = dict[msgKey];
-      
+
       if (!translated) {
         translated = fallbackDict[msgKey] || msgKey;
       }
-      
+
       ctx.body.message = translated;
     }
   };

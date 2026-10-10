@@ -522,9 +522,9 @@ class MerchantController extends Controller {
 
       if (cUserIdsForOrders.length > 0) {
         total_order_count = await ctx.model.ShopTaskUserItemProgress.count({
-          where: { 
+          where: {
             user_id: { [Op.in]: cUserIdsForOrders },
-            ...orderTimeWhere
+            ...orderTimeWhere,
           },
         });
       }
@@ -538,21 +538,21 @@ class MerchantController extends Controller {
           salesperson_count,
           shop_manager_count,
           total_c_user_count,
-          
+
           total_recharge_count,
           total_recharge_amount: Number(total_recharge_amount.toFixed(2)),
           real_recharge_amount: Number(real_recharge_amount.toFixed(2)),
           real_recharge_count,
           mock_recharge_amount: Number(mock_recharge_amount.toFixed(2)),
           mock_recharge_count,
-          
+
           total_withdraw_count,
           total_withdraw_amount: Number(total_withdraw_amount.toFixed(2)),
           real_withdraw_amount: Number(real_withdraw_amount.toFixed(2)),
           real_withdraw_count,
           mock_withdraw_amount: Number(mock_withdraw_amount.toFixed(2)),
           mock_withdraw_count,
-          
+
           kyc_verified_count,
           total_order_count,
         },
@@ -626,7 +626,7 @@ class MerchantController extends Controller {
     if (keyword) {
       spWhere[Op.or] = [
         { username: { [Op.like]: `%${keyword}%` } },
-        { nickname: { [Op.like]: `%${keyword}%` } }
+        { nickname: { [Op.like]: `%${keyword}%` } },
       ];
     }
 
@@ -674,7 +674,7 @@ class MerchantController extends Controller {
           where: {
             user_id: { [Op.in]: userIds },
             status: 2,
-            ...rechargeTimeWhere
+            ...rechargeTimeWhere,
           },
           attributes: [ 'user_receive_amount', 'audit_type' ],
           raw: true,
@@ -700,7 +700,7 @@ class MerchantController extends Controller {
             where: {
               user_id: { [Op.in]: userIds },
               status: 2,
-              ...withdrawTimeWhere
+              ...withdrawTimeWhere,
             },
             attributes: [ 'amount', 'audit_type' ],
             raw: true,
@@ -727,7 +727,7 @@ class MerchantController extends Controller {
         salesperson_username: sp.username,
         salesperson_nickname: sp.nickname,
         user_count: userCount, // 该业务员名下的新增用户数
-        
+
         // 充值数据
         total_recharge_count: spTotalRechargeCount,
         total_recharge_amount: Number(spTotalRechargeAmount.toFixed(2)),
@@ -735,7 +735,7 @@ class MerchantController extends Controller {
         real_recharge_amount: Number(spRealRechargeAmount.toFixed(2)),
         mock_recharge_count: spMockRechargeCount,
         mock_recharge_amount: Number(spMockRechargeAmount.toFixed(2)),
-        
+
         // 提现数据
         total_withdraw_count: spTotalWithdrawCount,
         total_withdraw_amount: Number(spTotalWithdrawAmount.toFixed(2)),
@@ -834,8 +834,9 @@ class MerchantController extends Controller {
       };
 
       if (payload.password) {
-        const salt = await app.bcrypt.genSalt(10);
-        updateData.password = await app.bcrypt.hash(payload.password, salt);
+        // const salt = await app.bcrypt.genSalt(10);
+        // updateData.password = await app.bcrypt.hash(payload.password, salt);
+        updateData.password = await ctx.genHash(payload.password);
       }
 
       await admin.update(updateData);
@@ -876,13 +877,13 @@ class MerchantController extends Controller {
 
     // 兼容前端可能传 user_id 或 shop_id 的情况
     const merchant = await ctx.model.SysUser.findOne({
-      where: { 
+      where: {
         [Op.or]: [
           { user_id: id },
           // 如果传的是 shop_id，则查找该店铺下的店长(user_type=2)
-          { shop_id: id, user_type: 2 }
+          { shop_id: id, user_type: 2 },
         ],
-        is_deleted: 0 
+        is_deleted: 0,
       },
     });
 

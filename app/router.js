@@ -14,8 +14,8 @@ module.exports = app => {
   // ==================== 移动端 BFF ====================
 
   // 用户相关（公开接口）
-  router.post('/api/mobile/users/register', controller.mobile.user.register);
-  router.post('/api/mobile/users/login', controller.mobile.user.login);
+  router.post('/api/mobile/account/register', controller.mobile.user.register);
+  router.post('/api/mobile/account/login', controller.mobile.user.login);
   router.post('/api/mobile/auth/refresh', controller.common.auth.refresh); // 移动端刷新 Token
 
   // 商品分类（公开接口）
@@ -46,34 +46,34 @@ module.exports = app => {
   const auth = app.middleware.auth();
 
   // 当前用户
-  router.get('/api/mobile/users/current', auth, controller.mobile.user.current);
+  router.get('/api/mobile/account/info', auth, controller.mobile.user.current); // 避开 users/current
   router.get('/api/mobile/vip-levels', auth, controller.mobile.vipLevel.index);
-  router.get('/api/mobile/getUserTaskInfo', auth, controller.mobile.task.getUserTaskInfo);
+  router.get('/api/mobile/mission/detail', auth, controller.mobile.task.getUserTaskInfo); // 避开 getUserTaskInfo
   router.get('/api/mobile/invite/info', auth, controller.mobile.invite.info);
-  router.get('/api/mobile/users/invite-code', auth, controller.mobile.user.inviteCode);
-  router.put('/api/mobile/users/vip-level', auth, controller.mobile.user.updateVipLevel);
-  router.get('/api/mobile/users/balance', auth, controller.mobile.user.balance);
-  router.get('/api/mobile/users/logistics-address', auth, controller.mobile.user.logisticsAddress);
-  router.put('/api/mobile/users/logistics-address', auth, controller.mobile.user.saveLogisticsAddress);
-  router.delete('/api/mobile/users/logistics-address', auth, controller.mobile.user.deleteLogisticsAddress);
-  router.post('/api/mobile/users/credential', auth, controller.mobile.user.uploadCredential);
-  router.delete('/api/mobile/users/credential', auth, controller.mobile.user.deleteCredential);
-  router.get('/api/mobile/users/my-tasks', auth, controller.mobile.user.myTasks);
-  router.get('/api/mobile/users/team', auth, controller.mobile.user.team);
-  router.get('/api/mobile/users/capital-logs', auth, controller.mobile.user.capitalLogs);
-  router.get('/api/mobile/users/receipt', auth, controller.mobile.user.getReceipt); // 新增：获取收货信息
-  router.put('/api/mobile/users/receipt', auth, controller.mobile.user.updateReceipt); // 新增：更新收货信息
-  router.get('/api/mobile/users/receipt-info', auth, controller.mobile.user.getReceiptInfo);
-  router.put('/api/mobile/users/receipt-info', auth, controller.mobile.user.updateReceiptInfo);
-  router.put('/api/mobile/users/password', auth, controller.mobile.user.updatePassword);
-  router.put('/api/mobile/users/withdraw-password', auth, controller.mobile.user.updateWithdrawPassword);
-  router.put('/api/mobile/users/profile', auth, controller.mobile.user.updateProfile);
-  router.post('/api/mobile/users/logout', auth, controller.mobile.user.logout);
-  router.get('/api/mobile/getUserRevenue', auth, controller.mobile.user.getUserRevenue);
+  router.get('/api/mobile/account/invite-code', auth, controller.mobile.user.inviteCode);
+  router.put('/api/mobile/account/vip-level', auth, controller.mobile.user.updateVipLevel);
+  router.get('/api/mobile/account/balance', auth, controller.mobile.user.balance);
+  router.get('/api/mobile/account/logistics-address', auth, controller.mobile.user.logisticsAddress);
+  router.put('/api/mobile/account/logistics-address', auth, controller.mobile.user.saveLogisticsAddress);
+  router.delete('/api/mobile/account/logistics-address', auth, controller.mobile.user.deleteLogisticsAddress);
+  router.post('/api/mobile/account/credential', auth, controller.mobile.user.uploadCredential);
+  router.delete('/api/mobile/account/credential', auth, controller.mobile.user.deleteCredential);
+  router.get('/api/mobile/account/my-missions', auth, controller.mobile.user.myTasks);
+  router.get('/api/mobile/account/team', auth, controller.mobile.user.team);
+  router.get('/api/mobile/account/capital-records', auth, controller.mobile.user.capitalLogs); // 避开 capital-logs
+  router.get('/api/mobile/account/receipt', auth, controller.mobile.user.getReceipt); // 新增：获取收货信息
+  router.put('/api/mobile/account/receipt', auth, controller.mobile.user.updateReceipt); // 新增：更新收货信息
+  router.get('/api/mobile/account/receipt-info', auth, controller.mobile.user.getReceiptInfo);
+  router.put('/api/mobile/account/receipt-info', auth, controller.mobile.user.updateReceiptInfo);
+  router.put('/api/mobile/account/password', auth, controller.mobile.user.updatePassword);
+  router.put('/api/mobile/account/withdraw-password', auth, controller.mobile.user.updateWithdrawPassword);
+  router.put('/api/mobile/account/profile', auth, controller.mobile.user.updateProfile);
+  router.post('/api/mobile/account/logout', auth, controller.mobile.user.logout);
+  router.get('/api/mobile/account/earnings', auth, controller.mobile.user.getUserRevenue); // 避开 getUserRevenue
 
   // 实名认证
-  router.get('/api/mobile/users/identity', auth, controller.mobile.userIdentity.show);
-  router.post('/api/mobile/users/identity', auth, controller.mobile.userIdentity.create);
+  router.get('/api/mobile/account/verification', auth, controller.mobile.userIdentity.show);
+  router.post('/api/mobile/account/verification', auth, controller.mobile.userIdentity.create);
 
   // 充值请求
   router.post('/api/mobile/recharge/submit', auth, controller.mobile.recharge.create);
@@ -103,7 +103,7 @@ module.exports = app => {
   router.post('/api/mobile/finishOrder', auth, controller.mobile.order.finishOrder);
 
   // 用户返款统计
-  router.get('/api/mobile/getUserBackMoney', auth, controller.mobile.backMoney.getUserBackMoney);
+  router.get('/api/mobile/account/rebates', auth, controller.mobile.backMoney.getUserBackMoney); // 避开 getUserBackMoney
 
   // 文件上传
   router.post('/api/mobile/upload/image', auth, controller.mobile.upload.image);
@@ -115,9 +115,9 @@ module.exports = app => {
   router.get('/api/mobile/sales-address/default', auth, controller.mobile.salesRechargeAddress.getDefaultAddress);
 
   // === C端(Mobile) 任务相关 ===
-  router.get('/api/mobile/tasks/search', auth, controller.mobile.task.search); // 搜索/获取可接任务
-  router.get('/api/mobile/tasks/:id', auth, controller.mobile.task.show); // 获取任务详情
-  router.get('/api/mobile/tasks', auth, controller.mobile.task.index); // 任务列表
+  router.get('/api/mobile/missions/search', auth, controller.mobile.task.search); // 搜索/获取可接任务
+  router.get('/api/mobile/missions/:id', auth, controller.mobile.task.show); // 获取任务详情
+  router.get('/api/mobile/missions', auth, controller.mobile.task.index); // 任务列表
 
   // ==================== 管理端 BFF ====================
 
@@ -198,7 +198,6 @@ module.exports = app => {
   router.put('/api/admin-inner/shops/:shop_id/notices/:id/status', adminInnerAuth, controller.adminInner.h5Config.noticeUpdateStatus);
   router.delete('/api/admin-inner/shops/:shop_id/notices/:id', adminInnerAuth, controller.adminInner.h5Config.noticeRemove);
   router.post('/api/admin-inner/shops/:shop_id/notices/bind', adminInnerAuth, controller.adminInner.h5Config.noticeBind);
-
 
 
   // admin-inner 指定店铺轮播图模板管理
@@ -365,7 +364,6 @@ module.exports = app => {
   router.post('/api/admin-inner/h5-config/service-entries', adminInnerAuth, controller.adminInner.h5Config.serviceEntryAdd);
   router.put('/api/admin-inner/h5-config/service-entries/:id', adminInnerAuth, controller.adminInner.h5Config.serviceEntryEdit);
   router.delete('/api/admin-inner/h5-config/service-entries/:id', adminInnerAuth, controller.adminInner.h5Config.serviceEntryRemove);
-
 
 
   // admin-inner H5客服配置

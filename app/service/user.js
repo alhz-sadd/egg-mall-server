@@ -181,7 +181,7 @@ class UserService extends Service {
       const user = await ctx.model.SysUser.create(userData, { transaction });
 
       // 根据新生成的 user_id 生成基于ID的邀请码
-      const personalInviteCode = await this.generateInviteCode(user.user_id);
+      const personalInviteCode = await this.generateInviteCode(user.user_id, transaction);
 
       // 更新邀请码
       await user.update({ invite_code: personalInviteCode }, { transaction });
@@ -214,91 +214,92 @@ class UserService extends Service {
       }
 
       // 发放邀请奖励
-    if (inviterUserId && shopId) {
-      const shopConfig = await ctx.model.ShopConfig.findOne({
-        where: { shop_id: shopId },
-        transaction,
-      });
-
-      if (shopConfig && shopConfig.invite_new_user_reward > 0) {
-        const rewardAmount = parseFloat(shopConfig.invite_new_user_reward);
-
-        let inviterWallet = await ctx.model.UserWallet.findOne({
-          where: { user_id: inviterUserId },
+      if (inviterUserId && shopId) {
+        const shopConfig = await ctx.model.ShopConfig.findOne({
+          where: { shop_id: shopId },
           transaction,
         });
 
-        if (!inviterWallet) {
-          inviterWallet = await ctx.model.UserWallet.create({
+        if (shopConfig && shopConfig.invite_new_user_reward > 0) {
+          const rewardAmount = parseFloat(shopConfig.invite_new_user_reward);
+
+          let inviterWallet = await ctx.model.UserWallet.findOne({
+            where: { user_id: inviterUserId },
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          });
+
+          if (!inviterWallet) {
+            inviterWallet = await ctx.model.UserWallet.create({
+              user_id: inviterUserId,
+              balance: 0,
+              voucher_balance: 0,
+            }, { transaction });
+          }
+
+          const beforeBalance = parseFloat(inviterWallet.voucher_balance);
+          const afterBalance = beforeBalance + rewardAmount;
+
+          await inviterWallet.update({
+            voucher_balance: afterBalance,
+          }, { transaction });
+
+          await ctx.model.UserWalletLog.create({
             user_id: inviterUserId,
-            balance: 0,
-            voucher_balance: 0,
+            currency_type: 2, // 1:现金 2:代金券
+            log_type: 8, // 假设 8 代表邀请奖励
+            amount: rewardAmount,
+            before_balance: beforeBalance,
+            after_balance: afterBalance,
+            remark: `邀请新用户注册奖励, 新用户ID: ${user.user_id}`,
+            related_order_id: user.user_id,
           }, { transaction });
         }
-
-        const beforeBalance = parseFloat(inviterWallet.voucher_balance);
-        const afterBalance = beforeBalance + rewardAmount;
-
-        await inviterWallet.update({
-          voucher_balance: afterBalance,
-        }, { transaction });
-
-        await ctx.model.UserWalletLog.create({
-          user_id: inviterUserId,
-          currency_type: 2, // 1:现金 2:代金券
-          log_type: 8, // 假设 8 代表邀请奖励
-          amount: rewardAmount,
-          before_balance: beforeBalance,
-          after_balance: afterBalance,
-          remark: `邀请新用户注册奖励, 新用户ID: ${user.user_id}`,
-          related_order_id: user.user_id,
-        }, { transaction });
       }
-    }
 
-    await transaction.commit();
+      await transaction.commit();
 
-    // 刷新 VIP 等级（根据 shop_id 规则，初始可能为 VIP1）
-    if (shopId) {
-      await service.vipLevel.refreshUserVip(user.user_id);
-    }
+      // 刷新 VIP 等级（根据 shop_id 规则，初始可能为 VIP1）
+      if (shopId) {
+        await service.vipLevel.refreshUserVip(user.user_id);
+      }
 
-    // 重新查询以获取最新数据
-    updatedUser = await ctx.model.SysUser.findByPk(user.user_id);
-    
-    // 发送 TG 异步通知
-    ctx.runInBackground(async () => {
-      try {
-        let salesmanName = '无归属';
-        let targetShopId = shopId;
-        
-        // 直接通过邀请码判断归属业务员和店铺
-        if (user_invite_code) {
-          const parent = await ctx.model.SysUser.findOne({ where: { invite_code: user_invite_code } });
-          if (parent) {
+      // 重新查询以获取最新数据
+      updatedUser = await ctx.model.SysUser.findByPk(user.user_id);
+
+      // 发送 TG 异步通知
+      ctx.runInBackground(async () => {
+        try {
+          let salesmanName = '无归属';
+          let targetShopId = shopId;
+
+          // 直接通过邀请码判断归属业务员和店铺
+          if (user_invite_code) {
+            const parent = await ctx.model.SysUser.findOne({ where: { invite_code: user_invite_code } });
+            if (parent) {
             // 如果上级有 shop_id，以他的 shop_id 为准
-            if (parent.shop_id) {
-              targetShopId = parent.shop_id;
-            }
-            
-            // 如果上级本身就是业务员(type=3)，业务员就是他自己；否则通过注册时解析好的 salesmanId 查找
-            if (parent.user_type === 3) {
-              salesmanName = parent.username || parent.nickname || '未知业务员';
-            } else if (salesmanId) {
-              const salesman = await ctx.model.SysUser.findOne({ where: { user_id: salesmanId } });
-              salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
+              if (parent.shop_id) {
+                targetShopId = parent.shop_id;
+              }
+
+              // 如果上级本身就是业务员(type=3)，业务员就是他自己；否则通过注册时解析好的 salesmanId 查找
+              if (parent.user_type === 3) {
+                salesmanName = parent.username || parent.nickname || '未知业务员';
+              } else if (salesmanId) {
+                const salesman = await ctx.model.SysUser.findOne({ where: { user_id: salesmanId } });
+                salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
+              }
             }
           }
+
+          const msg = `新用户注册，用户名称：${updatedUser.username}，ID：${updatedUser.user_id}，业务员名称：${salesmanName}，时间：${new Date().toLocaleString()}`;
+          await ctx.service.telegram.sendMessage(msg, targetShopId || 0);
+        } catch (err) {
+          ctx.logger.error('[Telegram] 注册通知发送失败:', err);
         }
+      });
 
-        const msg = `新用户注册，用户名称：${updatedUser.username}，ID：${updatedUser.user_id}，业务员名称：${salesmanName}，时间：${new Date().toLocaleString()}`;
-        await ctx.service.telegram.sendMessage(msg, targetShopId || 0);
-      } catch (err) {
-        ctx.logger.error('[Telegram] 注册通知发送失败:', err);
-      }
-    });
-
-  } catch (error) {
+    } catch (error) {
       await transaction.rollback();
       throw error;
     }
@@ -334,16 +335,17 @@ class UserService extends Service {
    * 由于用户ID是唯一的，加上2位随机数能保证绝大概率唯一。
    * 如果遇到碰撞（极小概率），重新生成后2位。
    * @param {string|number} userId 用户的 user_id
+   * @param transaction
    * @return {string} 邀请码
    */
-  async generateInviteCode(userId) {
+  async generateInviteCode(userId, transaction = null) {
     const { ctx } = this;
     let code;
     let exists = true;
 
     // 如果没有传入 userId，则降级使用原来的随机生成逻辑 (用于非C端或尚未生成ID的场景)
     if (!userId) {
-      return await this._generateRandomInviteCode();
+      return await this._generateRandomInviteCode(transaction);
     }
 
     const baseStr = String(userId);
@@ -353,7 +355,10 @@ class UserService extends Service {
       const randomSuffix = String(Math.floor(Math.random() * 100)).padStart(2, '0');
       code = baseStr + randomSuffix;
 
-      const user = await ctx.model.SysUser.findOne({ where: { invite_code: code } });
+      const user = await ctx.model.SysUser.findOne({
+        where: { invite_code: code },
+        transaction,
+      });
       if (!user) {
         exists = false;
       }
@@ -363,9 +368,10 @@ class UserService extends Service {
 
   /**
    * 内部方法：随机生成邀请码（兜底方案）
+   * @param transaction
    * @return {string} 邀请码
    */
-  async _generateRandomInviteCode() {
+  async _generateRandomInviteCode(transaction = null) {
     const { ctx } = this;
     const chars = '0123456789';
     let code;
@@ -388,7 +394,10 @@ class UserService extends Service {
         }
       }
 
-      const user = await ctx.model.SysUser.findOne({ where: { invite_code: code } });
+      const user = await ctx.model.SysUser.findOne({
+        where: { invite_code: code },
+        transaction,
+      });
       if (!user) {
         exists = false;
       }
@@ -425,8 +434,7 @@ class UserService extends Service {
   async login(payload, meta = {}) {
     const { ctx, app } = this;
     const { user_phone, user_password } = payload;
-    const { ip, device, shopId } = meta;
-    const startTime = Date.now();
+    const { ip, shopId } = meta;
 
     const logNo = `LL${Date.now()}${Math.floor(Math.random() * 10000)}`;
     const parsedUa = ctx.service.sysLog.resolveUserAgent(meta.userAgent);
@@ -695,11 +703,12 @@ class UserService extends Service {
    * @param {number} userId - 用户 ID
    */
   async getReceipt(userId) {
-    const user = await this.ctx.model.SysUser.findByPk(userId, {
+    const { ctx } = this;
+    const user = await ctx.model.SysUser.findByPk(userId, {
       attributes: [ 'receipt_name', 'receipt_phone', 'receipt_address' ],
     });
     if (!user) {
-      this.ctx.throw(404, ctx.__('user.user_not_exist'));
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
     return user;
   }
@@ -710,9 +719,10 @@ class UserService extends Service {
    * @param {object} params - 包含 receipt_name, receipt_phone, receipt_address
    */
   async updateReceipt(userId, params) {
-    const user = await this.ctx.model.SysUser.findByPk(userId);
+    const { ctx } = this;
+    const user = await ctx.model.SysUser.findByPk(userId);
     if (!user) {
-      this.ctx.throw(404, ctx.__('user.user_not_exist'));
+      ctx.throw(404, ctx.__('user.user_not_exist'));
     }
     await user.update({
       receipt_name: params.receipt_name,
@@ -1058,7 +1068,7 @@ class UserService extends Service {
    * @param {Object} operator 当前操作者 { role, id }
    * @return {Object} 用户列表、统计数据及分页信息
    */
-  async adminList(query = {}, operator = {}) {
+  async adminList(query = {}) {
     const { ctx } = this;
     const {
       user_id, username, nickname, phone, shop_id, vip_level, status,
@@ -1122,7 +1132,7 @@ class UserService extends Service {
    */
   async adminStatistics(operator = {}) {
     const { ctx } = this;
-    const { role: operatorRole, id: operatorId } = operator;
+    const { role: operatorRole } = operator;
 
     const userWhere = { user_type: 4, is_deleted: 0 };
     if (operatorRole === 1) {

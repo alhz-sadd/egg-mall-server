@@ -41,7 +41,7 @@ module.exports = () => {
       }
 
       // 进行多语言翻译 (移动端和管理端都可以统一处理)
-      
+
       // 获取当前语言 (默认英文)
       let currentLang = 'en-US';
       if (ctx.locale) {
@@ -58,7 +58,7 @@ module.exports = () => {
           }
         }
       }
-      
+
       // 动态加载字典，兜底使用 en-US
       let dict;
       try {
@@ -67,22 +67,22 @@ module.exports = () => {
         dict = require('../../config/locale/en-US.js');
       }
       const fallbackDict = require('../../config/locale/en-US.js');
-      
+
       // 手动翻译
       let translated = dict[message];
-      
+
       // 如果没翻译出来（比如字典里没有这个key），尝试用 en-US 兜底
       if (!translated) {
         translated = fallbackDict[message] || message;
       }
-      
+
       // 处理带前缀的参数校验错误
       if (translated === message && message.startsWith('参数校验失败：')) {
         const detail = message.replace('参数校验失败：', '');
         const paramErrorTpl = dict['common.param_error'] || '参数校验失败：%{msg}';
         translated = paramErrorTpl.replace('%{msg}', detail);
       }
-      
+
       message = translated;
 
       // 开发环境可返回详细堆栈

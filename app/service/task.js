@@ -190,14 +190,14 @@ class TaskService extends Service {
     const yesterdayStr = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
 
     // 1. 使用 Promise.all 并行执行无依赖的查询，大幅提升接口响应速度
-    const [userWallet, todayStat, yesterdayStat, currentTaskUser] = await Promise.all([
+    const [ userWallet, todayStat, yesterdayStat, currentTaskUser ] = await Promise.all([
       ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } }),
       ctx.model.UserTaskStat.findOne({ where: { user_id: dbUserId, stat_date: todayStr } }),
       ctx.model.UserTaskStat.findOne({ where: { user_id: dbUserId, stat_date: yesterdayStr } }),
       ctx.model.ShopTaskUser.findOne({
         where: { user_id: dbUserId, status: { [ctx.app.Sequelize.Op.in]: [ 0, 1 ] } }, // 0: 已绑定, 1: 任务进行中
         order: [[ 'id', 'DESC' ]],
-      })
+      }),
     ]);
 
     const todayIncomeVal = todayStat ? Number(todayStat.task_income || 0) : 0;
@@ -213,7 +213,7 @@ class TaskService extends Service {
       }
 
       // 2. 将后续依赖 currentTaskUser 的查询也改为并行执行
-      const [overNumResult, taskResult] = await Promise.all([
+      const [ overNumResult, taskResult ] = await Promise.all([
         ctx.model.ShopTaskUserItemProgress.count({
           where: {
             shop_task_user_id: currentTaskUser.id,
@@ -221,11 +221,11 @@ class TaskService extends Service {
             status: 1, // 已完成
           },
         }),
-        ctx.model.ShopTask.findByPk(currentTaskUser.task_id)
+        ctx.model.ShopTask.findByPk(currentTaskUser.task_id),
       ]);
 
       overNum = overNumResult;
-      
+
       if (taskResult) {
         sumNum = Number(taskResult.task_count || 0);
       }
@@ -546,7 +546,7 @@ class TaskService extends Service {
           total = await ctx.model.GoodsTask.count({
             where: goodsWhere,
           });
-          
+
           if (total === 0) {
             ctx.throw(500, ctx.__('task.no_match_product_range'));
           }

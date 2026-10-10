@@ -23,6 +23,14 @@ class MobileWithdrawController extends Controller {
       ctx.throw(401, ctx.__('common.not_logged_in'));
     }
 
+    // === 新增：Redis 防重复提交锁（防连点） ===
+    const lockKey = `withdraw_lock_${userId}`;
+    // 尝试获取锁，设置 3 秒过期时间，NX 表示不存在时才设置成功
+    const lock = await app.redis.set(lockKey, '1', 'EX', 3, 'NX');
+    if (!lock) {
+      ctx.throw(429, ctx.__('common.processing_please_wait'));
+    }
+
     const payload = ctx.request.body;
 
     // 如果前端传过来的 amount 是字符串，先转为数字，避免 validate 类型校验报错
@@ -104,10 +112,10 @@ class MobileWithdrawController extends Controller {
         // 开启完成任务提现逻辑：
         // 必须有绑定的模板，且最新绑定的模板状态必须是已完成(2)
         const latestTaskUser = await ctx.model.ShopTaskUser.findOne({
-          where: { 
+          where: {
             user_id: userId,
           },
-          order: [['id', 'DESC']],
+          order: [[ 'id', 'DESC' ]],
         });
 
         // task_status: 0已绑定 1任务进行中 2全部完成 3已过期截止
@@ -121,7 +129,7 @@ class MobileWithdrawController extends Controller {
           where: {
             user_id: userId,
             task_status: 2,
-          }
+          },
         });
 
         if (!hasCompletedTemplate) {
@@ -168,7 +176,7 @@ class MobileWithdrawController extends Controller {
       });
 
       if (!wallet || Number(wallet.balance) < payload.amount) {
-        throw new Error('可用余额不足');
+        throw new Error(ctx.__('wallet.balance_not_enough'));
       }
 
       const amount = payload.amount;
@@ -230,14 +238,14 @@ class MobileWithdrawController extends Controller {
           // 查出用户信息获取用户名
           const user = await ctx.model.SysUser.findByPk(userId);
           const userName = user ? (user.username || user.nickname || '未知用户') : '未知用户';
-          
+
           // 查出业务员信息获取业务员名称
           let salesmanName = '无归属';
           if (relation.salesman_user_id) {
             const salesman = await ctx.model.SysUser.findByPk(relation.salesman_user_id);
             salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
           }
-  
+
           const msg = `发起提现申请，用户名称：${userName}，提现金额：${Number(payload.amount)}，业务员名称：${salesmanName}`;
           await ctx.service.telegram.sendMessage(msg, relation.shop_id || 0);
         } catch (err) {

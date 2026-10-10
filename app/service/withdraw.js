@@ -386,7 +386,7 @@ class WithdrawService extends Service {
     }
 
     await request.update(updateData);
-    
+
     // 发送 TG 异步通知 - 审核成功
     ctx.runInBackground(async () => {
       try {
@@ -399,7 +399,7 @@ class WithdrawService extends Service {
         ctx.logger.error('[Telegram] 提现成功通知失败:', err);
       }
     });
-    
+
     return request.toJSON();
   }
 
@@ -457,7 +457,7 @@ class WithdrawService extends Service {
       }
 
       await transaction.commit();
-      
+
     } catch (err) {
       await transaction.rollback();
       throw err;

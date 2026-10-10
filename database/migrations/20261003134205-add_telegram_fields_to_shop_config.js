@@ -18,5 +18,5 @@ module.exports = {
   async down(queryInterface, Sequelize) {
     await queryInterface.removeColumn('shop_config', 'telegram_bot_token');
     await queryInterface.removeColumn('shop_config', 'telegram_chat_id');
-  }
+  },
 };

@@ -78,7 +78,7 @@ class H5ServiceService extends Service {
    */
   async create(payload, adminId) {
     const { ctx } = this;
-    
+
     const dataToSave = {
       ...payload,
       create_user_id: adminId,
@@ -105,7 +105,7 @@ class H5ServiceService extends Service {
     }
     const item = await ctx.model.SysH5Service.findOne({ where });
     ctx.assert(item, 404, '客服配置不存在或无权操作');
-    
+
     const updateData = { ...payload, update_user_id: adminId, update_time: new Date() };
 
     return await item.update(updateData);

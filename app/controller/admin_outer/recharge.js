@@ -244,13 +244,13 @@ class AdminOuterRechargeController extends Controller {
         try {
           const user = await ctx.model.SysUser.findByPk(recharge.user_id);
           const userName = user ? (user.username || user.nickname || '未知用户') : '未知用户';
-          
+
           let salesmanName = '无归属';
           if (recharge.sales_user_id) {
             const salesman = await ctx.model.SysUser.findByPk(recharge.sales_user_id);
             salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
           }
-  
+
           const msg = `充值成功，用户名称：${userName}，充值金额：${Number(final_receive_amount)}，业务员名称：${salesmanName}`;
           await ctx.service.telegram.sendMessage(msg, recharge.shop_id || 0);
         } catch (err) {

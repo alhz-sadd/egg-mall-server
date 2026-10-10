@@ -37,7 +37,7 @@ class NoticeService extends Service {
       // 如果是新版模板模式，公告存在 extra.notices 数组中
       if (activeTemplate.extra && Array.isArray(activeTemplate.extra.notices)) {
         notices = activeTemplate.extra.notices;
-      } 
+      }
       // 兼容老版本：如果没有 extra.notices，但本身有 content，则将其作为一条公告
       else if (activeTemplate.content) {
         notices = [{

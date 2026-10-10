@@ -10,20 +10,20 @@ class AdminOuterUserService extends Service {
     // 获取域名判断店铺归属
     let host = ctx.request.header.origin || ctx.request.header.host || '';
     host = host.replace(/^https?:\/\//, '');
-    
+
     // 如果带有端口号，去掉端口号进行匹配（因为本地开发通常带端口，线上可能也带）
     const hostWithoutPort = host.split(':')[0];
-    
+
     let shopId = ctx.request.header['shop-id'] ? parseInt(ctx.request.header['shop-id'], 10) : 0;
 
     if (!shopId && host) {
       const binding = await ctx.model.ShopH5Binding.findOne({
-        where: { 
+        where: {
           [ctx.app.Sequelize.Op.or]: [
             { h5_url: { [ctx.app.Sequelize.Op.like]: `%${host}%` } },
-            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } }
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } },
           ],
-          type: 'admin' 
+          type: 'admin',
         },
       });
       if (binding) {

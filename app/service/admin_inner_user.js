@@ -243,7 +243,7 @@ class AdminInnerUserService extends Service {
     if (data.user_type === 3) {
       const addressRecord = await ctx.model.SalesRechargeAddress.findOne({
         where: { sales_user_id: id, shop_id: data.shop_id },
-        attributes: ['address']
+        attributes: [ 'address' ],
       });
       data.recharge_address = addressRecord ? addressRecord.address : '';
     }

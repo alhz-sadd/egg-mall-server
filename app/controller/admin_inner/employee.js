@@ -16,10 +16,10 @@ class EmployeeController extends Controller {
     // 获取域名判断店铺归属
     let host = ctx.request.header.origin || ctx.request.header.host || '';
     host = host.replace(/^https?:\/\//, '');
-    
+
     // 如果带有端口号，去掉端口号进行匹配
     const hostWithoutPort = host.split(':')[0];
-    
+
     let domainShopId = 0;
 
     // 先尝试从头部直接获取 shop-id (方便本地调试)
@@ -28,12 +28,12 @@ class EmployeeController extends Controller {
     // 如果没有传 shop-id，通过域名去匹配 admin 绑定的店铺
     if (!domainShopId && host) {
       const binding = await ctx.model.ShopH5Binding.findOne({
-        where: { 
+        where: {
           [ctx.app.Sequelize.Op.or]: [
             { h5_url: { [ctx.app.Sequelize.Op.like]: `%${host}%` } },
-            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } }
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } },
           ],
-          type: 'admin' 
+          type: 'admin',
         },
       });
       if (binding) {

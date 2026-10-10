@@ -9,16 +9,16 @@ class AdminInnerCustomerController extends Controller {
   async index() {
     const { ctx, service } = this;
     const { shop_id } = ctx.params;
-    
+
     if (!shop_id) {
       ctx.throw(400, '缺少店铺ID参数');
     }
 
     try {
       // 传递 user_type: 1 表示这是平台管理员在查询，所以不受业务员过滤等限制
-      const result = await service.adminOuterCustomer.getCustomerList(ctx.query, { 
-        user_type: 1, 
-        shop_id 
+      const result = await service.adminOuterCustomer.getCustomerList(ctx.query, {
+        user_type: 1,
+        shop_id,
       });
       ctx.body = {
         code: 200,

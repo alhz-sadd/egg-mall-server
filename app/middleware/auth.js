@@ -27,7 +27,7 @@ module.exports = () => {
       // 校验 token，并将解析结果挂载到 ctx.state.user
       const decoded = ctx.app.jwt.verify(token, ctx.app.config.jwt.secret);
       ctx.state.user = decoded;
-      
+
       // 为了移动端接口（/api/mobile/），如果有shop_id，将其挂载到 ctx.state.shop_id
       if (decoded.shop_id) {
         ctx.state.shop_id = decoded.shop_id;

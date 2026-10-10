@@ -214,91 +214,91 @@ class UserService extends Service {
       }
 
       // 发放邀请奖励
-    if (inviterUserId && shopId) {
-      const shopConfig = await ctx.model.ShopConfig.findOne({
-        where: { shop_id: shopId },
-        transaction,
-      });
-
-      if (shopConfig && shopConfig.invite_new_user_reward > 0) {
-        const rewardAmount = parseFloat(shopConfig.invite_new_user_reward);
-
-        let inviterWallet = await ctx.model.UserWallet.findOne({
-          where: { user_id: inviterUserId },
+      if (inviterUserId && shopId) {
+        const shopConfig = await ctx.model.ShopConfig.findOne({
+          where: { shop_id: shopId },
           transaction,
         });
 
-        if (!inviterWallet) {
-          inviterWallet = await ctx.model.UserWallet.create({
+        if (shopConfig && shopConfig.invite_new_user_reward > 0) {
+          const rewardAmount = parseFloat(shopConfig.invite_new_user_reward);
+
+          let inviterWallet = await ctx.model.UserWallet.findOne({
+            where: { user_id: inviterUserId },
+            transaction,
+          });
+
+          if (!inviterWallet) {
+            inviterWallet = await ctx.model.UserWallet.create({
+              user_id: inviterUserId,
+              balance: 0,
+              voucher_balance: 0,
+            }, { transaction });
+          }
+
+          const beforeBalance = parseFloat(inviterWallet.voucher_balance);
+          const afterBalance = beforeBalance + rewardAmount;
+
+          await inviterWallet.update({
+            voucher_balance: afterBalance,
+          }, { transaction });
+
+          await ctx.model.UserWalletLog.create({
             user_id: inviterUserId,
-            balance: 0,
-            voucher_balance: 0,
+            currency_type: 2, // 1:现金 2:代金券
+            log_type: 8, // 假设 8 代表邀请奖励
+            amount: rewardAmount,
+            before_balance: beforeBalance,
+            after_balance: afterBalance,
+            remark: `邀请新用户注册奖励, 新用户ID: ${user.user_id}`,
+            related_order_id: user.user_id,
           }, { transaction });
         }
-
-        const beforeBalance = parseFloat(inviterWallet.voucher_balance);
-        const afterBalance = beforeBalance + rewardAmount;
-
-        await inviterWallet.update({
-          voucher_balance: afterBalance,
-        }, { transaction });
-
-        await ctx.model.UserWalletLog.create({
-          user_id: inviterUserId,
-          currency_type: 2, // 1:现金 2:代金券
-          log_type: 8, // 假设 8 代表邀请奖励
-          amount: rewardAmount,
-          before_balance: beforeBalance,
-          after_balance: afterBalance,
-          remark: `邀请新用户注册奖励, 新用户ID: ${user.user_id}`,
-          related_order_id: user.user_id,
-        }, { transaction });
       }
-    }
 
-    await transaction.commit();
+      await transaction.commit();
 
-    // 刷新 VIP 等级（根据 shop_id 规则，初始可能为 VIP1）
-    if (shopId) {
-      await service.vipLevel.refreshUserVip(user.user_id);
-    }
+      // 刷新 VIP 等级（根据 shop_id 规则，初始可能为 VIP1）
+      if (shopId) {
+        await service.vipLevel.refreshUserVip(user.user_id);
+      }
 
-    // 重新查询以获取最新数据
-    updatedUser = await ctx.model.SysUser.findByPk(user.user_id);
-    
-    // 发送 TG 异步通知
-    ctx.runInBackground(async () => {
-      try {
-        let salesmanName = '无归属';
-        let targetShopId = shopId;
-        
-        // 直接通过邀请码判断归属业务员和店铺
-        if (user_invite_code) {
-          const parent = await ctx.model.SysUser.findOne({ where: { invite_code: user_invite_code } });
-          if (parent) {
+      // 重新查询以获取最新数据
+      updatedUser = await ctx.model.SysUser.findByPk(user.user_id);
+
+      // 发送 TG 异步通知
+      ctx.runInBackground(async () => {
+        try {
+          let salesmanName = '无归属';
+          let targetShopId = shopId;
+
+          // 直接通过邀请码判断归属业务员和店铺
+          if (user_invite_code) {
+            const parent = await ctx.model.SysUser.findOne({ where: { invite_code: user_invite_code } });
+            if (parent) {
             // 如果上级有 shop_id，以他的 shop_id 为准
-            if (parent.shop_id) {
-              targetShopId = parent.shop_id;
-            }
-            
-            // 如果上级本身就是业务员(type=3)，业务员就是他自己；否则通过注册时解析好的 salesmanId 查找
-            if (parent.user_type === 3) {
-              salesmanName = parent.username || parent.nickname || '未知业务员';
-            } else if (salesmanId) {
-              const salesman = await ctx.model.SysUser.findOne({ where: { user_id: salesmanId } });
-              salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
+              if (parent.shop_id) {
+                targetShopId = parent.shop_id;
+              }
+
+              // 如果上级本身就是业务员(type=3)，业务员就是他自己；否则通过注册时解析好的 salesmanId 查找
+              if (parent.user_type === 3) {
+                salesmanName = parent.username || parent.nickname || '未知业务员';
+              } else if (salesmanId) {
+                const salesman = await ctx.model.SysUser.findOne({ where: { user_id: salesmanId } });
+                salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
+              }
             }
           }
+
+          const msg = `新用户注册，用户名称：${updatedUser.username}，ID：${updatedUser.user_id}，业务员名称：${salesmanName}，时间：${new Date().toLocaleString()}`;
+          await ctx.service.telegram.sendMessage(msg, targetShopId || 0);
+        } catch (err) {
+          ctx.logger.error('[Telegram] 注册通知发送失败:', err);
         }
+      });
 
-        const msg = `新用户注册，用户名称：${updatedUser.username}，ID：${updatedUser.user_id}，业务员名称：${salesmanName}，时间：${new Date().toLocaleString()}`;
-        await ctx.service.telegram.sendMessage(msg, targetShopId || 0);
-      } catch (err) {
-        ctx.logger.error('[Telegram] 注册通知发送失败:', err);
-      }
-    });
-
-  } catch (error) {
+    } catch (error) {
       await transaction.rollback();
       throw error;
     }

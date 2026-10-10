@@ -130,7 +130,7 @@ class H5ConfigService extends Service {
             update_user_id: adminId,
             update_time: new Date(),
           },
-          { where: { source_template_id: item.id, config_type: item.config_type, is_deleted: 0 } }
+          { where: { source_template_id: item.id, config_type: item.config_type, is_deleted: 0 } },
         );
       }
     }

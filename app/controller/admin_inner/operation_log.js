@@ -16,7 +16,7 @@ class OperationLogController extends Controller {
     const { ctx, service } = this;
     // 模拟传入 A 端的权限对象，以支持在 Service 中按照 shop_id 进行过滤
     const adminUser = { user_type: 1 };
-    
+
     // 使用 adminOperationLogs 方法，保持和B端获取后台操作日志一致的返回结构
     const result = await service.sysLog.adminOperationLogs(ctx.query, adminUser);
 

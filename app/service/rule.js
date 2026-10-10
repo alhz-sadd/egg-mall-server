@@ -114,7 +114,7 @@ class RuleService extends Service {
             update_user_id: ctx.state.adminInner ? ctx.state.adminInner.adminInnerId : null,
             update_time: new Date(),
           },
-          { where: { source_template_id: currentRule.id, config_type: 3, is_deleted: 0 } }
+          { where: { source_template_id: currentRule.id, config_type: 3, is_deleted: 0 } },
         );
       }
 

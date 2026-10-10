@@ -6,13 +6,13 @@ const { Op } = require('sequelize');
 class ShopH5BindingService extends Service {
   /**
    * 获取店铺绑定的域名
-   * @param {number} shop_id 
+   * @param {number} shop_id
    */
   async getShopBindings(shop_id) {
     const { ctx } = this;
     const rows = await ctx.model.ShopH5Binding.findAll({
       where: { shop_id },
-      attributes: ['h5_url', 'type'],
+      attributes: [ 'h5_url', 'type' ],
     });
 
     const h5_domains = rows.filter(r => r.type === 'h5').map(r => r.h5_url).join('\n');
@@ -26,7 +26,7 @@ class ShopH5BindingService extends Service {
 
   /**
    * 保存店铺绑定域名
-   * @param {Object} data 
+   * @param {Object} data
    */
   async saveShopBindings(data) {
     const { ctx } = this;
@@ -42,21 +42,21 @@ class ShopH5BindingService extends Service {
     }
 
     // 解析域名
-    const parseDomains = (str) => {
+    const parseDomains = str => {
       if (!str) return [];
       return str.split('\n').map(d => d.trim()).filter(d => d);
     };
 
     const h5List = parseDomains(h5_domains);
     const adminList = parseDomains(admin_domains);
-    const allUrls = [...h5List, ...adminList];
+    const allUrls = [ ...h5List, ...adminList ];
 
     // 检查是否有域名被其他店铺占用
     if (allUrls.length > 0) {
       const exists = await ctx.model.ShopH5Binding.findAll({
         where: {
           h5_url: { [Op.in]: allUrls },
-          shop_id: { [Op.ne]: shop_id }
+          shop_id: { [Op.ne]: shop_id },
         },
       });
       if (exists && exists.length > 0) {
@@ -72,16 +72,16 @@ class ShopH5BindingService extends Service {
       // 1. 获取当前店铺所有绑定的旧数据
       const oldBindings = await ctx.model.ShopH5Binding.findAll({
         where: { shop_id },
-        transaction
+        transaction,
       });
-      
+
       if (oldBindings.length > 0) {
         // 提取旧记录的ID进行硬删除（物理删除），让域名彻底释放
         const oldIds = oldBindings.map(item => item.id);
         await ctx.model.ShopH5Binding.destroy({
           where: { id: { [Op.in]: oldIds } },
           force: true, // 强制物理删除
-          transaction
+          transaction,
         });
       }
 

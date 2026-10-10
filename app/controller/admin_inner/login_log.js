@@ -16,7 +16,7 @@ class LoginLogController extends Controller {
     const { ctx, service } = this;
     // 模拟传入 A 端的权限对象，以支持在 Service 中按照 shop_id 进行过滤
     const adminUser = { user_type: 1 };
-    
+
     // 使用 adminLoginLogs 方法，保持和B端获取后台登录日志一致的返回结构
     const result = await service.sysLog.adminLoginLogs(ctx.query, adminUser);
 

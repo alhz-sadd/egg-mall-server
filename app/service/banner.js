@@ -127,7 +127,7 @@ class BannerService extends Service {
             update_user_id: ctx.state.adminInner ? ctx.state.adminInner.adminInnerId : null,
             update_time: new Date(),
           },
-          { where: { source_template_id: currentTemplate.id, config_type: 1, is_deleted: 0 } }
+          { where: { source_template_id: currentTemplate.id, config_type: 1, is_deleted: 0 } },
         );
       }
 

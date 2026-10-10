@@ -20,12 +20,12 @@ class CustomerServiceService extends Service {
     if (keyword) {
       where.service_name = { [Op.like]: `%${keyword}%` };
     }
-    
+
     // 如果传入了 type (比如 'Telegram')，做类型筛选
     if (type) {
       where.contact_type = type;
     }
-    
+
     // 如果显式传入了 shop_id (即使是0)，则按 shop_id 过滤
     if (shop_id !== undefined) {
       where.shop_id = shop_id;
@@ -40,19 +40,19 @@ class CustomerServiceService extends Service {
       offset,
       limit,
     });
-    
+
     // 轮询分配逻辑 (仅在不分页或获取所有时才有意义，但如果在列表接口，可以随机打乱或根据 Redis 计数分配)
     // 这里实现一个基于 Redis 的简单轮询分配逻辑，如果查询结果有多个
     let assignedList = rows;
-    
+
     // 如果前端没有显式要求分页，或者只取一条数据来分配客服 (通常是前端只取1条)
     // 也可以在后端直接做随机返回，避免所有人都加同一个客服
     if (rows.length > 1) {
-       // 我们可以在内存里做个简单的随机，或者根据时间戳，让前端获取到的第一个始终不同
-       // 下面提供一种基于当前时间的伪随机位移，让列表循环滚动，实现"平均返回"
-       // 例如：第一秒 [A, B, C], 第二秒 [B, C, A]
-       const shift = Math.floor(Date.now() / 1000) % rows.length;
-       assignedList = rows.slice(shift).concat(rows.slice(0, shift));
+      // 我们可以在内存里做个简单的随机，或者根据时间戳，让前端获取到的第一个始终不同
+      // 下面提供一种基于当前时间的伪随机位移，让列表循环滚动，实现"平均返回"
+      // 例如：第一秒 [A, B, C], 第二秒 [B, C, A]
+      const shift = Math.floor(Date.now() / 1000) % rows.length;
+      assignedList = rows.slice(shift).concat(rows.slice(0, shift));
     }
 
     return {
@@ -129,7 +129,7 @@ class CustomerServiceService extends Service {
     const { ctx } = this;
 
     ctx.assert(payload.service_name || payload.name, 422, '客服名称不能为空');
-    
+
     // 如果是 Telegram 类型，且前端没有传入 jump_url，但传了 contact_value (比如 tg号)
     // 我们可以自动拼接 jump_url
     let jumpUrl = payload.jump_url || payload.link || '';
@@ -140,9 +140,9 @@ class CustomerServiceService extends Service {
     if (typeof contactType === 'string') contactType = parseInt(contactType, 10);
 
     const contactValue = payload.contact_value || payload.contact || '';
-    
+
     if (!jumpUrl && contactValue) {
-      if (contactType === 2) { 
+      if (contactType === 2) {
         // 去除可能的 @ 符号
         const cleanTg = contactValue.replace('@', '');
         jumpUrl = `https://telegram.me/${cleanTg}`;
@@ -188,7 +188,7 @@ class CustomerServiceService extends Service {
     if (payload.sort !== undefined) updateData.sort = payload.sort;
     if (payload.status !== undefined) updateData.status = payload.status;
     if (payload.remark !== undefined) updateData.remark = payload.remark;
-    
+
     // 如果是 Telegram 或 WhatsApp，且修改了账号，自动更新链接
     let currentType = updateData.contact_type !== undefined ? updateData.contact_type : customerService.contact_type;
     if (currentType === 'Telegram') currentType = 2;
@@ -196,7 +196,7 @@ class CustomerServiceService extends Service {
     if (typeof currentType === 'string') currentType = parseInt(currentType, 10);
 
     const currentContact = updateData.contact_value || customerService.contact_value;
-    
+
     // 如果没有传入新的 jump_url，并且修改了账号或者是新建的需要补全链接
     if (currentContact && !updateData.jump_url && !payload.jump_url) {
       if (currentType === 2) {

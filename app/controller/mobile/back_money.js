@@ -21,7 +21,7 @@ class BackMoneyController extends Controller {
     const result = await service.backMoney.getUserBackMoney(userId);
 
     ctx.body = {
-      msg: '操作成功',
+      message: ctx.__('common.success'),
       code: 200,
       data: result,
       status: true,

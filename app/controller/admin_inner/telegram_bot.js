@@ -31,10 +31,10 @@ class TelegramBotController extends Controller {
         {
           model: ctx.model.Shop,
           as: 'shop',
-          attributes: ['shop_id', 'shop_name'],
+          attributes: [ 'shop_id', 'shop_name' ],
         },
       ],
-      order: [['shop_id', 'ASC']],
+      order: [[ 'shop_id', 'ASC' ]],
       offset,
       limit,
     });

@@ -237,7 +237,7 @@ class ShopService extends Service {
    * @param {number} shop_id 店铺ID
    */
   async destroy(shop_id) {
-    const { ctx, app } = this;
+    const { ctx } = this;
     const shop = await ctx.model.Shop.findByPk(shop_id);
     if (!shop) {
       ctx.throw(404, '店铺不存在');
@@ -277,7 +277,7 @@ class ShopService extends Service {
         'user_withdraw',
         'sales_recharge_address',
         'recharge_order',
-        'user_operate_log'
+        'user_operate_log',
       ];
 
       for (const table of shopRelatedTables) {
@@ -306,7 +306,7 @@ class ShopService extends Service {
           'user_tasks',
           'user_commission_log',
           'user_task_income_log',
-          'user_task_stat'
+          'user_task_stat',
         ];
 
         for (const table of userRelatedTables) {

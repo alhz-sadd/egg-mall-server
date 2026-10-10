@@ -110,7 +110,7 @@ class PointsGiveService extends Service {
     if (give_type) where.give_type = give_type;
 
     if (start_time && end_time) {
-      const { Op } = app.Sequelize;
+      const { Op } = this.app.Sequelize;
       where.create_time = {
         [Op.between]: [ new Date(start_time), new Date(end_time) ],
       };

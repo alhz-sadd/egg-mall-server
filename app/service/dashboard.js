@@ -247,7 +247,7 @@ class DashboardService extends Service {
       month: {
         recharge_amount: monthRechargeAmount,
         withdraw_amount: monthWithdrawAmount,
-      }
+      },
     };
   }
 }

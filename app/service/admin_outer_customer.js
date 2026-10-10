@@ -556,7 +556,7 @@ class AdminOuterCustomerService extends Service {
 
       const firstRechargeInfo = firstRechargeMap[row.user_id] || {};
       const latestLoginInfo = loginLogMapResult[row.user_id] || {};
-      
+
       const currentLoginIp = latestLoginInfo.login_ip || row.last_login_ip;
 
       return {

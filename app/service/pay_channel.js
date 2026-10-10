@@ -125,7 +125,7 @@ class PayChannelService extends Service {
             ...syncPayload,
             update_time: new Date(),
           },
-          { where: { source_template_id: id } }
+          { where: { source_template_id: id } },
         );
       }
     }

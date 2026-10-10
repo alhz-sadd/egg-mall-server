@@ -18,7 +18,6 @@ import 'egg-view';
 import 'egg-sequelize';
 import 'egg-redis';
 import 'egg-jwt';
-import 'egg-bcrypt';
 import 'egg-cors';
 import 'egg-swagger-doc';
 import 'egg-validate';
@@ -41,7 +40,6 @@ declare module 'egg' {
     sequelize?: EggPluginItem;
     redis?: EggPluginItem;
     jwt?: EggPluginItem;
-    bcrypt?: EggPluginItem;
     cors?: EggPluginItem;
     swaggerdoc?: EggPluginItem;
     validate?: EggPluginItem;

@@ -9,14 +9,14 @@ class H5ServiceController extends Controller {
   async list() {
     const { ctx } = this;
     const query = { ...ctx.query };
-    
+
     // 如果路由带有 shop_id，则覆盖；如果没有带，则强制设为0，只返回平台模板
     if (ctx.params.shop_id !== undefined) {
       query.shop_id = ctx.params.shop_id;
     } else {
       query.shop_id = 0;
     }
-    
+
     const result = await ctx.service.h5Service.list(query);
 
     // 兼容前端字段名 (将 avatar 映射为 image 和 imageUrl)
@@ -68,7 +68,7 @@ class H5ServiceController extends Controller {
     if (body.shop_id === undefined) {
       body.shop_id = 0; // 默认全局
     }
-    
+
     // 如果是 Telegram 或 WhatsApp 类型，且前端没有传入 jump_url，但传了 contact_value (比如 tg号)
     // 我们可以自动拼接 jump_url (交由 service 层处理)
     const adminId = ctx.state.adminInner.adminInnerId;
@@ -102,7 +102,7 @@ class H5ServiceController extends Controller {
     if (body.link && !body.jump_url) body.jump_url = body.link;
     if (body.image && !body.avatar) body.avatar = body.image;
     if (body.imageUrl && !body.avatar) body.avatar = body.imageUrl;
-    
+
     // 如果是 Telegram 或 WhatsApp 类型，且前端没有传入 jump_url，但传了 contact_value (比如 tg号)
     // 我们可以自动拼接 jump_url
     if (body.contact_value && !body.jump_url) {

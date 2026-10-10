@@ -48,7 +48,7 @@ class MobileRechargeController extends Controller {
     const pendingRecharge = await ctx.model.UserRecharge.findOne({
       where: { user_id: userId, status: 1 },
     });
-    
+
     if (pendingRecharge) {
       ctx.throw(423, ctx.__('recharge.has_pending_recharge'));
     }
@@ -88,7 +88,7 @@ class MobileRechargeController extends Controller {
         // 查出用户信息获取用户名
         const user = await ctx.model.SysUser.findByPk(userId);
         const userName = user ? (user.username || user.nickname || '未知用户') : '未知用户';
-        
+
         // 查出业务员信息获取业务员名称
         let salesmanName = '无归属';
         if (relation.salesman_user_id) {
