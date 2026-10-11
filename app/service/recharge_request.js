@@ -293,28 +293,43 @@ class RechargeRequestService extends Service {
     // 事务：更新请求 + 给用户加余额
     const transaction = await ctx.model.transaction();
     try {
-      await request.update({
+      // 重新在事务内锁定记录，防止并发点击审核导致重复加钱
+      const lockRequest = await ctx.model.UserRecharge.findOne({
+        where: { id: Number(recharge_id), status: 1 },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (!lockRequest) {
+        ctx.throw(422, ctx.__('recharge.recharge_request_processed') || '该充值请求已处理，请勿重复操作');
+      }
+
+      await lockRequest.update({
         status: 2, // 审核通过
-        remark: remark || request.remark,
+        remark: remark || lockRequest.remark,
         audit_time: new Date(),
         audit_user_id: ctx.state.admin ? ctx.state.admin.adminId : 0,
       }, { transaction });
 
       // 更新钱包余额
-      const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: user.user_id }, transaction });
+      const wallet = await ctx.model.UserWallet.findOne({ 
+        where: { user_id: user.user_id }, 
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
       if (wallet) {
         // 用户走充值，并且B端通过的金额是 recharge_balance，同时总余额 balance 也增加
         await wallet.increment({
-          balance: Number(request.user_receive_amount),
-          recharge_balance: Number(request.user_receive_amount),
-          total_recharge_amount: Number(request.amount),
+          balance: Number(lockRequest.user_receive_amount),
+          recharge_balance: Number(lockRequest.user_receive_amount),
+          total_recharge_amount: Number(lockRequest.amount),
         }, { transaction });
       } else {
         await ctx.model.UserWallet.create({
           user_id: user.user_id,
-          balance: Number(request.user_receive_amount),
-          recharge_balance: Number(request.user_receive_amount),
-          total_recharge_amount: Number(request.amount),
+          balance: Number(lockRequest.user_receive_amount),
+          recharge_balance: Number(lockRequest.user_receive_amount),
+          total_recharge_amount: Number(lockRequest.amount),
         }, { transaction });
       }
 
@@ -326,13 +341,13 @@ class RechargeRequestService extends Service {
           const userName = user.username || user.nickname || '未知用户';
 
           let salesmanName = '无归属';
-          if (request.sales_user_id) {
-            const salesman = await ctx.model.SysUser.findByPk(request.sales_user_id);
+          if (lockRequest.sales_user_id) {
+            const salesman = await ctx.model.SysUser.findByPk(lockRequest.sales_user_id);
             salesmanName = salesman ? (salesman.username || salesman.nickname || '未知业务员') : '未知业务员';
           }
 
-          const msg = `✅ <b>充值成功</b>\n\n👤 用户名称: ${userName}\n💵 充值金额: ${request.amount}\n👔 业务员名称: ${salesmanName}`;
-          await ctx.service.telegram.sendMessage(msg, request.shop_id || 0);
+          const msg = `✅ <b>充值成功</b>\n\n👤 用户名称: ${userName}\n💵 充值金额: ${lockRequest.amount}\n👔 业务员名称: ${salesmanName}`;
+          await ctx.service.telegram.sendMessage(msg, lockRequest.shop_id || 0);
         } catch (err) {
           ctx.logger.error('[Telegram] 充值成功通知发送失败:', err);
         }

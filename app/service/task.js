@@ -189,6 +189,19 @@ class TaskService extends Service {
     const todayStr = dayjs().format('YYYY-MM-DD');
     const yesterdayStr = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
 
+    // 优先从 Redis 获取缓存 (缓存时间 10 秒)
+    const cacheKey = `user_task_info:${dbUserId}`;
+    if (ctx.app.redis) {
+      try {
+        const cachedData = await ctx.app.redis.get(cacheKey);
+        if (cachedData) {
+          return JSON.parse(cachedData);
+        }
+      } catch (err) {
+        ctx.logger.warn(`[TaskService.getUserTaskInfo] Redis 获取缓存失败: ${err.message}`);
+      }
+    }
+
     // 1. 使用 Promise.all 并行执行无依赖的查询，大幅提升接口响应速度
     const [ userWallet, todayStat, yesterdayStat, currentTaskUser ] = await Promise.all([
       ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } }),
@@ -237,7 +250,7 @@ class TaskService extends Service {
       hasMoney = balance.toFixed(2);
     }
 
-    return {
+    const result = {
       freeze_voucher_balance: userWallet ? Number(userWallet.freeze_voucher_balance || 0).toFixed(2) : '0.00', // 冻结金额
       has_money: hasMoney,
       num: sumNum, // 当前任务总数量
@@ -246,6 +259,21 @@ class TaskService extends Service {
       revenue_yesterday: yesterdayIncomeVal.toFixed(2), // 昨日收益
       is_open: isOpen, // 是否已开启任务 0未开启，1已开启
     };
+
+    // 存入 Redis 缓存 (10 秒，保护数据库防击穿)
+    if (ctx.app.redis) {
+      try {
+        // 自定义 replacer 处理 BigInt 防止低版本/序列化报错
+        const jsonStr = JSON.stringify(result, (key, value) => 
+          typeof value === 'bigint' ? value.toString() : value
+        );
+        await ctx.app.redis.set(cacheKey, jsonStr, 'EX', 10);
+      } catch (err) {
+        ctx.logger.warn(`[TaskService.getUserTaskInfo] Redis 设置缓存失败: ${err.message}`);
+      }
+    }
+
+    return result;
   }
 
   async search(userId) {
@@ -389,6 +417,15 @@ class TaskService extends Service {
     // (原 4. 检查余额逻辑已移动到 3. 上方)
 
     // 5. 获取当前要进行的任务子项 (status = 0, is_processing = 0)
+    // 引入 Redis 分布式锁，防止用户连点瞬间生成多个订单
+    const searchLockKey = `search_task_lock:${userId}`;
+    if (ctx.app.redis) {
+      const acquired = await ctx.app.redis.set(searchLockKey, 'locked', 'EX', 3, 'NX');
+      if (!acquired) {
+        ctx.throw(429, ctx.__('task.task_is_generating') || '任务生成中，请勿重复点击');
+      }
+    }
+
     const nextProgress = await ctx.model.ShopTaskUserItemProgress.findOne({
       where: {
         shop_task_user_id: shopTaskUser.id,
@@ -426,6 +463,12 @@ class TaskService extends Service {
 
     let waresModel = null;
     let goodsPrice = 0;
+
+    // --- 这里加上一层双重保险，如果生成前发现余额不足，直接拒绝 ---
+    // (前面 3. 拦截了总余额 < shopTask.min_amount，但幸运订单可能需要 balance+appendAmount，这里更精细拦截)
+    if (totalBalance < 0) {
+       ctx.throw(400, ctx.__('wallet.balance_not_enough') || '余额不足');
+    }
 
     if (ruleType === 2) {
       // 手动匹配

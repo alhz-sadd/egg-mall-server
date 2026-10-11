@@ -96,7 +96,8 @@ module.exports = () => {
         body.stack = err.stack;
       }
 
-      ctx.status = 200;
+      // 修复：不要强制返回 HTTP 200，应返回真实的 HTTP 状态码（如 500, 401, 422 等），以便前端 axios 拦截器能正确捕获异常
+      ctx.status = status;
       ctx.body = body;
     }
   };

@@ -45,6 +45,12 @@ class OrderController extends Controller {
    */
   async index() {
     const { ctx, service } = this;
+
+    // 强制禁用移动端 GET 请求缓存
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     const { userId } = ctx.state.user;
     const { status, page, page_size } = ctx.query;
 
@@ -67,6 +73,12 @@ class OrderController extends Controller {
    */
   async show() {
     const { ctx, service } = this;
+    
+    // 强制禁用移动端 GET 请求缓存
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     const { userId } = ctx.state.user;
     const { id } = ctx.params;
 
@@ -142,6 +154,12 @@ class OrderController extends Controller {
    */
   async orderMsg() {
     const { ctx, service } = this;
+    
+    // 强制禁用移动端 GET 请求缓存，防止订单状态不刷新
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     try {
       const { userId } = ctx.state.user;
       const { orderId } = ctx.request.body;

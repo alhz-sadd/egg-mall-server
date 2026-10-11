@@ -685,6 +685,20 @@ class UserService extends Service {
    */
   async getBalance(id) {
     const { ctx } = this;
+    
+    // 优先从 Redis 获取缓存 (缓存时间 5 秒，资金数据时效性要求较高)
+    const cacheKey = `user_balance:${id}`;
+    if (ctx.app.redis) {
+      try {
+        const cachedData = await ctx.app.redis.get(cacheKey);
+        if (cachedData) {
+          return JSON.parse(cachedData);
+        }
+      } catch (err) {
+        ctx.logger.warn(`[UserService.getBalance] Redis 获取缓存失败: ${err.message}`);
+      }
+    }
+
     const user = await this.findUserByIdentifier(id);
     if (!user) {
       ctx.throw(404, ctx.__('user.user_not_exist'));
@@ -692,10 +706,25 @@ class UserService extends Service {
 
     const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: user.user_id } });
 
-    return {
+    const result = {
       user_id: user.user_id,
       balance: wallet ? wallet.balance : 0,
     };
+
+    // 存入 Redis 缓存
+    if (ctx.app.redis) {
+      try {
+        // 自定义 replacer 处理 BigInt 防止低版本/序列化报错
+        const jsonStr = JSON.stringify(result, (key, value) => 
+          typeof value === 'bigint' ? value.toString() : value
+        );
+        await ctx.app.redis.set(cacheKey, jsonStr, 'EX', 5);
+      } catch (err) {
+        ctx.logger.warn(`[UserService.getBalance] Redis 设置缓存失败: ${err.message}`);
+      }
+    }
+
+    return result;
   }
 
   /**

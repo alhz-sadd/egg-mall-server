@@ -277,6 +277,12 @@ class MobileWithdrawController extends Controller {
    */
   async list() {
     const { ctx } = this;
+    
+    // 强制禁用移动端 GET 请求缓存
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
     const { page = 1, page_size = 10, status } = ctx.query;
 
@@ -314,6 +320,12 @@ class MobileWithdrawController extends Controller {
    */
   async getConfig() {
     const { ctx } = this;
+    
+    // 强制禁用移动端 GET 请求缓存
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     if (!userId) {

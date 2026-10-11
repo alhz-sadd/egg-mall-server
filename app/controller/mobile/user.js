@@ -16,6 +16,10 @@ class UserController extends Controller {
    */
   async register() {
     const { ctx, service } = this;
+
+    // 获取注册 IP
+    const clientIp = ctx.ip || ctx.request.ip || '127.0.0.1';
+
     const { phone, password, confirm_password, invite_code, user_phone, user_password, user_invite_code } = ctx.request.body;
 
     // 兼容两种参数名，并确保是字符串后去除首尾空格
@@ -28,9 +32,6 @@ class UserController extends Controller {
     ctx.assert(registerPassword, 422, ctx.__('auth.pwd_empty'));
     ctx.assert(registerPassword.length >= 6, 422, ctx.__('auth.pwd_length_error'));
     ctx.assert(confirm_password, 422, ctx.__('auth.confirm_pwd_empty'));
-
-    // 获取注册 IP
-    const clientIp = ctx.ip || ctx.request.ip || '127.0.0.1';
 
     const user = await service.user.register({
       user_phone: registerPhone,
@@ -231,6 +232,12 @@ class UserController extends Controller {
    */
   async balance() {
     const { ctx, service } = this;
+
+    // 强制禁用移动端 GET 请求缓存
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const result = await service.user.getBalance(userId);

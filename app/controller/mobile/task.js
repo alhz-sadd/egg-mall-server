@@ -56,6 +56,12 @@ class TaskController extends Controller {
    */
   async getUserTaskInfo() {
     const { ctx, service } = this;
+    
+    // 禁用移动端 GET 请求缓存，防止 Telegram WebApp 或部分安卓浏览器强缓存导致数据不刷新
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     try {
       // 兼容多种 userId 的解析方式
       const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;

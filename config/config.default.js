@@ -55,7 +55,12 @@ module.exports = appInfo => {
     tmpdir: path.join(appInfo.baseDir, 'run/multipart-tmp'),
   };
   config.cluster = {
-    workers: 1, // 开启 4 个 worker 进程
+    listen: {
+      port: 7001,
+      hostname: '0.0.0.0',
+    },
+    // 注意：高并发场景下切勿将 workers 锁死为 1。注释掉或设为 CPU 核心数，充分利用多核性能
+    // workers: 1, 
   };
   // OSS 配置
   config.oss = {
@@ -82,6 +87,13 @@ module.exports = appInfo => {
       timestamps: true,
       createdAt: 'created_at',
       updatedAt: 'updated_at',
+    },
+    // 增加连接池配置，防止高并发下连接被打满导致查询超时 (Telegram场景)
+    pool: {
+      max: 100, // 最大连接数（默认是 5，非常小）
+      min: 0,
+      acquire: 30000, // 获取连接的超时时间（毫秒）
+      idle: 10000, // 连接空闲释放时间（毫秒）
     },
     // 开发环境可开启 SQL 日志
     logging: process.env.NODE_ENV === 'development' ? console.log : false,

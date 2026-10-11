@@ -105,5 +105,34 @@ module.exports = app => {
     app.model.UserWallet.belongsTo(app.model.SysUser, { foreignKey: 'user_id', as: 'user' });
   };
 
+  // 增加 Hook，当用户钱包金额发生变动时，主动清除 Redis 缓存，防止出现前端显示旧金额的问题
+  const clearWalletCache = async (wallet, options) => {
+    if (app.redis && wallet && wallet.user_id) {
+      try {
+        const userId = wallet.user_id;
+        await app.redis.del(`user_balance:${userId}`);
+        await app.redis.del(`user_task_info:${userId}`);
+      } catch (err) {
+        app.logger.warn(`[UserWallet Hook] 清除钱包 Redis 缓存失败: ${err.message}`);
+      }
+    }
+  };
+
+  // 注意：批量更新 (Model.update) 需要设置 individualHooks: true 才会触发这里的 hook
+  // 但即便没设置 individualHooks，Egg 也会提供 afterBulkUpdate 钩子
+  UserWallet.afterSave(clearWalletCache);
+  UserWallet.afterDestroy(clearWalletCache);
+  UserWallet.afterBulkUpdate(async (options) => {
+    if (app.redis && options && options.where && options.where.user_id) {
+      try {
+        const userId = options.where.user_id;
+        await app.redis.del(`user_balance:${userId}`);
+        await app.redis.del(`user_task_info:${userId}`);
+      } catch (err) {
+        app.logger.warn(`[UserWallet Hook] 批量更新清除钱包 Redis 缓存失败: ${err.message}`);
+      }
+    }
+  });
+
   return UserWallet;
 };

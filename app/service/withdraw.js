@@ -110,44 +110,50 @@ class WithdrawService extends Service {
     const user = await this.getUserByIdOrCode(userId);
     ctx.assert(user, 422, ctx.__('user.user_not_exist'));
 
-    // 获取用户钱包
-    const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: user.user_id } });
-    ctx.assert(wallet, 422, ctx.__('wallet.wallet_not_exist'));
-    const userBalance = Number(wallet.balance || 0);
-
-    ctx.logger.info('[WithdrawService.create] 用户存在校验通过，用户ID: %s，当前余额: %s', userId, userBalance);
+    // 引入 Redis 分布式锁，防止用户连点疯狂并发提现
+    const lockKey = `withdraw_lock:${user.user_id}`;
+    if (ctx.app.redis) {
+      const acquired = await ctx.app.redis.set(lockKey, 'locked', 'EX', 3, 'NX');
+      if (!acquired) {
+        ctx.throw(429, ctx.__('withdraw.withdraw_is_processing') || '提现处理中，请勿重复点击');
+      }
+    }
 
     // 检查是否已有待审核的提现订单
     const pendingWithdraw = await ctx.model.WithdrawRecord.findOne({
       where: { user_id: user.id, status: 0 },
     });
     if (pendingWithdraw) {
-      // 抛出自定义状态码 423 (或你可以跟前端约定的其他码)，并附带特定 message，方便前端做多语言拦截
       ctx.throw(423, ctx.__('withdraw.has_pending_withdraw'));
     }
 
-    // 解析归属业务员信息（提现创建时即写入，列表/审核时可直接展示）
+    // 解析归属业务员信息
     const { adminId, adminName } = await this.resolveSalespersonAdmin(user);
-    ctx.logger.info('[WithdrawService.create] 归属业务员解析结果: adminId=%s, adminName=%s', adminId, adminName);
 
-    // 校验提现密码（兼容历史 bcrypt 密文和当前明文）
+    // 校验提现密码
     ctx.assert(user_withdraw_password !== undefined && user_withdraw_password !== '', 422, ctx.__('withdraw.withdraw_pwd_empty'));
     const isPlain = !user.user_withdraw_password || !user.user_withdraw_password.startsWith('$2a$');
     const match = isPlain ? user_withdraw_password === user.user_withdraw_password : await ctx.compare(user_withdraw_password, user.user_withdraw_password);
-    ctx.logger.info('[WithdrawService.create] 提现密码校验结果: %s，密码类型: %s', match ? '通过' : '失败', isPlain ? '明文' : 'bcrypt');
     ctx.assert(match, 422, ctx.__('withdraw.withdraw_pwd_error'));
-
-    const balanceEnough = userBalance >= money;
-    ctx.logger.info('[WithdrawService.create] 余额校验，当前余额: %s，提现金额: %s，是否充足: %s', userBalance, money, balanceEnough ? '是' : '否');
-    ctx.assert(balanceEnough, 422, ctx.__('wallet.balance_not_enough'));
 
     // 简单计算：手续费为提现金额的 3%，到账金额 = 提现金额 - 手续费
     const sxMoney = Number((money * 0.03).toFixed(2));
     const takeMoney = Number((money - sxMoney).toFixed(2));
-    ctx.logger.info('[WithdrawService.create] 费用计算，提现金额: %s，手续费: %s，到账金额: %s', money, sxMoney, takeMoney);
 
     const transaction = await ctx.model.transaction();
     try {
+      // 在事务内获取钱包，并加上排他锁 FOR UPDATE 防止并发脏读
+      const wallet = await ctx.model.UserWallet.findOne({ 
+        where: { user_id: user.user_id },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      ctx.assert(wallet, 422, ctx.__('wallet.wallet_not_exist'));
+      
+      const userBalance = Number(wallet.balance || 0);
+      const balanceEnough = userBalance >= money;
+      ctx.assert(balanceEnough, 422, ctx.__('wallet.balance_not_enough'));
+
       const request = await ctx.model.WithdrawRecord.create({
         user_id: user.id, // 使用主键ID存储到提现记录表
         admin_id: adminId || null,
@@ -163,9 +169,8 @@ class WithdrawService extends Service {
         remark: remark || null,
       }, { transaction });
 
-      // 创建时先扣除钱包余额
-      const beforeBalance = userBalance;
-      const afterBalance = beforeBalance - money;
+      // 创建时先扣除钱包余额 (由于已经锁定了行，直接在内存计算减去即可，或者用literal)
+      const afterBalance = userBalance - money;
       await wallet.update({ balance: afterBalance }, { transaction });
       await transaction.commit();
 
@@ -442,7 +447,18 @@ class WithdrawService extends Service {
 
     const transaction = await ctx.model.transaction();
     try {
-      await request.update({
+      // 重新在事务内锁定该提现记录，防止并发点击审核导致重复退款
+      const lockRequest = await ctx.model.WithdrawRecord.findOne({
+        where: { id: recordId, status: 0 },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+
+      if (!lockRequest) {
+        ctx.throw(422, ctx.__('withdraw.withdraw_request_processed') || '该提现记录已处理，请勿重复操作');
+      }
+
+      await lockRequest.update({
         status: 2,
         admin_id: finalAdminId,
         admin_name: finalAdminName,
@@ -450,10 +466,14 @@ class WithdrawService extends Service {
         remark: remark || null,
       }, { transaction });
 
-      // 审核失败，把提现金额退回到用户钱包余额
-      const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: request.user_id }, transaction });
+      // 审核失败，把提现金额退回到用户钱包余额 (加锁防止脏读)
+      const wallet = await ctx.model.UserWallet.findOne({ 
+        where: { user_id: lockRequest.user_id }, 
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
       if (wallet) {
-        await wallet.update({ balance: Number(wallet.balance) + Number(request.amount) }, { transaction });
+        await wallet.update({ balance: Number(wallet.balance) + Number(lockRequest.amount) }, { transaction });
       }
 
       await transaction.commit();

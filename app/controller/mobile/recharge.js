@@ -119,6 +119,12 @@ class MobileRechargeController extends Controller {
    */
   async list() {
     const { ctx } = this;
+    
+    // 强制禁用移动端 GET 请求缓存
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
     if (!userId) {
       ctx.throw(401, ctx.__('common.not_logged_in'));
@@ -167,6 +173,12 @@ class MobileRechargeController extends Controller {
    */
   async address() {
     const { ctx } = this;
+    
+    // 强制禁用移动端 GET 请求缓存
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     const userId = ctx.state.user.userId || ctx.state.user.id || ctx.state.user.user_id;
 
     // 1. 获取用户的业务员和店铺信息
