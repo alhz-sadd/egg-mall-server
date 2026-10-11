@@ -113,16 +113,8 @@ class UserController extends Controller {
    */
   async logout() {
     const { ctx, service } = this;
-    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
-    const meta = this.getLoginMeta();
-
-    await service.user.recordLoginLog({
-      user_id: userId,
-      operation: '退出成功',
-      status: 0,
-      ...meta,
-    });
-
+    
+    // 取消了个人中心的登出日志记录
     ctx.body = {
       code: 200,
       message: ctx.__('auth.logout_success'),
