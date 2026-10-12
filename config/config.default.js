@@ -36,8 +36,8 @@ module.exports = appInfo => {
   // JWT 配置
   config.jwt = {
     secret: process.env.JWT_SECRET || 'a_very_secure_and_random_string_for_production',
-    expiresIn: '7h', // Access Token 过期时间
-    refreshExpiresIn: '30d', // Refresh Token 过期时间
+    expiresIn: '2h', // Access Token 过期时间
+    refreshExpiresIn: '7d', // Refresh Token 过期时间
   };
 
   // bcrypt 密码加密配置
