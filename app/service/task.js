@@ -18,15 +18,15 @@ class TaskService extends Service {
 
     const where = { status: 1 };
     if (keyword) {
-      where.title = { [Op.like]: `%${keyword}%` };
+      where.task_name = { [Op.like]: `%${keyword}%` };
     }
 
     const offset = (Number(page) - 1) * Number(page_size);
     const limit = Number(page_size);
 
-    const { count, rows } = await ctx.model.Task.findAndCountAll({
+    const { count, rows } = await ctx.model.ShopTask.findAndCountAll({
       where,
-      order: [[ 'sort', 'DESC' ], [ 'id', 'DESC' ]],
+      order: [[ 'sort', 'DESC' ], [ 'task_id', 'DESC' ]],
       offset,
       limit,
     });
@@ -50,31 +50,31 @@ class TaskService extends Service {
    */
   async adminList(query = {}) {
     const { ctx } = this;
-    const { keyword, status, price_min, price_max, page = 1, page_size = 10 } = query;
+    const { keyword, status, yield_rate_min, yield_rate_max, page = 1, page_size = 10 } = query;
 
     const where = {};
     if (keyword) {
-      where.title = { [Op.like]: `%${keyword}%` };
+      where.task_name = { [Op.like]: `%${keyword}%` };
     }
     if (status !== undefined && status !== null && status !== '') {
       where.status = Number(status);
     }
-    if (price_min !== undefined || price_max !== undefined) {
-      where.price = {};
-      if (price_min !== undefined) {
-        where.price[Op.gte] = Number(price_min);
+    if (yield_rate_min !== undefined || yield_rate_max !== undefined) {
+      where.yield_rate = {};
+      if (yield_rate_min !== undefined) {
+        where.yield_rate[Op.gte] = Number(yield_rate_min);
       }
-      if (price_max !== undefined) {
-        where.price[Op.lte] = Number(price_max);
+      if (yield_rate_max !== undefined) {
+        where.yield_rate[Op.lte] = Number(yield_rate_max);
       }
     }
 
     const offset = (Number(page) - 1) * Number(page_size);
     const limit = Number(page_size);
 
-    const { count, rows } = await ctx.model.Task.findAndCountAll({
+    const { count, rows } = await ctx.model.ShopTask.findAndCountAll({
       where,
-      order: [[ 'sort', 'DESC' ], [ 'id', 'DESC' ]],
+      order: [[ 'sort', 'DESC' ], [ 'task_id', 'DESC' ]],
       offset,
       limit,
     });
@@ -83,7 +83,7 @@ class TaskService extends Service {
       const json = item.toJSON ? item.toJSON() : item;
       return {
         ...json,
-        productName: json.title,
+        productName: json.task_name,
       };
     });
 
@@ -128,7 +128,7 @@ class TaskService extends Service {
     const { ctx } = this;
     this.validatePayload(payload);
 
-    const task = await ctx.model.Task.create(payload);
+    const task = await ctx.model.ShopTask.create(payload);
     return task.toJSON();
   }
 
@@ -140,7 +140,7 @@ class TaskService extends Service {
    */
   async update(id, payload) {
     const { ctx } = this;
-    const task = await ctx.model.Task.findByPk(id);
+    const task = await ctx.model.ShopTask.findByPk(id);
     if (!task) {
       ctx.throw(404, ctx.__('task.task_not_exist'));
     }
@@ -155,7 +155,7 @@ class TaskService extends Service {
    */
   async destroy(id) {
     const { ctx } = this;
-    const task = await ctx.model.Task.findByPk(id);
+    const task = await ctx.model.ShopTask.findByPk(id);
     if (!task) {
       ctx.throw(404, ctx.__('task.task_not_exist'));
     }
@@ -169,8 +169,8 @@ class TaskService extends Service {
    */
   validatePayload(payload) {
     const { ctx } = this;
-    ctx.assert(payload.title, 422, ctx.__('task.task_name_empty'));
-    ctx.assert(payload.price !== undefined, 422, ctx.__('task.task_reward_empty'));
+    ctx.assert(payload.task_name, 422, ctx.__('task.task_name_empty'));
+    ctx.assert(payload.yield_rate !== undefined, 422, ctx.__('task.task_reward_empty'));
   }
 
   /**
@@ -521,15 +521,17 @@ class TaskService extends Service {
       }
     } else {
       // 智能匹配
-      const usedProgresses = await ctx.model.ShopTaskUserItemProgress.findAll({
+      // 获取用户最新一次接单的商品ID（仅防连续重复）
+      const lastProgress = await ctx.model.ShopTaskUserItemProgress.findOne({
         where: {
           shop_task_user_id: shopTaskUser.id,
           user_id: userId,
           goods_id: { [Op.not]: null },
         },
+        order: [[ 'update_time', 'DESC' ]],
         attributes: [ 'goods_id' ],
       });
-      const usedGoodsIds = usedProgresses.map(p => p.goods_id);
+      const lastGoodsId = lastProgress ? lastProgress.goods_id : null;
 
       if (isLuckyOrder === 1 && appendAmount > 0) {
         // 幸运订单且有追加金额：搜索价格大于 (余额+追加金额) 的第一条商品，不扫描全表
@@ -545,8 +547,8 @@ class TaskService extends Service {
           },
         };
 
-        if (usedGoodsIds.length > 0) {
-          goodsWhere.id = { [Op.notIn]: usedGoodsIds };
+        if (lastGoodsId) {
+          goodsWhere.id = { [Op.ne]: lastGoodsId };
         }
 
         waresModel = await ctx.model.GoodsTask.findOne({
@@ -555,7 +557,7 @@ class TaskService extends Service {
           limit: 1,
         });
 
-        if (!waresModel && usedGoodsIds.length > 0) {
+        if (!waresModel && lastGoodsId) {
           // 如果加了去重条件没查到，去掉去重条件再查一次
           delete goodsWhere.id;
           waresModel = await ctx.model.GoodsTask.findOne({
@@ -594,8 +596,8 @@ class TaskService extends Service {
           },
         };
 
-        if (usedGoodsIds.length > 0) {
-          goodsWhere.id = { [Op.notIn]: usedGoodsIds };
+        if (lastGoodsId) {
+          goodsWhere.id = { [Op.ne]: lastGoodsId };
         }
 
         // ① 查询这个价格区间一共有多少条
@@ -603,7 +605,7 @@ class TaskService extends Service {
           where: goodsWhere,
         });
 
-        if (total === 0 && usedGoodsIds.length > 0) {
+        if (total === 0 && lastGoodsId) {
           // 该区间去重后没商品了，说明都出现过了，或者只有这一份商品，允许新一轮搜索
           delete goodsWhere.id;
           total = await ctx.model.GoodsTask.count({
@@ -640,7 +642,7 @@ class TaskService extends Service {
               where: goodsWhere,
             });
 
-            if (total === 0 && usedGoodsIds.length > 0) {
+            if (total === 0 && lastGoodsId) {
               delete goodsWhere.id;
               total = await ctx.model.GoodsTask.count({
                 where: goodsWhere,

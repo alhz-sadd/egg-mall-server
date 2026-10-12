@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': 'لا يمكن أن تكون الصورة الأمامية فارغة',
   'system.reverse_image_empty': 'لا يمكن أن تكون الصورة الخلفية فارغة',
   'task.too_many_people_grabbing': 'يوجد عدد كبير جدًا من الأشخاص الذين يحصلون على الطلبات في هذا الوقت، يرجى المحاولة مرة أخرى لاحقًا.',
+  'task.need_complete_task_to_withdraw': 'تحتاج إلى إكمال المهام قبل السحب',
 };

@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': '表面画像は空にできません',
   'system.reverse_image_empty': '裏面画像は空にできません',
   'task.too_many_people_grabbing': '現在、注文を確定している人が多すぎます。後でもう一度お試しください。',
+  'task.need_complete_task_to_withdraw': '出金する前にタスクを完了する必要があります',
 };

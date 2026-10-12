@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': 'Priekšējais attēls nevar būt tukšs',
   'system.reverse_image_empty': 'Aizmugurējais attēls nevar būt tukšs',
   'task.too_many_people_grabbing': 'Šobrīd pārāk daudz cilvēku mēģina paņemt pasūtījumus, lūdzu, mēģiniet vēlāk.',
+  'task.need_complete_task_to_withdraw': 'Jums ir jāpabeidz uzdevumi pirms līdzekļu izņemšanas',
 };

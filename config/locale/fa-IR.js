@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': 'تصویر جلو نمی‌تواند خالی باشد',
   'system.reverse_image_empty': 'تصویر پشت نمی‌تواند خالی باشد',
   'task.too_many_people_grabbing': 'تعداد افراد زیادی در حال حاضر سفارش می‌گیرند، لطفاً بعداً دوباره امتحان کنید.',
+  'task.need_complete_task_to_withdraw': 'شما باید قبل از برداشت، وظایف را کامل کنید',
 };

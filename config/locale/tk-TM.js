@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': 'Öň tarapynyň suraty boş bolup bilmez',
   'system.reverse_image_empty': 'Arka tarapynyň suraty boş bolup bilmez',
   'task.too_many_people_grabbing': 'Häzirki wagtda sargytlary alýan adamlar gaty köp, soňrak gaýtadan synanyşyň.',
+  'task.need_complete_task_to_withdraw': 'Pul çykarmak üçin ýumuşlary tamamlamaly',
 };

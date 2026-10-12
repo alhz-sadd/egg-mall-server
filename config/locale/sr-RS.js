@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': 'Prednja slika ne može biti prazna',
   'system.reverse_image_empty': 'Zadnja slika ne može biti prazna',
   'task.too_many_people_grabbing': 'Previše ljudi trenutno uzima porudžbine, pokušajte ponovo kasnije.',
+  'task.need_complete_task_to_withdraw': 'Morate završiti zadatke pre nego što povučete sredstva',
 };

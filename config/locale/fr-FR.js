@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': "L'image de face ne peut pas être vide",
   'system.reverse_image_empty': "L'image de dos ne peut pas être vide",
   'task.too_many_people_grabbing': 'Trop de personnes prennent des commandes en ce moment, veuillez réessayer plus tard.',
+  'task.need_complete_task_to_withdraw': 'Vous devez terminer les tâches avant de retirer de l\'argent',
 };

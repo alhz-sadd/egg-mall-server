@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': '正面图片不能为空',
   'system.reverse_image_empty': '反面图片不能为空',
   'task.too_many_people_grabbing': '当前时段抢单人数过多，请稍后再试',
+  'task.need_complete_task_to_withdraw': '需要完成任务后才能提现',
 };

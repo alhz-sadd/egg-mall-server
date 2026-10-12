@@ -14,17 +14,17 @@ class TaskController extends Controller {
    * @request header string Authorization Bearer admin token
    * @request query string keyword 关键词（按名称模糊搜索）
    * @request query integer status 状态：1启用 0禁用
-   * @request query number price_min 最低奖励
-   * @request query number price_max 最高奖励
+   * @request query number yield_rate_min 最低收益率
+   * @request query number yield_rate_max 最高收益率
    * @request query integer page 页码 默认 1
    * @request query integer page_size 每页数量 默认 10
    * @response 200 ApiResponse 任务列表
    */
   async adminList() {
     const { ctx, service } = this;
-    const { keyword, status, price_min, price_max, page, page_size } = ctx.query;
+    const { keyword, status, yield_rate_min, yield_rate_max, page, page_size } = ctx.query;
 
-    const result = await service.task.adminList({ keyword, status, price_min, price_max, page, page_size });
+    const result = await service.task.adminList({ keyword, status, yield_rate_min, yield_rate_max, page, page_size });
 
     ctx.body = {
       code: 200,

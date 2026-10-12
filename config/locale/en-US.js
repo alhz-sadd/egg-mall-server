@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': 'Front image cannot be empty',
   'system.reverse_image_empty': 'Reverse side image cannot be empty',
   'task.too_many_people_grabbing': 'Too many people grabbing orders at this time, please try again later.',
+  'task.need_complete_task_to_withdraw': 'You need to complete the tasks before withdrawing',
 };

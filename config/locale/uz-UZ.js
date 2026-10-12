@@ -140,4 +140,5 @@ module.exports = {
   'system.front_image_empty': "Old tomon rasmi bo'sh bo'lishi mumkin emas",
   'system.reverse_image_empty': "Orqa tomon rasmi bo'sh bo'lishi mumkin emas",
   'task.too_many_people_grabbing': 'Ayni vaqtda buyurtmalarni olayotganlar juda ko\'p, iltimos keyinroq qayta urinib ko\'ring.',
+  'task.need_complete_task_to_withdraw': 'Pul yechib olishdan oldin vazifalarni bajarishingiz kerak',
 };

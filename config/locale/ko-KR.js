@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': '전면 이미지는 비워둘 수 없습니다',
   'system.reverse_image_empty': '후면 이미지는 비워둘 수 없습니다',
   'task.too_many_people_grabbing': '현재 너무 많은 사람들이 주문을 잡고 있습니다. 나중에 다시 시도해 주세요.',
+  'task.need_complete_task_to_withdraw': '출금하기 전에 작업을 완료해야 합니다',
 };

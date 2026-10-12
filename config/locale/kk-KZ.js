@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': 'Алдыңғы кескін бос болмауы керек',
   'system.reverse_image_empty': 'Артқы кескін бос болмауы керек',
   'task.too_many_people_grabbing': 'Қазіргі уақытта тапсырыстарды алушылар тым көп, кейінірек қайталап көріңіз.',
+  'task.need_complete_task_to_withdraw': 'Қаражатты алу алдында тапсырмаларды орындау қажет',
 };

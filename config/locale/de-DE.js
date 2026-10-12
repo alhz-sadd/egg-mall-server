@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': 'Vorderseitenbild darf nicht leer sein',
   'system.reverse_image_empty': 'Rückseitenbild darf nicht leer sein',
   'task.too_many_people_grabbing': 'Zu viele Personen greifen derzeit nach Bestellungen, bitte versuchen Sie es später noch einmal.',
+  'task.need_complete_task_to_withdraw': 'Sie müssen die Aufgaben abschließen, bevor Sie Geld abheben können',
 };

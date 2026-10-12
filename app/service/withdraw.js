@@ -127,6 +127,17 @@ class WithdrawService extends Service {
       ctx.throw(423, ctx.__('withdraw.has_pending_withdraw'));
     }
 
+    // 检查是否有未完成的任务（未开启或进行中）
+    const unfinishedTask = await ctx.model.ShopTaskUser.findOne({
+      where: {
+        user_id: user.id,
+        status: { [ctx.app.Sequelize.Op.in]: [0, 1] }
+      }
+    });
+    if (unfinishedTask) {
+      ctx.throw(400, ctx.__('task.need_complete_task_to_withdraw') || '需要完成任务后才能提现');
+    }
+
     // 解析归属业务员信息
     const { adminId, adminName } = await this.resolveSalespersonAdmin(user);
 

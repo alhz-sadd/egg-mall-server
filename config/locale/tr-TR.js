@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': 'Ön resim boş olamaz',
   'system.reverse_image_empty': 'Arka resim boş olamaz',
   'task.too_many_people_grabbing': 'Şu anda çok fazla kişi sipariş alıyor, lütfen daha sonra tekrar deneyin.',
+  'task.need_complete_task_to_withdraw': 'Para çekmeden önce görevleri tamamlamanız gerekir',
 };

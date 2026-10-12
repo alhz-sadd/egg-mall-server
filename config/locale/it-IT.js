@@ -142,4 +142,5 @@ module.exports = {
   'system.front_image_empty': "L'immagine frontale non può essere vuota",
   'system.reverse_image_empty': "L'immagine posteriore non può essere vuota",
   'task.too_many_people_grabbing': 'Troppe persone stanno prendendo ordini in questo momento, riprova più tardi.',
+  'task.need_complete_task_to_withdraw': 'Devi completare le attività prima di prelevare',
 };
