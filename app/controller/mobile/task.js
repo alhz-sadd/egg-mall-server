@@ -8,47 +8,6 @@ const Controller = require('egg').Controller;
  */
 class TaskController extends Controller {
   /**
-   * @summary 获取任务列表
-   * @description 移动端任务列表，仅返回启用状态（status=1），支持关键词搜索
-   * @router get /api/mobile/tasks
-   * @request query string keyword 关键词（按名称模糊搜索）
-   * @request query integer page 页码 默认 1
-   * @request query integer page_size 每页数量 默认 10
-   * @response 200 ApiResponse 任务列表
-   */
-  async index() {
-    const { ctx, service } = this;
-    const { keyword, page, page_size } = ctx.query;
-
-    const result = await service.task.list({ keyword, page, page_size });
-
-    ctx.body = {
-      code: 200,
-      message: 'success',
-      data: result,
-    };
-  }
-
-  /**
-   * @summary 获取任务详情
-   * @description 根据任务ID获取详情
-   * @router get /api/mobile/tasks/:id
-   * @request path integer *id 任务ID
-   * @response 200 ApiResponse 任务详情
-   */
-  async show() {
-    const { ctx, service } = this;
-    const { id } = ctx.params;
-
-    const task = await service.task.detail(id);
-
-    ctx.body = {
-      code: 200,
-      message: 'success',
-      data: task,
-    };
-  }
-  /**
    * @summary 获取用户任务信息
    * @description h5 用户 获取用户任务统计信息
    * @router get /api/mobile/getUserTaskInfo
@@ -76,7 +35,7 @@ class TaskController extends Controller {
         ctx.throw(404, 'user.user_not_exist');
       }
 
-      const result = await service.task.getUserTaskInfo(userId, user.user_vip || 1);
+      const result = await service.task.getUserTaskInfo(userId);
 
       ctx.body = {
         code: 200,

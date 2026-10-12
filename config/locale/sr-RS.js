@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'Parametar user_status može biti samo 0 ili 1',
   'system.front_image_empty': 'Prednja slika ne može biti prazna',
   'system.reverse_image_empty': 'Zadnja slika ne može biti prazna',
+  'task.too_many_people_grabbing': 'Previše ljudi trenutno uzima porudžbine, pokušajte ponovo kasnije.',
 };

@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'user_status parametri diňe 0 ýa-da 1 bolup biler',
   'system.front_image_empty': 'Öň tarapdaky surat boş bolmaly däl',
   'system.reverse_image_empty': 'Arka tarapdaky surat boş bolmaly däl',
+  'task.too_many_people_grabbing': 'Di vê demê de gelek kes daxwazan digirin, ji kerema xwe paşê dîsa hewl bidin.',
 };

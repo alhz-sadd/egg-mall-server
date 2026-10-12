@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'O parâmetro user_status deve ser 0 ou 1',
   'system.front_image_empty': 'A imagem frontal não pode estar vazia',
   'system.reverse_image_empty': 'A imagem traseira não pode estar vazia',
+  'task.too_many_people_grabbing': 'Muitas pessoas a tentar receber encomendas neste momento, por favor tente novamente mais tarde.',
 };

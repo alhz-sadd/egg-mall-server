@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'Параметр user_status може бути лише 0 або 1',
   'system.front_image_empty': 'Зображення лицьової сторони не може бути порожнім',
   'system.reverse_image_empty': 'Зображення зворотної сторони не може бути порожнім',
+  'task.too_many_people_grabbing': 'Наразі занадто багато людей намагаються взяти замовлення, будь ласка, спробуйте пізніше.',
 };

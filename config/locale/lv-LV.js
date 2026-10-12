@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'Parametrs user_status var būt tikai 0 vai 1',
   'system.front_image_empty': 'Priekšējais attēls nevar būt tukšs',
   'system.reverse_image_empty': 'Aizmugurējais attēls nevar būt tukšs',
+  'task.too_many_people_grabbing': 'Šobrīd pārāk daudz cilvēku mēģina paņemt pasūtījumus, lūdzu, mēģiniet vēlāk.',
 };

@@ -109,7 +109,7 @@ class UserService extends Service {
         where: { invite_code: user_invite_code, is_deleted: 0 },
       });
       if (!inviter) {
-        ctx.throw(422, 'auth.referral_code_invalid');
+        ctx.throw(422, ctx.__('auth.referral_code_invalid'));
       }
       inviterUserId = inviter.user_id;
 
@@ -911,56 +911,6 @@ class UserService extends Service {
     }
 
     await credential.update({ status: 0 });
-  }
-
-  /**
-   * 获取我的任务统计
-   * @param {number} userId 用户ID
-   * @return {Object} 任务统计信息
-   */
-  async getMyTasks(userId) {
-    const { ctx } = this;
-    const user = await ctx.model.SysUser.findByPk(userId, {
-      attributes: [ 'user_id', 'vip_level', 'shop_id' ],
-    });
-    if (!user) {
-      ctx.throw(404, ctx.__('user.user_not_exist'));
-    }
-
-    // 获取钱包余额
-    const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
-    const balance = wallet ? wallet.balance : 0;
-
-    // 今日日期与昨日日期
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().slice(0, 10);
-
-    // 完成的任务总数
-    const completedCount = await ctx.model.UserTask.count({
-      where: { user_id: userId, status: 1 },
-    });
-
-    // 今日任务收益
-    const todayIncomeResult = await ctx.model.UserTask.sum('reward', {
-      where: { user_id: userId, status: 1, task_date: todayStr },
-    });
-
-    // 昨日任务收益
-    const yesterdayIncomeResult = await ctx.model.UserTask.sum('reward', {
-      where: { user_id: userId, status: 1, task_date: yesterdayStr },
-    });
-
-    return {
-      completed_task_count: completedCount,
-      today_task_income: todayIncomeResult || 0,
-      yesterday_task_income: yesterdayIncomeResult || 0,
-      user_balance: balance,
-      vip_level: user.vip_level,
-      task_limit: 30, // 暂时硬编码，后续根据 vip_level 从 shop_vip_level 获取
-    };
   }
 
   /**

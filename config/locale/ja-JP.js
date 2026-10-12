@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'user_status パラメータは 0 または 1 のみです',
   'system.front_image_empty': '表面画像は空にできません',
   'system.reverse_image_empty': '裏面画像は空にできません',
+  'task.too_many_people_grabbing': '現在、注文を確定している人が多すぎます。後でもう一度お試しください。',
 };

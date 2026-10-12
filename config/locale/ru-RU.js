@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'Параметр user_status может быть только 0 или 1',
   'system.front_image_empty': 'Изображение лицевой стороны не может быть пустым',
   'system.reverse_image_empty': 'Изображение обратной стороны не может быть пустым',
+  'task.too_many_people_grabbing': 'В настоящее время слишком много людей пытаются взять заказы, пожалуйста, повторите попытку позже.',
 };

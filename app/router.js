@@ -58,7 +58,6 @@ module.exports = app => {
   router.delete('/api/mobile/account/logistics-address', auth, controller.mobile.user.deleteLogisticsAddress);
   router.post('/api/mobile/account/credential', auth, controller.mobile.user.uploadCredential);
   router.delete('/api/mobile/account/credential', auth, controller.mobile.user.deleteCredential);
-  router.get('/api/mobile/account/my-missions', auth, controller.mobile.user.myTasks);
   router.get('/api/mobile/account/team', auth, controller.mobile.user.team);
   router.get('/api/mobile/account/capital-records', auth, controller.mobile.user.capitalLogs); // 避开 capital-logs
   router.get('/api/mobile/account/receipt', auth, controller.mobile.user.getReceipt); // 新增：获取收货信息
@@ -116,8 +115,6 @@ module.exports = app => {
 
   // === C端(Mobile) 任务相关 ===
   router.get('/api/mobile/missions/search', auth, controller.mobile.task.search); // 搜索/获取可接任务
-  router.get('/api/mobile/missions/:id', auth, controller.mobile.task.show); // 获取任务详情
-  router.get('/api/mobile/missions', auth, controller.mobile.task.index); // 任务列表
 
   // ==================== 管理端 BFF ====================
 

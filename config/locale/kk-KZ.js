@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'user_status параметрі тек 0 немесе 1 болуы мүмкін',
   'system.front_image_empty': 'Алдыңғы кескін бос болмауы керек',
   'system.reverse_image_empty': 'Артқы кескін бос болмауы керек',
+  'task.too_many_people_grabbing': 'Қазіргі уақытта тапсырыстарды алушылар тым көп, кейінірек қайталап көріңіз.',
 };

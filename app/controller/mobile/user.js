@@ -22,15 +22,16 @@ class UserController extends Controller {
 
     const { phone, password, confirm_password, invite_code, user_phone, user_password, user_invite_code } = ctx.request.body;
 
-    // 兼容两种参数名，并确保是字符串后去除首尾空格
-    const registerPhone = typeof (user_phone || phone) === 'string' ? (user_phone || phone).trim() : String(user_phone || phone || '').trim();
+    // 兼容两种参数名，并确保是字符串后去除所有空格（包括中间的空格）
+    const registerPhone = typeof (user_phone || phone) === 'string' ? (user_phone || phone).replace(/\s+/g, '') : String(user_phone || phone || '').replace(/\s+/g, '');
     const registerPassword = user_password || password;
-    const registerInviteCode = typeof (user_invite_code || invite_code) === 'string' ? (user_invite_code || invite_code).trim() : String(user_invite_code || invite_code || '').trim();
+    const registerInviteCode = typeof (user_invite_code || invite_code) === 'string' ? (user_invite_code || invite_code).replace(/\s+/g, '') : String(user_invite_code || invite_code || '').replace(/\s+/g, '');
 
     // 基础参数校验
     ctx.assert(registerPhone, 422, ctx.__('user.phone_empty'));
+    ctx.assert(registerPhone.length <= 20, 422, ctx.__('user.phone_length_error') || '账号长度不能超过20位');
     ctx.assert(registerPassword, 422, ctx.__('auth.pwd_empty'));
-    ctx.assert(registerPassword.length >= 6, 422, ctx.__('auth.pwd_length_error'));
+    ctx.assert(registerPassword.length >= 6 && registerPassword.length <= 32, 422, ctx.__('auth.pwd_length_error') || '密码长度需在6-32位之间');
     ctx.assert(confirm_password, 422, ctx.__('auth.confirm_pwd_empty'));
 
     const user = await service.user.register({
@@ -353,26 +354,6 @@ class UserController extends Controller {
       code: 200,
       message: ctx.__('recharge.voucher_delete_success'),
       data: null,
-    };
-  }
-
-  /**
-   * @summary 获取我的任务统计
-   * @description 返回当前用户的任务统计数据
-   * @router get /api/mobile/users/my-tasks
-   * @request header string Authorization Bearer token
-   * @response 200 ApiResponse 任务统计
-   */
-  async myTasks() {
-    const { ctx, service } = this;
-    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
-
-    const result = await service.user.getMyTasks(userId);
-
-    ctx.body = {
-      code: 200,
-      message: 'success',
-      data: result,
     };
   }
 

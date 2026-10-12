@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'user_status must be 0 or 1',
   'system.front_image_empty': 'Front image cannot be empty',
   'system.reverse_image_empty': 'Reverse side image cannot be empty',
+  'task.too_many_people_grabbing': 'Too many people grabbing orders at this time, please try again later.',
 };

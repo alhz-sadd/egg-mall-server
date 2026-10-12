@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'يمكن أن تكون معلمة user_status 0 أو 1 فقط',
   'system.front_image_empty': 'لا يمكن أن تكون الصورة الأمامية فارغة',
   'system.reverse_image_empty': 'لا يمكن أن تكون الصورة الخلفية فارغة',
+  'task.too_many_people_grabbing': 'يوجد عدد كبير جدًا من الأشخاص الذين يحصلون على الطلبات في هذا الوقت، يرجى المحاولة مرة أخرى لاحقًا.',
 };

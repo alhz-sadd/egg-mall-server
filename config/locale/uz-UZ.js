@@ -139,4 +139,5 @@ module.exports = {
   'system.user_status_error': "user_status parametri faqat 0 yoki 1 bo'lishi mumkin",
   'system.front_image_empty': "Old tomon rasmi bo'sh bo'lishi mumkin emas",
   'system.reverse_image_empty': "Orqa tomon rasmi bo'sh bo'lishi mumkin emas",
+  'task.too_many_people_grabbing': 'Ayni vaqtda buyurtmalarni olayotganlar juda ko\'p, iltimos keyinroq qayta urinib ko\'ring.',
 };

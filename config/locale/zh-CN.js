@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'user_status 参数只能是 0 或 1',
   'system.front_image_empty': '正面图片不能为空',
   'system.reverse_image_empty': '反面图片不能为空',
+  'task.too_many_people_grabbing': '当前时段抢单人数过多，请稍后再试',
 };

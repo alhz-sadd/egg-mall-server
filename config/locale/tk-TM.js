@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'Ulanyjy ýagdaýy 0 ýa-da 1 bolmaly',
   'system.front_image_empty': 'Öň tarapynyň suraty boş bolup bilmez',
   'system.reverse_image_empty': 'Arka tarapynyň suraty boş bolup bilmez',
+  'task.too_many_people_grabbing': 'Häzirki wagtda sargytlary alýan adamlar gaty köp, soňrak gaýtadan synanyşyň.',
 };

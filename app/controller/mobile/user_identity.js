@@ -9,8 +9,23 @@ class MobileUserIdentityController extends Controller {
     if (!rawStr) return rawStr;
     try {
       const algorithm = 'aes-256-cbc';
-      const key = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
-      const iv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
+      // AES-256 requires a 32-byte key. Pad or truncate the config key to ensure it is exactly 32 bytes.
+      let rawKey = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
+      if (rawKey.length < 32) {
+          rawKey = rawKey.padEnd(32, '0');
+      } else if (rawKey.length > 32) {
+          rawKey = rawKey.slice(0, 32);
+      }
+      const key = rawKey;
+      
+      // IV must be 16 bytes.
+      let rawIv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
+      if (rawIv.length < 16) {
+          rawIv = rawIv.padEnd(16, '0');
+      } else if (rawIv.length > 16) {
+          rawIv = rawIv.slice(0, 16);
+      }
+      const iv = rawIv;
 
       const cipher = crypto.createCipheriv(algorithm, Buffer.from(key), Buffer.from(iv));
       let encrypted = cipher.update(rawStr, 'utf8', 'hex');
@@ -27,8 +42,23 @@ class MobileUserIdentityController extends Controller {
     if (!encryptedStr) return encryptedStr;
     try {
       const algorithm = 'aes-256-cbc';
-      const key = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
-      const iv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
+      // AES-256 requires a 32-byte key. Pad or truncate the config key to ensure it is exactly 32 bytes.
+      let rawKey = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
+      if (rawKey.length < 32) {
+          rawKey = rawKey.padEnd(32, '0');
+      } else if (rawKey.length > 32) {
+          rawKey = rawKey.slice(0, 32);
+      }
+      const key = rawKey;
+      
+      // IV must be 16 bytes.
+      let rawIv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
+      if (rawIv.length < 16) {
+          rawIv = rawIv.padEnd(16, '0');
+      } else if (rawIv.length > 16) {
+          rawIv = rawIv.slice(0, 16);
+      }
+      const iv = rawIv;
 
       const decipher = crypto.createDecipheriv(algorithm, Buffer.from(key), Buffer.from(iv));
       let decrypted = decipher.update(encryptedStr, 'hex', 'utf8');

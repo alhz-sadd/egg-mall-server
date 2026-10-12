@@ -141,4 +141,5 @@ module.exports = {
   'system.user_status_error': 'Der Parameter user_status kann nur 0 oder 1 sein',
   'system.front_image_empty': 'Vorderseitenbild darf nicht leer sein',
   'system.reverse_image_empty': 'Rückseitenbild darf nicht leer sein',
+  'task.too_many_people_grabbing': 'Zu viele Personen greifen derzeit nach Bestellungen, bitte versuchen Sie es später noch einmal.',
 };

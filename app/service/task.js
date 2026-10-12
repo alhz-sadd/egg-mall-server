@@ -176,10 +176,9 @@ class TaskService extends Service {
   /**
    * 获取用户任务统计信息
    * @param {number} userId 用户ID
-   * @param {number} userVip 用户VIP等级
    * @return {Object} 统计数据
    */
-  async getUserTaskInfo(userId, userVip) {
+  async getUserTaskInfo(userId) {
     const { ctx } = this;
     const dayjs = require('dayjs');
 
@@ -202,19 +201,47 @@ class TaskService extends Service {
       }
     }
 
+    // 考虑到用户可能有多轮任务，且任务记录的更新可能会非常快，
+    // 我们改用从 ShopTaskUserItemProgress 表中按时间范围直接统计，防止 UserTaskStat 表同步延迟
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+    const yesterdayEnd = new Date(todayEnd);
+    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+
     // 1. 使用 Promise.all 并行执行无依赖的查询，大幅提升接口响应速度
-    const [ userWallet, todayStat, yesterdayStat, currentTaskUser ] = await Promise.all([
+    const [ userWallet, todayIncomeResult, yesterdayIncomeResult, currentTaskUser ] = await Promise.all([
       ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } }),
-      ctx.model.UserTaskStat.findOne({ where: { user_id: dbUserId, stat_date: todayStr } }),
-      ctx.model.UserTaskStat.findOne({ where: { user_id: dbUserId, stat_date: yesterdayStr } }),
+      ctx.model.ShopTaskUserItemProgress.sum('revenue', {
+        where: {
+          user_id: dbUserId,
+          status: { [ctx.app.Sequelize.Op.in]: [1, 2] }, // 只要完成了(或异常)就算收益
+          update_time: {
+            [ctx.app.Sequelize.Op.between]: [todayStart, todayEnd]
+          }
+        },
+      }),
+      ctx.model.ShopTaskUserItemProgress.sum('revenue', {
+        where: {
+          user_id: dbUserId,
+          status: { [ctx.app.Sequelize.Op.in]: [1, 2] },
+          update_time: {
+            [ctx.app.Sequelize.Op.between]: [yesterdayStart, yesterdayEnd]
+          }
+        },
+      }),
       ctx.model.ShopTaskUser.findOne({
         where: { user_id: dbUserId, status: { [ctx.app.Sequelize.Op.in]: [ 0, 1 ] } }, // 0: 已绑定, 1: 任务进行中
         order: [[ 'id', 'DESC' ]],
       }),
     ]);
 
-    const todayIncomeVal = todayStat ? Number(todayStat.task_income || 0) : 0;
-    const yesterdayIncomeVal = yesterdayStat ? Number(yesterdayStat.task_income || 0) : 0;
+    const todayIncomeVal = todayIncomeResult ? Number(todayIncomeResult) : 0;
+    const yesterdayIncomeVal = yesterdayIncomeResult ? Number(yesterdayIncomeResult) : 0;
 
     let overNum = 0;
     let isOpen = 0; // 是否已开启任务 0=未开启 1=已开启
@@ -231,7 +258,7 @@ class TaskService extends Service {
           where: {
             shop_task_user_id: currentTaskUser.id,
             user_id: dbUserId,
-            status: 1, // 已完成
+            status: { [ctx.app.Sequelize.Op.in]: [1, 2] }, // 1:已完成 2:异常
           },
         }),
         ctx.model.ShopTask.findByPk(currentTaskUser.task_id),
@@ -285,8 +312,8 @@ class TaskService extends Service {
     const user = await ctx.model.SysUser.findByPk(userId);
     // 允许业务员(3)和店长(2)也能在移动端登录查看测试
     if (!user || ![ 2, 3, 4 ].includes(user.user_type)) {
-      // 账号不存在或者角色不符时，也返回无任务状态，而不是抛出 404
-      return { sequence_no: 0, task_status: -1, wares: {}, order: {}, is_lucky: 0 };
+      // 账号不存在或者角色不符时，直接抛出异常而不是返回默认结构
+      ctx.throw(400, ctx.__('task.task_not_exist_disabled'));
     }
 
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
@@ -330,15 +357,14 @@ class TaskService extends Service {
         return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
       }
 
-      // 没有任何绑定的任务时，返回一个代表没有任务的空状态，而不是抛出 404 错误
-      // task_status: -1 代表无任务或任务不存在，前端默认走到 else 弹出 res.message
-      return { sequence_no: 0, task_status: -1, wares: {}, order: {}, is_lucky: 0 };
+      // 没有任何绑定的任务时，统一返回未开启提示，抛出 400 Error
+      ctx.throw(400, ctx.__('task.task_not_exist_disabled'));
     }
 
     const shopTask = await ctx.model.ShopTask.findByPk(shopTaskUser.task_id);
     if (!shopTask || shopTask.status !== 1) {
       // 任务被禁用或不存在，同样返回空状态
-      return { sequence_no: 0, task_status: -1, wares: {}, order: {}, is_lucky: 0 };
+      ctx.throw(400, ctx.__('task.task_not_exist_disabled'));
     }
 
     // 4. 检查余额是否满足最小金额 (使用总余额 balance)
@@ -540,7 +566,7 @@ class TaskService extends Service {
         }
 
         if (!waresModel) {
-          ctx.throw(500, ctx.__('task.no_match_product_above') || '没有找到合适的商品');
+          ctx.throw(400, ctx.__('task.too_many_people_grabbing') || '当前时段抢单人数过多，请稍后再试');
         }
 
         // 强行把商品价格修改为 用户余额 + 加上追加的金额
@@ -586,15 +612,62 @@ class TaskService extends Service {
         }
 
         if (total === 0) {
-          // 兜底策略：如果按价格区间找不到任何商品，放弃价格区间限制，随机返回一个商品，避免前端一直报错 500
-          ctx.logger.warn(`[TaskService.search] 价格区间匹配失败 -> userId: ${userId}, 余额: ${totalBalance}, targetGoodsPriceMin: ${targetGoodsPriceMin}, targetGoodsPriceMax: ${targetGoodsPriceMax}. 启动兜底策略(无视价格)...`);
-          delete goodsWhere.goods_price;
-          total = await ctx.model.GoodsTask.count({
-            where: goodsWhere,
-          });
+          let isRetry = false;
+          const searchRetryKey = `search_retry:${userId}`;
+          if (ctx.app.redis) {
+            isRetry = await ctx.app.redis.get(searchRetryKey);
+          } else {
+            isRetry = true; // 如果没有redis配置，为了避免死循环直接进入重试逻辑
+          }
 
-          if (total === 0) {
-            ctx.throw(500, ctx.__('task.no_match_product_range'));
+          if (!isRetry) {
+            if (ctx.app.redis) {
+              await ctx.app.redis.set(searchRetryKey, '1', 'EX', 30);
+            }
+            ctx.throw(400, ctx.__('task.too_many_people_grabbing') || '当前时段抢单人数过多，请稍后再试');
+          } else {
+            // 第二次请求调整这个区间
+            const minRateNew = Math.max(0, balanceMinRate - 0.2);
+            targetGoodsPriceMin = totalBalance * minRateNew;
+            targetGoodsPriceMax = totalBalance; // 最大金额直接用用户的余额
+
+            goodsWhere.goods_price = {
+              [Op.gte]: targetGoodsPriceMin,
+              [Op.lte]: targetGoodsPriceMax,
+            };
+
+            total = await ctx.model.GoodsTask.count({
+              where: goodsWhere,
+            });
+
+            if (total === 0 && usedGoodsIds.length > 0) {
+              delete goodsWhere.id;
+              total = await ctx.model.GoodsTask.count({
+                where: goodsWhere,
+              });
+            }
+
+            if (total === 0) {
+              // 兜底策略：第二次扩大区间还是找不到商品，放弃价格区间限制，随机返回一个商品
+              ctx.logger.warn(`[TaskService.search] 第二次扩大价格区间匹配依然失败 -> userId: ${userId}, 余额: ${totalBalance}, targetGoodsPriceMin: ${targetGoodsPriceMin}, targetGoodsPriceMax: ${targetGoodsPriceMax}. 启动兜底策略(无视价格)...`);
+              delete goodsWhere.goods_price;
+              total = await ctx.model.GoodsTask.count({
+                where: goodsWhere,
+              });
+
+              if (total === 0) {
+                ctx.throw(400, ctx.__('task.too_many_people_grabbing') || '当前时段抢单人数过多，请稍后再试');
+              }
+            }
+
+            if (ctx.app.redis) {
+              await ctx.app.redis.del(searchRetryKey);
+            }
+          }
+        } else {
+          if (ctx.app.redis) {
+            const searchRetryKey = `search_retry:${userId}`;
+            await ctx.app.redis.del(searchRetryKey);
           }
         }
 
@@ -609,7 +682,7 @@ class TaskService extends Service {
         });
 
         if (!waresModel) {
-          ctx.throw(500, ctx.__('task.no_match_product_range') || '没有匹配的商品');
+          ctx.throw(400, ctx.__('task.too_many_people_grabbing') || '当前时段抢单人数过多，请稍后再试');
         }
 
         goodsPrice = Number(waresModel.goods_price);
@@ -621,6 +694,7 @@ class TaskService extends Service {
     const cTime = new Date();
 
     const parentYieldRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
+    
     const revenue = goodsPrice * yieldRate;
 
     await nextProgress.update({

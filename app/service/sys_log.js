@@ -187,11 +187,25 @@ class SysLogService extends Service {
     try {
       // 避免每次都读取文件导致 EMFILE 或内存溢出，将其缓存为类静态属性或全局变量
       if (!this.app.ip2regionSearcher) {
-        const IP2Region = require('ip2region').default;
-        this.app.ip2regionSearcher = new IP2Region();
+        const ip2regionModule = require('ip2region');
+        // 兼容不同版本的导出方式
+        const IP2Region = ip2regionModule.default || ip2regionModule;
+        // 如果是 class/function 则需要 new
+        if (typeof IP2Region === 'function') {
+           this.app.ip2regionSearcher = new IP2Region();
+        } else {
+           this.app.ip2regionSearcher = IP2Region;
+        }
       }
       const searcher = this.app.ip2regionSearcher;
-      const result = searcher.search(ip);
+      // 捕获 search 内部可能抛出的错误，防止阻塞主线程
+      let result = null;
+      try {
+        result = searcher.search(ip);
+      } catch (searchErr) {
+        this.ctx.logger.error('ip2region.search 解析失败:', searchErr);
+        return '无法解析';
+      }
       if (!result) return '无法解析';
 
       let region = '无法解析';
