@@ -85,17 +85,7 @@ class TaskController extends Controller {
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/getUserTaskInfo', err);
-      // 避免 404 导致前端 Axios 抛出全局异常，使页面其他接口数据（如统计）无法渲染
-      if (err.status === 404) {
-        ctx.status = 200;
-        ctx.body = {
-          code: 404,
-          message: ctx.__(err.message) || err.message,
-          data: null,
-        };
-        return;
-      }
-      // 让外层的 error_handler 中间件接管，不再强制设置为 200
+      // 让外层的 error_handler 中间件接管
       throw err;
     }
   }
@@ -118,27 +108,23 @@ class TaskController extends Controller {
 
       const result = await service.task.search(userId);
 
+      // 如果返回的状态是 -1 (代表暂无任务)，则通过 message 返回多语言提示，让前端弹窗
+      let message = 'success';
+      if (result && result.task_status === -1) {
+        message = ctx.__('task.task_not_exist_disabled') || '暂无可用任务';
+      }
+
       ctx.body = {
-        message: 'success',
+        message,
         code: 200,
         data: result,
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/tasks/search', err);
-      // 如果是余额不足 (1) 或者是我们抛出的错误，交由 errorHandler 统一处理，不要在这里屏蔽真实的状态码
+      // 如果是余额不足 (1) 或者是我们抛出的错误，交由 errorHandler 统一处理
       if (err.message && err.message.includes('余额不足')) {
         err.status = 400;
         err.code = 1;
-      }
-      // 避免 404 导致前端 Axios 抛出全局异常，使页面其他接口数据（如统计）无法渲染
-      if (err.status === 404) {
-        ctx.status = 200;
-        ctx.body = {
-          code: 404,
-          message: ctx.__(err.message) || err.message,
-          data: null,
-        };
-        return;
       }
       throw err;
     }

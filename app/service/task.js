@@ -285,9 +285,8 @@ class TaskService extends Service {
     const user = await ctx.model.SysUser.findByPk(userId);
     // 允许业务员(3)和店长(2)也能在移动端登录查看测试
     if (!user || ![ 2, 3, 4 ].includes(user.user_type)) {
-      const err = new Error('user.user_not_exist');
-      err.status = 404;
-      throw err;
+      // 账号不存在或者角色不符时，也返回无任务状态，而不是抛出 404
+      return { sequence_no: 0, task_status: -1, wares: {}, order: {}, is_lucky: 0 };
     }
 
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
@@ -331,17 +330,15 @@ class TaskService extends Service {
         return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
       }
 
-      // 没有任何绑定的任务时
-      const err = new Error('task.task_not_exist_disabled');
-      err.status = 404;
-      throw err;
+      // 没有任何绑定的任务时，返回一个代表没有任务的空状态，而不是抛出 404 错误
+      // task_status: -1 代表无任务或任务不存在，前端默认走到 else 弹出 res.message
+      return { sequence_no: 0, task_status: -1, wares: {}, order: {}, is_lucky: 0 };
     }
 
     const shopTask = await ctx.model.ShopTask.findByPk(shopTaskUser.task_id);
     if (!shopTask || shopTask.status !== 1) {
-      const err = new Error('task.task_not_exist_disabled');
-      err.status = 404;
-      throw err;
+      // 任务被禁用或不存在，同样返回空状态
+      return { sequence_no: 0, task_status: -1, wares: {}, order: {}, is_lucky: 0 };
     }
 
     // 4. 检查余额是否满足最小金额 (使用总余额 balance)
