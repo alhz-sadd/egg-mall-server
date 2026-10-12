@@ -137,41 +137,54 @@ class UserController extends Controller {
     ctx.set('Pragma', 'no-cache');
     ctx.set('Expires', '0');
 
-    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+    try {
+      const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
-    // 1. 并行获取用户信息和钱包信息，提升接口响应速度
-    const [ user, wallet ] = await Promise.all([
-      service.user.findById(userId),
-      ctx.model.UserWallet.findOne({ where: { user_id: userId } }),
-    ]);
+      // 1. 并行获取用户信息和钱包信息，提升接口响应速度
+      const [ user, wallet ] = await Promise.all([
+        service.user.findById(userId),
+        ctx.model.UserWallet.findOne({ where: { user_id: userId } }),
+      ]);
 
-    if (!user) {
-      ctx.throw(404, ctx.__('user.user_not_exist'));
+      if (!user) {
+        ctx.throw(404, ctx.__('user.user_not_exist'));
+      }
+
+      // 补充 VIP 等级详情
+      if (user.shop_id && user.vip_level !== undefined) {
+        const vipInfo = await service.vipLevel.getVipLevelDetails(user.shop_id, user.vip_level);
+        user.vip_name = vipInfo ? vipInfo.level_name : '普通用户';
+        user.vip_benefit = vipInfo ? vipInfo.benefit : '';
+      } else {
+        user.vip_name = '普通用户';
+        user.vip_benefit = '';
+      }
+
+      // 补充用户余额
+      if (wallet) {
+        // 强制转换为两位小数的字符串，避免前端 0 被判断为 false 导致不渲染
+        user.balance = Number(wallet.balance || 0).toFixed(2);
+      } else {
+        user.balance = '0.00';
+      }
+
+      ctx.body = {
+        code: 200,
+        message: 'success',
+        data: user,
+      };
+    } catch (err) {
+      if (err.status === 404) {
+        ctx.status = 200;
+        ctx.body = {
+          code: 404,
+          message: ctx.__(err.message) || err.message,
+          data: null,
+        };
+        return;
+      }
+      throw err;
     }
-
-    // 补充 VIP 等级详情
-    if (user.shop_id && user.vip_level !== undefined) {
-      const vipInfo = await service.vipLevel.getVipLevelDetails(user.shop_id, user.vip_level);
-      user.vip_name = vipInfo ? vipInfo.level_name : '普通用户';
-      user.vip_benefit = vipInfo ? vipInfo.benefit : '';
-    } else {
-      user.vip_name = '普通用户';
-      user.vip_benefit = '';
-    }
-
-    // 补充用户余额
-    if (wallet) {
-      // 强制转换为两位小数的字符串，避免前端 0 被判断为 false 导致不渲染
-      user.balance = Number(wallet.balance || 0).toFixed(2);
-    } else {
-      user.balance = '0.00';
-    }
-
-    ctx.body = {
-      code: 200,
-      message: 'success',
-      data: user,
-    };
   }
 
   /**
@@ -604,6 +617,16 @@ class UserController extends Controller {
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/getUserRevenue', err);
+      // 避免 404 导致前端 Axios 抛出全局异常，使页面其他接口数据（如统计）无法渲染
+      if (err.status === 404) {
+        ctx.status = 200;
+        ctx.body = {
+          code: 404,
+          message: ctx.__(err.message) || err.message,
+          data: null,
+        };
+        return;
+      }
       throw err;
     }
   }

@@ -54,13 +54,26 @@ class ProductController extends Controller {
     const { ctx, service } = this;
     const { id } = ctx.params;
 
-    const product = await service.goods.detail(id);
+    try {
+      const product = await service.goods.detail(id);
 
-    ctx.body = {
-      code: 200,
-      message: 'success',
-      data: product,
-    };
+      ctx.body = {
+        code: 200,
+        message: 'success',
+        data: product,
+      };
+    } catch (err) {
+      if (err.status === 404) {
+        ctx.status = 200;
+        ctx.body = {
+          code: 404,
+          message: ctx.__(err.message) || err.message,
+          data: null,
+        };
+        return;
+      }
+      throw err;
+    }
   }
 }
 
