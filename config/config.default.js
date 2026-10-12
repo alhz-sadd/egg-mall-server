@@ -11,8 +11,8 @@ module.exports = appInfo => {
   /** @type {Egg.EggAppConfig} */
   const config = {};
 
-  // Cookie 安全密钥，生产环境务必修改
-  config.keys = appInfo.name + '_mall_secret_key_2026';
+  // Cookie 安全密钥，生产环境务必修改，已移至 .env
+  config.keys = process.env.COOKIE_SECRET_KEY;
 
   // 加载的中间件，按数组顺序执行
   config.middleware = [ 'i18nResponse', 'errorHandler', 'requestLog', 'operationLog', 'formatImageUrl' ];
@@ -35,7 +35,7 @@ module.exports = appInfo => {
 
   // JWT 配置
   config.jwt = {
-    secret: process.env.JWT_SECRET || 'a_very_secure_and_random_string_for_production',
+    secret: process.env.JWT_SECRET,
     expiresIn: '2h', // Access Token 过期时间
     refreshExpiresIn: '7d', // Refresh Token 过期时间
   };
@@ -80,7 +80,7 @@ module.exports = appInfo => {
     port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
     database: 'egg-test',
     username: 'egg-test',
-    password: 'NPbkZ3LACjMZ7WjK',
+    password: process.env.DB_PASSWORD,
     define: {
       underscored: false,
       freezeTableName: true,
