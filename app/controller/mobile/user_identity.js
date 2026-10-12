@@ -9,25 +9,31 @@ class MobileUserIdentityController extends Controller {
     if (!rawStr) return rawStr;
     try {
       const algorithm = 'aes-256-cbc';
-      // AES-256 requires a 32-byte key. Pad or truncate the config key to ensure it is exactly 32 bytes.
+      // AES-256 requires a 32-byte key.
       let rawKey = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
-      if (rawKey.length < 32) {
-          rawKey = rawKey.padEnd(32, '0');
-      } else if (rawKey.length > 32) {
-          rawKey = rawKey.slice(0, 32);
+      
+      // Ensure rawKey is converted to string and properly padded/truncated based on utf8 length
+      rawKey = String(rawKey);
+      let keyBuf = Buffer.from(rawKey, 'utf8');
+      if (keyBuf.length < 32) {
+          const padBuf = Buffer.alloc(32 - keyBuf.length, '0');
+          keyBuf = Buffer.concat([keyBuf, padBuf]);
+      } else if (keyBuf.length > 32) {
+          keyBuf = keyBuf.slice(0, 32);
       }
-      const key = rawKey;
       
       // IV must be 16 bytes.
       let rawIv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
-      if (rawIv.length < 16) {
-          rawIv = rawIv.padEnd(16, '0');
-      } else if (rawIv.length > 16) {
-          rawIv = rawIv.slice(0, 16);
+      rawIv = String(rawIv);
+      let ivBuf = Buffer.from(rawIv, 'utf8');
+      if (ivBuf.length < 16) {
+          const padBuf = Buffer.alloc(16 - ivBuf.length, '0');
+          ivBuf = Buffer.concat([ivBuf, padBuf]);
+      } else if (ivBuf.length > 16) {
+          ivBuf = ivBuf.slice(0, 16);
       }
-      const iv = rawIv;
 
-      const cipher = crypto.createCipheriv(algorithm, Buffer.from(key), Buffer.from(iv));
+      const cipher = crypto.createCipheriv(algorithm, keyBuf, ivBuf);
       let encrypted = cipher.update(rawStr, 'utf8', 'hex');
       encrypted += cipher.final('hex');
       return encrypted;
@@ -42,25 +48,28 @@ class MobileUserIdentityController extends Controller {
     if (!encryptedStr) return encryptedStr;
     try {
       const algorithm = 'aes-256-cbc';
-      // AES-256 requires a 32-byte key. Pad or truncate the config key to ensure it is exactly 32 bytes.
-      let rawKey = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
-      if (rawKey.length < 32) {
-          rawKey = rawKey.padEnd(32, '0');
-      } else if (rawKey.length > 32) {
-          rawKey = rawKey.slice(0, 32);
-      }
-      const key = rawKey;
       
-      // IV must be 16 bytes.
-      let rawIv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
-      if (rawIv.length < 16) {
-          rawIv = rawIv.padEnd(16, '0');
-      } else if (rawIv.length > 16) {
-          rawIv = rawIv.slice(0, 16);
+      let rawKey = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
+      rawKey = String(rawKey);
+      let keyBuf = Buffer.from(rawKey, 'utf8');
+      if (keyBuf.length < 32) {
+          const padBuf = Buffer.alloc(32 - keyBuf.length, '0');
+          keyBuf = Buffer.concat([keyBuf, padBuf]);
+      } else if (keyBuf.length > 32) {
+          keyBuf = keyBuf.slice(0, 32);
       }
-      const iv = rawIv;
+      
+      let rawIv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
+      rawIv = String(rawIv);
+      let ivBuf = Buffer.from(rawIv, 'utf8');
+      if (ivBuf.length < 16) {
+          const padBuf = Buffer.alloc(16 - ivBuf.length, '0');
+          ivBuf = Buffer.concat([ivBuf, padBuf]);
+      } else if (ivBuf.length > 16) {
+          ivBuf = ivBuf.slice(0, 16);
+      }
 
-      const decipher = crypto.createDecipheriv(algorithm, Buffer.from(key), Buffer.from(iv));
+      const decipher = crypto.createDecipheriv(algorithm, keyBuf, ivBuf);
       let decrypted = decipher.update(encryptedStr, 'hex', 'utf8');
       decrypted += decipher.final('utf8');
       return decrypted;
