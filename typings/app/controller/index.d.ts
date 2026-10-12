@@ -20,6 +20,7 @@ import ExportAdminInnerOperationLog = require('../../../app/controller/admin_inn
 import ExportAdminInnerPayChannel = require('../../../app/controller/admin_inner/pay_channel');
 import ExportAdminInnerPoints = require('../../../app/controller/admin_inner/points');
 import ExportAdminInnerProduct = require('../../../app/controller/admin_inner/product');
+import ExportAdminInnerRecharge = require('../../../app/controller/admin_inner/recharge');
 import ExportAdminInnerRule = require('../../../app/controller/admin_inner/rule');
 import ExportAdminInnerSalesperson = require('../../../app/controller/admin_inner/salesperson');
 import ExportAdminInnerShop = require('../../../app/controller/admin_inner/shop');
@@ -31,6 +32,7 @@ import ExportAdminInnerTask = require('../../../app/controller/admin_inner/task'
 import ExportAdminInnerTelegramBot = require('../../../app/controller/admin_inner/telegram_bot');
 import ExportAdminInnerUpload = require('../../../app/controller/admin_inner/upload');
 import ExportAdminInnerVipLevel = require('../../../app/controller/admin_inner/vip_level');
+import ExportAdminInnerWithdraw = require('../../../app/controller/admin_inner/withdraw');
 import ExportAdminOuterAuth = require('../../../app/controller/admin_outer/auth');
 import ExportAdminOuterCustomer = require('../../../app/controller/admin_outer/customer');
 import ExportAdminOuterDashboard = require('../../../app/controller/admin_outer/dashboard');
@@ -96,6 +98,7 @@ declare module 'egg' {
       payChannel: ExportAdminInnerPayChannel;
       points: ExportAdminInnerPoints;
       product: ExportAdminInnerProduct;
+      recharge: ExportAdminInnerRecharge;
       rule: ExportAdminInnerRule;
       salesperson: ExportAdminInnerSalesperson;
       shop: ExportAdminInnerShop;
@@ -107,6 +110,7 @@ declare module 'egg' {
       telegramBot: ExportAdminInnerTelegramBot;
       upload: ExportAdminInnerUpload;
       vipLevel: ExportAdminInnerVipLevel;
+      withdraw: ExportAdminInnerWithdraw;
     }
     adminOuter: {
       auth: ExportAdminOuterAuth;

@@ -56,7 +56,7 @@ class TaskController extends Controller {
    */
   async getUserTaskInfo() {
     const { ctx, service } = this;
-    
+
     // 禁用移动端 GET 请求缓存，防止 Telegram WebApp 或部分安卓浏览器强缓存导致数据不刷新
     ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     ctx.set('Pragma', 'no-cache');
@@ -85,6 +85,16 @@ class TaskController extends Controller {
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/getUserTaskInfo', err);
+      // 避免 404 导致前端 Axios 抛出全局异常，使页面其他接口数据（如统计）无法渲染
+      if (err.status === 404) {
+        ctx.status = 200;
+        ctx.body = {
+          code: 404,
+          message: ctx.__(err.message) || err.message,
+          data: null,
+        };
+        return;
+      }
       // 让外层的 error_handler 中间件接管，不再强制设置为 200
       throw err;
     }
@@ -119,6 +129,16 @@ class TaskController extends Controller {
       if (err.message && err.message.includes('余额不足')) {
         err.status = 400;
         err.code = 1;
+      }
+      // 避免 404 导致前端 Axios 抛出全局异常，使页面其他接口数据（如统计）无法渲染
+      if (err.status === 404) {
+        ctx.status = 200;
+        ctx.body = {
+          code: 404,
+          message: ctx.__(err.message) || err.message,
+          data: null,
+        };
+        return;
       }
       throw err;
     }

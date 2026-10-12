@@ -113,7 +113,7 @@ class UserController extends Controller {
    */
   async logout() {
     const { ctx, service } = this;
-    
+
     // 取消了个人中心的登出日志记录
     ctx.body = {
       code: 200,

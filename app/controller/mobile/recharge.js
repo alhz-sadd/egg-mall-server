@@ -119,7 +119,7 @@ class MobileRechargeController extends Controller {
    */
   async list() {
     const { ctx } = this;
-    
+
     // 强制禁用移动端 GET 请求缓存
     ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     ctx.set('Pragma', 'no-cache');
@@ -173,7 +173,7 @@ class MobileRechargeController extends Controller {
    */
   async address() {
     const { ctx } = this;
-    
+
     // 强制禁用移动端 GET 请求缓存
     ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     ctx.set('Pragma', 'no-cache');

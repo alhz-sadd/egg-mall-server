@@ -485,7 +485,7 @@ class OrderService extends Service {
       const revenue = Number(progress.revenue); // 静态收益
 
       // 3. 校验余额是否足够扣除 (必须放在事务内，加排他锁)
-      const userWallet = await ctx.model.UserWallet.findOne({ 
+      const userWallet = await ctx.model.UserWallet.findOne({
         where: { user_id: dbUserId },
         transaction,
         lock: transaction.LOCK.UPDATE,
@@ -573,7 +573,7 @@ class OrderService extends Service {
           voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${voucherNetChange}`),
           static_income: ctx.app.Sequelize.literal(`static_income + ${revenue}`),
         }, {
-          where: { 
+          where: {
             user_id: dbUserId,
             // 防止并发时余额被击穿的二次保险
             // 理论上上面校验了 actualBalance < orderAmount，但高并发时可能脏读

@@ -60,7 +60,7 @@ module.exports = appInfo => {
       hostname: '0.0.0.0',
     },
     // 注意：高并发场景下切勿将 workers 锁死为 1。注释掉或设为 CPU 核心数，充分利用多核性能
-    // workers: 1, 
+    // workers: 1,
   };
   // OSS 配置
   config.oss = {

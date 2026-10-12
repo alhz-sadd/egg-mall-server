@@ -312,8 +312,8 @@ class RechargeRequestService extends Service {
       }, { transaction });
 
       // 更新钱包余额
-      const wallet = await ctx.model.UserWallet.findOne({ 
-        where: { user_id: user.user_id }, 
+      const wallet = await ctx.model.UserWallet.findOne({
+        where: { user_id: user.user_id },
         transaction,
         lock: transaction.LOCK.UPDATE,
       });

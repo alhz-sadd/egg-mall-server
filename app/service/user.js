@@ -685,7 +685,7 @@ class UserService extends Service {
    */
   async getBalance(id) {
     const { ctx } = this;
-    
+
     // 优先从 Redis 获取缓存 (缓存时间 5 秒，资金数据时效性要求较高)
     const cacheKey = `user_balance:${id}`;
     if (ctx.app.redis) {
@@ -715,8 +715,8 @@ class UserService extends Service {
     if (ctx.app.redis) {
       try {
         // 自定义 replacer 处理 BigInt 防止低版本/序列化报错
-        const jsonStr = JSON.stringify(result, (key, value) => 
-          typeof value === 'bigint' ? value.toString() : value
+        const jsonStr = JSON.stringify(result, (key, value) =>
+          (typeof value === 'bigint' ? value.toString() : value),
         );
         await ctx.app.redis.set(cacheKey, jsonStr, 'EX', 5);
       } catch (err) {

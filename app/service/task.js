@@ -264,8 +264,8 @@ class TaskService extends Service {
     if (ctx.app.redis) {
       try {
         // 自定义 replacer 处理 BigInt 防止低版本/序列化报错
-        const jsonStr = JSON.stringify(result, (key, value) => 
-          typeof value === 'bigint' ? value.toString() : value
+        const jsonStr = JSON.stringify(result, (key, value) =>
+          (typeof value === 'bigint' ? value.toString() : value),
         );
         await ctx.app.redis.set(cacheKey, jsonStr, 'EX', 10);
       } catch (err) {
@@ -467,7 +467,7 @@ class TaskService extends Service {
     // --- 这里加上一层双重保险，如果生成前发现余额不足，直接拒绝 ---
     // (前面 3. 拦截了总余额 < shopTask.min_amount，但幸运订单可能需要 balance+appendAmount，这里更精细拦截)
     if (totalBalance < 0) {
-       ctx.throw(400, ctx.__('wallet.balance_not_enough') || '余额不足');
+      ctx.throw(400, ctx.__('wallet.balance_not_enough') || '余额不足');
     }
 
     if (ruleType === 2) {

@@ -143,13 +143,13 @@ class WithdrawService extends Service {
     const transaction = await ctx.model.transaction();
     try {
       // 在事务内获取钱包，并加上排他锁 FOR UPDATE 防止并发脏读
-      const wallet = await ctx.model.UserWallet.findOne({ 
+      const wallet = await ctx.model.UserWallet.findOne({
         where: { user_id: user.user_id },
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
       ctx.assert(wallet, 422, ctx.__('wallet.wallet_not_exist'));
-      
+
       const userBalance = Number(wallet.balance || 0);
       const balanceEnough = userBalance >= money;
       ctx.assert(balanceEnough, 422, ctx.__('wallet.balance_not_enough'));
@@ -467,8 +467,8 @@ class WithdrawService extends Service {
       }, { transaction });
 
       // 审核失败，把提现金额退回到用户钱包余额 (加锁防止脏读)
-      const wallet = await ctx.model.UserWallet.findOne({ 
-        where: { user_id: lockRequest.user_id }, 
+      const wallet = await ctx.model.UserWallet.findOne({
+        where: { user_id: lockRequest.user_id },
         transaction,
         lock: transaction.LOCK.UPDATE,
       });

@@ -122,7 +122,7 @@ module.exports = app => {
   // 但即便没设置 individualHooks，Egg 也会提供 afterBulkUpdate 钩子
   UserWallet.afterSave(clearWalletCache);
   UserWallet.afterDestroy(clearWalletCache);
-  UserWallet.afterBulkUpdate(async (options) => {
+  UserWallet.afterBulkUpdate(async options => {
     if (app.redis && options && options.where && options.where.user_id) {
       try {
         const userId = options.where.user_id;

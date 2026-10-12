@@ -953,7 +953,7 @@ class SysLogService extends Service {
     if (oper_name) where.username = { [Op.like]: `%${oper_name}%` };
     if (user_id) where.user_id = Number(user_id);
     if (oper_type !== undefined && oper_type !== '') where.business_type = Number(oper_type);
-    
+
     // 原来过滤掉了失败状态或者只按条件查，现在我们放宽条件，确保前端无论传不传都能查出失败的
     if (status !== undefined && status !== '') {
       where.status = Number(status);
