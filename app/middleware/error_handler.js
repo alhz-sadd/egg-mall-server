@@ -10,13 +10,17 @@ module.exports = () => {
     try {
       await next();
     } catch (err) {
-      // 记录错误日志
-      ctx.app.emit('error', err, ctx);
-
-      // 默认错误状态码和响应码
       let status = err.status || 500;
       let code = err.code || status;
       let message = err.message || '服务器内部错误';
+
+      // 400 级别的业务拦截（如任务不存在、余额不足），降级为普通的 WARN，避免污染 common-error.log
+      if (status >= 500) {
+        // 记录错误日志
+        ctx.app.emit('error', err, ctx);
+      } else {
+        ctx.logger.warn(`[业务拦截] ${ctx.method} ${ctx.url} - ${message}`);
+      }
 
       // 处理参数校验类错误（如 egg-validate 抛出的错误）
       if (err.name === 'ValidationError') {
