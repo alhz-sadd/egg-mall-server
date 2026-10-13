@@ -138,27 +138,7 @@ class AddressController extends Controller {
     };
   }
 
-  /**
-   * @summary 设置默认地址
-   * @description 将指定地址设为当前用户的默认地址
-   * @router put /api/mobile/addresses/:id/default
-   * @request header string Authorization Bearer token
-   * @request path integer *id 地址ID
-   * @response 200 ApiResponse 设置成功
-   */
-  async setDefault() {
-    const { ctx, service } = this;
-    const { userId } = ctx.state.user;
-    const { id } = ctx.params;
-
-    const address = await service.address.setDefault(id, userId);
-
-    ctx.body = {
-      code: 200,
-      message: ctx.__('address.default_address_set_success'),
-      data: address,
-    };
-  }
+  // 移除设为默认地址接口 (setDefault)
 }
 
 module.exports = AddressController;

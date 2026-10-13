@@ -90,7 +90,7 @@ module.exports = app => {
   router.get('/api/mobile/addresses/:id', auth, controller.mobile.address.show);
   router.put('/api/mobile/addresses/:id', auth, controller.mobile.address.update);
   router.delete('/api/mobile/addresses/:id', auth, controller.mobile.address.destroy);
-  router.put('/api/mobile/addresses/:id/default', auth, controller.mobile.address.setDefault);
+  // router.put('/api/mobile/addresses/:id/default', auth, controller.mobile.address.setDefault); // 移除无用的设为默认地址功能
 
   // 订单
   router.get('/api/mobile/orders', auth, controller.mobile.order.index);

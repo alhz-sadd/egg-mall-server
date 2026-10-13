@@ -53,11 +53,9 @@ const BUSINESS_RULES = [
   { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt(\?|$)/, businessType: 1, title: '修改收货信息' },
   { method: 'POST', pattern: /^\/api\/mobile\/users\/credential(\?|$)/, businessType: 0, title: '上传凭证' },
   { method: 'DELETE', pattern: /^\/api\/mobile\/users\/credential(\?|$)/, businessType: 2, title: '删除凭证' },
-  { method: 'GET', pattern: /^\/api\/mobile\/account\/info(\?|$)/, businessType: 9, title: '个人中心' },
 
   // === 5. C端收货地址 ===
   { method: 'POST', pattern: /^\/api\/mobile\/addresses(\?|$)/, businessType: 0, title: '新增收货地址' },
-  { method: 'PUT', pattern: /^\/api\/mobile\/addresses\/[^\/]+\/default(\?|$)/, businessType: 1, title: '设为默认地址' },
   { method: 'PUT', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 1, title: '修改收货地址' },
   { method: 'DELETE', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 2, title: '删除收货地址' },
 
@@ -309,6 +307,7 @@ class SysLogService extends Service {
   shouldLog(method, url) {
     const upperMethod = method.toUpperCase();
     if (!url.startsWith('/api/admin-inner/') && !url.startsWith('/api/admin-outer/') && !url.startsWith('/api/mobile/')) return false;
+
     if (upperMethod === 'GET') {
       return BUSINESS_RULES.some(rule => rule.method === 'GET' && rule.pattern.test(url));
     }

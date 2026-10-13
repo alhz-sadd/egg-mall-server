@@ -116,30 +116,7 @@ class AddressService extends Service {
     return true;
   }
 
-  /**
-   * 设置默认地址
-   * @param {number} id 地址ID
-   * @param {number} userId 用户ID
-   * @return {Object} 更新后的地址
-   */
-  async setDefault(id, userId) {
-    const { ctx } = this;
-    const address = await this.detail(id, userId);
-
-    const transaction = await ctx.model.transaction();
-    try {
-      await ctx.model.Address.update(
-        { is_default: 0 },
-        { where: { user_id: userId }, transaction },
-      );
-      await address.update({ is_default: 1 }, { transaction });
-      await transaction.commit();
-      return address;
-    } catch (err) {
-      await transaction.rollback();
-      ctx.throw(400, err.message);
-    }
-  }
+  // 移除设为默认地址业务逻辑 (setDefault)
 }
 
 module.exports = AddressService;
