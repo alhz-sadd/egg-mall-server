@@ -113,6 +113,10 @@ module.exports = app => {
         name: 'idx_oper_time',
         fields: [ 'oper_time' ],
       },
+      {
+        name: 'idx_oper_url',
+        fields: [ { name: 'oper_url', length: 50 } ], // 添加前缀索引以优化 LIKE 查询
+      },
     ],
   });
 
