@@ -6,7 +6,7 @@ class CleanLog extends Subscription {
   // 通过 schedule 属性来设置定时任务的执行间隔等配置
   static get schedule() {
     return {
-      cron: '0 0 8 * * *', // 每天早上 8 点执行
+      cron: '0 0 9 * * *', // 北京时间早上 9 点执行（中东凌晨 4-5 点）
       type: 'worker', // 某一个 worker 执行
     };
   }
