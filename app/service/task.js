@@ -312,8 +312,8 @@ class TaskService extends Service {
     const user = await ctx.model.SysUser.findByPk(userId);
     // 允许业务员(3)和店长(2)也能在移动端登录查看测试
     if (!user || ![ 2, 3, 4 ].includes(user.user_type)) {
-      // 账号不存在或者角色不符时，直接抛出异常而不是返回默认结构
-      ctx.throw(400, ctx.__('task.task_not_exist_disabled'));
+      // 账号不存在或者角色不符时，返回 -1 状态避免产生 400 错误日志
+      return { task_status: -1 };
     }
 
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
@@ -357,14 +357,14 @@ class TaskService extends Service {
         return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
       }
 
-      // 没有任何绑定的任务时，统一返回未开启提示，抛出 400 Error
-      ctx.throw(400, ctx.__('task.task_not_exist_disabled'));
+      // 没有任何绑定的任务时，统一返回未开启提示，返回 -1 避免抛出 400 Error 刷屏日志
+      return { task_status: -1 };
     }
 
     const shopTask = await ctx.model.ShopTask.findByPk(shopTaskUser.task_id);
     if (!shopTask || shopTask.status !== 1) {
       // 任务被禁用或不存在，同样返回空状态
-      ctx.throw(400, ctx.__('task.task_not_exist_disabled'));
+      return { task_status: -1 };
     }
 
     // 4. 检查余额是否满足最小金额 (使用总余额 balance)

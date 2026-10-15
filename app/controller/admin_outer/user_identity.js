@@ -43,6 +43,12 @@ class AdminOuterUserIdentityController extends Controller {
   // 解密身份证号
   decryptIdCard(encryptedStr) {
     if (!encryptedStr) return encryptedStr;
+    
+    // 检查是否为合法的十六进制字符串（偶数长度且只包含 0-9, a-f, A-F）
+    if (encryptedStr.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(encryptedStr)) {
+      return encryptedStr; // 不是合法的 hex，假设它是明文直接返回
+    }
+
     try {
       const algorithm = 'aes-256-cbc';
       
