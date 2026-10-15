@@ -39,6 +39,12 @@ module.exports = app => {
     comment: '用户任务记录表',
     createdAt: 'create_time',
     updatedAt: 'update_time',
+    indexes: [
+      {
+        name: 'idx_user_id_status',
+        fields: [ 'user_id', 'status' ],
+      },
+    ],
   });
 
   ShopTaskUser.associate = function() {

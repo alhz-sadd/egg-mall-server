@@ -17,7 +17,7 @@ class MobileWithdrawController extends Controller {
    */
   async create() {
     const { ctx, app } = this;
-    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+    const userId = Number(ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId);
 
     if (!userId) {
       ctx.throw(401, ctx.__('common.not_logged_in'));
@@ -88,6 +88,55 @@ class MobileWithdrawController extends Controller {
     // 4. 如果用户临时提现状态是开启的情况下，不管什么设置 都可以提现
     const isTempWithdrawAllowed = user.temp_withdraw_status === 1;
 
+    // 检查用户是否有未支付的订单（正在进行中且未完成的任务）
+    // 只要有未支付的任务订单，就不允许提现（除非开了临时提现）
+    if (!isTempWithdrawAllowed) {
+      // 找到用户当前绑定的最新任务模板
+      const currentTaskUser = await ctx.model.ShopTaskUser.findOne({
+        where: { user_id: userId },
+        order: [[ 'id', 'DESC' ]],
+      });
+
+      // 规则1：未绑定任务的，不能提现
+      if (!currentTaskUser) {
+        ctx.throw(400, 'withdraw.tasks_incomplete_withdraw');
+      }
+
+      // 去查这个最新模板下面，是否还有未完成（未支付）的子项
+      const uncompletedItemCount = await ctx.model.ShopTaskUserItemProgress.count({
+        where: {
+          shop_task_user_id: currentTaskUser.id,
+          status: 0, // 0表示未完成/未支付
+        },
+      });
+
+      // 规则2 & 规则3：绑定任务后，只要有没支付的(>0)，或者主状态没完成(!=2)，不能提现
+      if (uncompletedItemCount > 0 || currentTaskUser.task_status !== 2) {
+        ctx.throw(400, 'withdraw.tasks_incomplete_withdraw');
+      }
+
+      // ===== 规则4：检查下级任务状态 =====
+      // 优化：使用一条 SQL JOIN 语句直接查询，避免两次查询带来的网络和内存开销
+      const activeSubTask = await ctx.model.ShopTaskUser.findOne({
+        include: [{
+          model: ctx.model.SysUser,
+          as: 'user',
+          attributes: [],
+          where: {
+            inviter_user_id: userId,
+            is_deleted: 0 // 隐患排查2：过滤掉被注销/软删除的下级，防止“死号”永远卡住上级的提现
+          }
+        }],
+        where: {
+          status: 1
+        }
+      });
+
+      if (activeSubTask) {
+        ctx.throw(400, 'withdraw.tasks_incomplete_withdraw');
+      }
+    }
+
     // 如果没有开启临时提现，则需要检查是否有待审核的提现订单
     if (!isTempWithdrawAllowed) {
       const pendingWithdraw = await ctx.model.UserWithdraw.findOne({
@@ -105,41 +154,8 @@ class MobileWithdrawController extends Controller {
     });
 
     if (!isTempWithdrawAllowed) {
-      // 检查用户任务状态
-      const isTaskWithdrawLogicOn = shopConfig && shopConfig.withdraw_first_need_task === 1;
-
-      if (isTaskWithdrawLogicOn) {
-        // 开启完成任务提现逻辑：
-        // 必须有绑定的模板，且最新绑定的模板状态必须是已完成(2)
-        const latestTaskUser = await ctx.model.ShopTaskUser.findOne({
-          where: {
-            user_id: userId,
-          },
-          order: [[ 'id', 'DESC' ]],
-        });
-
-        // task_status: 0已绑定 1任务进行中 2全部完成 3已过期截止
-        // 兼容处理：只要 status == 2 或 task_status == 2 都认为已完成
-        if (!latestTaskUser || (latestTaskUser.status !== 2 && latestTaskUser.task_status !== 2)) {
-          ctx.throw(400, 'withdraw.tasks_incomplete_withdraw');
-        }
-      } else {
-        // 关闭完成任务提现逻辑：
-        // 用户也必须完成一次任务模板后才能提现
-        const hasCompletedTemplate = await ctx.model.ShopTaskUser.findOne({
-          where: {
-            user_id: userId,
-            [ctx.app.Sequelize.Op.or]: [
-              { status: 2 },
-              { task_status: 2 },
-            ],
-          },
-        });
-
-        if (!hasCompletedTemplate) {
-          ctx.throw(400, 'withdraw.tasks_incomplete_withdraw');
-        }
-      }
+      // 由于已经在上面强制要求必须完成最新任务才能提现
+      // 所以这里去掉了原先对 shopConfig.withdraw_first_need_task 的判断分支
 
       // 5. 店铺如果设置了需要完成实名认证后才能提现，就必须完成实名后才能提现
       if (shopConfig && shopConfig.withdraw_first_need_identity === 1) {
@@ -174,8 +190,10 @@ class MobileWithdrawController extends Controller {
     const transaction = await ctx.model.transaction();
     try {
       // 检查并扣除余额
+      // 隐患排查1：增加悲观锁 (FOR UPDATE)，防止并发请求绕过Redis锁导致余额被扣成负数
       const wallet = await ctx.model.UserWallet.findOne({
         where: { user_id: userId },
+        lock: transaction.LOCK.UPDATE,
         transaction,
       });
 
