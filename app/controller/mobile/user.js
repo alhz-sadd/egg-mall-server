@@ -172,7 +172,10 @@ class UserController extends Controller {
       ctx.body = {
         code: 200,
         message: 'success',
-        data: user,
+        data: {
+          ...user,
+          balance: user.balance
+        },
       };
     } catch (err) {
       if (err.status === 404) {
