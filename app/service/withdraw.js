@@ -131,8 +131,8 @@ class WithdrawService extends Service {
     const unfinishedTask = await ctx.model.ShopTaskUser.findOne({
       where: {
         user_id: user.id,
-        status: { [ctx.app.Sequelize.Op.in]: [0, 1] }
-      }
+        status: { [ctx.app.Sequelize.Op.in]: [ 0, 1 ] },
+      },
     });
     if (unfinishedTask) {
       ctx.throw(400, ctx.__('task.need_complete_task_to_withdraw') || '需要完成任务后才能提现');

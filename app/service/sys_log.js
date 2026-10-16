@@ -190,9 +190,9 @@ class SysLogService extends Service {
         const IP2Region = ip2regionModule.default || ip2regionModule;
         // 如果是 class/function 则需要 new
         if (typeof IP2Region === 'function') {
-           this.app.ip2regionSearcher = new IP2Region();
+          this.app.ip2regionSearcher = new IP2Region();
         } else {
-           this.app.ip2regionSearcher = IP2Region;
+          this.app.ip2regionSearcher = IP2Region;
         }
       }
       const searcher = this.app.ip2regionSearcher;

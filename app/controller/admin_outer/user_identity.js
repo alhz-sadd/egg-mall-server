@@ -10,22 +10,22 @@ class AdminOuterUserIdentityController extends Controller {
     try {
       const algorithm = 'aes-256-cbc';
       let rawKey = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
-      
+
       rawKey = String(rawKey);
       let keyBuf = Buffer.from(rawKey, 'utf8');
       if (keyBuf.length < 32) {
         const padBuf = Buffer.alloc(32 - keyBuf.length, '0');
-        keyBuf = Buffer.concat([keyBuf, padBuf]);
+        keyBuf = Buffer.concat([ keyBuf, padBuf ]);
       } else if (keyBuf.length > 32) {
         keyBuf = keyBuf.slice(0, 32);
       }
-      
+
       let rawIv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
       rawIv = String(rawIv);
       let ivBuf = Buffer.from(rawIv, 'utf8');
       if (ivBuf.length < 16) {
         const padBuf = Buffer.alloc(16 - ivBuf.length, '0');
-        ivBuf = Buffer.concat([ivBuf, padBuf]);
+        ivBuf = Buffer.concat([ ivBuf, padBuf ]);
       } else if (ivBuf.length > 16) {
         ivBuf = ivBuf.slice(0, 16);
       }
@@ -43,7 +43,7 @@ class AdminOuterUserIdentityController extends Controller {
   // 解密身份证号
   decryptIdCard(encryptedStr) {
     if (!encryptedStr) return encryptedStr;
-    
+
     // 检查是否为合法的十六进制字符串（偶数长度且只包含 0-9, a-f, A-F）
     if (encryptedStr.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(encryptedStr)) {
       return encryptedStr; // 不是合法的 hex，假设它是明文直接返回
@@ -51,23 +51,23 @@ class AdminOuterUserIdentityController extends Controller {
 
     try {
       const algorithm = 'aes-256-cbc';
-      
+
       let rawKey = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
       rawKey = String(rawKey);
       let keyBuf = Buffer.from(rawKey, 'utf8');
       if (keyBuf.length < 32) {
         const padBuf = Buffer.alloc(32 - keyBuf.length, '0');
-        keyBuf = Buffer.concat([keyBuf, padBuf]);
+        keyBuf = Buffer.concat([ keyBuf, padBuf ]);
       } else if (keyBuf.length > 32) {
         keyBuf = keyBuf.slice(0, 32);
       }
-      
+
       let rawIv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
       rawIv = String(rawIv);
       let ivBuf = Buffer.from(rawIv, 'utf8');
       if (ivBuf.length < 16) {
         const padBuf = Buffer.alloc(16 - ivBuf.length, '0');
-        ivBuf = Buffer.concat([ivBuf, padBuf]);
+        ivBuf = Buffer.concat([ ivBuf, padBuf ]);
       } else if (ivBuf.length > 16) {
         ivBuf = ivBuf.slice(0, 16);
       }

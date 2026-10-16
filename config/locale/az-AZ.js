@@ -142,5 +142,5 @@ module.exports = {
   'system.front_image_empty': 'Ön şəkil boş ola bilməz',
   'system.reverse_image_empty': 'Arxa şəkil boş ola bilməz',
   'task.too_many_people_grabbing': 'Hazırda sifariş götürən çox sayda insan var, zəhmət olmasa bir az sonra yenidən cəhd edin',
-  'task.need_complete_task_to_withdraw': 'Çıxarış etmək üçün tapşırığı tamamlamalısınız'
+  'task.need_complete_task_to_withdraw': 'Çıxarış etmək üçün tapşırığı tamamlamalısınız',
 };

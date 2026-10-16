@@ -455,12 +455,14 @@ class OrderService extends Service {
 
     // 引入 Redis 分布式锁，防止用户使用脚本或由于网络卡顿连点，瞬间发出多个并发支付请求
     const lockKey = `pay_lock:${dbUserId}:${idOrNo}`;
+    let lockAcquired = false;
     if (ctx.app.redis) {
       // SETNX 锁 3 秒，3秒内同一订单同一用户只允许一个支付请求进入
       const acquired = await ctx.app.redis.set(lockKey, 'locked', 'EX', 3, 'NX');
       if (!acquired) {
         ctx.throw(429, ctx.__('order.order_is_paying') || '支付处理中，请勿重复点击');
       }
+      lockAcquired = true;
     }
 
     const transaction = await ctx.model.transaction();
@@ -694,7 +696,14 @@ class OrderService extends Service {
       };
     } catch (err) {
       await transaction.rollback();
+      if (err.status) {
+        throw err;
+      }
       ctx.throw(400, '支付失败：' + err.message);
+    } finally {
+      if (lockAcquired && ctx.app.redis) {
+        await ctx.app.redis.del(lockKey).catch(e => ctx.logger.error('Redis del lock error', e));
+      }
     }
   }
 

@@ -11,26 +11,26 @@ class MobileUserIdentityController extends Controller {
       const algorithm = 'aes-256-cbc';
       // AES-256 requires a 32-byte key.
       let rawKey = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
-      
+
       // Ensure rawKey is converted to string and properly padded/truncated based on utf8 length
       rawKey = String(rawKey);
       let keyBuf = Buffer.from(rawKey, 'utf8');
       if (keyBuf.length < 32) {
-          const padBuf = Buffer.alloc(32 - keyBuf.length, '0');
-          keyBuf = Buffer.concat([keyBuf, padBuf]);
+        const padBuf = Buffer.alloc(32 - keyBuf.length, '0');
+        keyBuf = Buffer.concat([ keyBuf, padBuf ]);
       } else if (keyBuf.length > 32) {
-          keyBuf = keyBuf.slice(0, 32);
+        keyBuf = keyBuf.slice(0, 32);
       }
-      
+
       // IV must be 16 bytes.
       let rawIv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
       rawIv = String(rawIv);
       let ivBuf = Buffer.from(rawIv, 'utf8');
       if (ivBuf.length < 16) {
-          const padBuf = Buffer.alloc(16 - ivBuf.length, '0');
-          ivBuf = Buffer.concat([ivBuf, padBuf]);
+        const padBuf = Buffer.alloc(16 - ivBuf.length, '0');
+        ivBuf = Buffer.concat([ ivBuf, padBuf ]);
       } else if (ivBuf.length > 16) {
-          ivBuf = ivBuf.slice(0, 16);
+        ivBuf = ivBuf.slice(0, 16);
       }
 
       const cipher = crypto.createCipheriv(algorithm, keyBuf, ivBuf);
@@ -48,25 +48,25 @@ class MobileUserIdentityController extends Controller {
     if (!encryptedStr) return encryptedStr;
     try {
       const algorithm = 'aes-256-cbc';
-      
+
       let rawKey = this.app.config.crypto ? this.app.config.crypto.key : 'default_secret_key_32_bytes_long!';
       rawKey = String(rawKey);
       let keyBuf = Buffer.from(rawKey, 'utf8');
       if (keyBuf.length < 32) {
-          const padBuf = Buffer.alloc(32 - keyBuf.length, '0');
-          keyBuf = Buffer.concat([keyBuf, padBuf]);
+        const padBuf = Buffer.alloc(32 - keyBuf.length, '0');
+        keyBuf = Buffer.concat([ keyBuf, padBuf ]);
       } else if (keyBuf.length > 32) {
-          keyBuf = keyBuf.slice(0, 32);
+        keyBuf = keyBuf.slice(0, 32);
       }
-      
+
       let rawIv = this.app.config.crypto ? this.app.config.crypto.iv : '1234567890123456';
       rawIv = String(rawIv);
       let ivBuf = Buffer.from(rawIv, 'utf8');
       if (ivBuf.length < 16) {
-          const padBuf = Buffer.alloc(16 - ivBuf.length, '0');
-          ivBuf = Buffer.concat([ivBuf, padBuf]);
+        const padBuf = Buffer.alloc(16 - ivBuf.length, '0');
+        ivBuf = Buffer.concat([ ivBuf, padBuf ]);
       } else if (ivBuf.length > 16) {
-          ivBuf = ivBuf.slice(0, 16);
+        ivBuf = ivBuf.slice(0, 16);
       }
 
       const decipher = crypto.createDecipheriv(algorithm, keyBuf, ivBuf);

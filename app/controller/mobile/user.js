@@ -174,7 +174,7 @@ class UserController extends Controller {
         message: 'success',
         data: {
           ...user,
-          balance: user.balance
+          balance: user.balance,
         },
       };
     } catch (err) {

@@ -124,12 +124,12 @@ class MobileWithdrawController extends Controller {
           attributes: [],
           where: {
             inviter_user_id: userId,
-            is_deleted: 0 // 隐患排查2：过滤掉被注销/软删除的下级，防止“死号”永远卡住上级的提现
-          }
+            is_deleted: 0, // 隐患排查2：过滤掉被注销/软删除的下级，防止“死号”永远卡住上级的提现
+          },
         }],
         where: {
-          status: 1
-        }
+          status: 1,
+        },
       });
 
       if (activeSubTask) {

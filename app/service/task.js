@@ -219,19 +219,19 @@ class TaskService extends Service {
       ctx.model.ShopTaskUserItemProgress.sum('revenue', {
         where: {
           user_id: dbUserId,
-          status: { [ctx.app.Sequelize.Op.in]: [1, 2] }, // 只要完成了(或异常)就算收益
+          status: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] }, // 只要完成了(或异常)就算收益
           update_time: {
-            [ctx.app.Sequelize.Op.between]: [todayStart, todayEnd]
-          }
+            [ctx.app.Sequelize.Op.between]: [ todayStart, todayEnd ],
+          },
         },
       }),
       ctx.model.ShopTaskUserItemProgress.sum('revenue', {
         where: {
           user_id: dbUserId,
-          status: { [ctx.app.Sequelize.Op.in]: [1, 2] },
+          status: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] },
           update_time: {
-            [ctx.app.Sequelize.Op.between]: [yesterdayStart, yesterdayEnd]
-          }
+            [ctx.app.Sequelize.Op.between]: [ yesterdayStart, yesterdayEnd ],
+          },
         },
       }),
       ctx.model.ShopTaskUser.findOne({
@@ -258,7 +258,7 @@ class TaskService extends Service {
           where: {
             shop_task_user_id: currentTaskUser.id,
             user_id: dbUserId,
-            status: { [ctx.app.Sequelize.Op.in]: [1, 2] }, // 1:已完成 2:异常
+            status: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] }, // 1:已完成 2:异常
           },
         }),
         ctx.model.ShopTask.findByPk(currentTaskUser.task_id),
@@ -696,7 +696,7 @@ class TaskService extends Service {
     const cTime = new Date();
 
     const parentYieldRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;
-    
+
     const revenue = goodsPrice * yieldRate;
 
     await nextProgress.update({
