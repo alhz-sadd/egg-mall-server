@@ -30,7 +30,9 @@ const BUSINESS_RULES = [
   // === 3. 订单与任务 ===
   { method: 'PUT', pattern: /^\/api\/admin-outer\/tasks\/items\/[^\/]+(\?|$)/, businessType: 1, title: '修改任务子项' },
   { method: 'PUT', pattern: /^\/api\/admin-outer\/tasks\/user-items\/[^\/]+(\?|$)/, businessType: 1, title: '修改用户任务子项' },
-  { method: 'POST', pattern: /^\/api\/admin-outer\/tasks\/(bind-user|start-user|close-user)(\?|$)/, businessType: 1, title: '任务状态修改' },
+  { method: 'POST', pattern: /^\/api\/admin-outer\/tasks\/bind-user(\?|$)/, businessType: 1, title: '更换模板' },
+  { method: 'POST', pattern: /^\/api\/admin-outer\/tasks\/start-user(\?|$)/, businessType: 1, title: '开启任务' },
+  { method: 'POST', pattern: /^\/api\/admin-outer\/tasks\/close-user(\?|$)/, businessType: 1, title: '关闭任务' },
   { method: 'POST', pattern: /^\/api\/admin-outer\/tasks(\?|$)/, businessType: 0, title: '新增任务模板' },
   { method: 'PUT', pattern: /^\/api\/admin-outer\/tasks\/[^\/]+(\?|$)/, businessType: 1, title: '修改任务模板' },
   { method: 'DELETE', pattern: /^\/api\/admin-outer\/tasks\/[^\/]+(\?|$)/, businessType: 2, title: '删除任务模板' },
