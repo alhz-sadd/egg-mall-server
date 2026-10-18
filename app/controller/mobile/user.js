@@ -138,14 +138,13 @@ class UserController extends Controller {
     ctx.set('Pragma', 'no-cache');
     ctx.set('Expires', '0');
 
-    try {
-      const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
-      // 1. 并行获取用户信息和钱包信息，提升接口响应速度
-      const [ user, wallet ] = await Promise.all([
-        service.user.findById(userId),
-        ctx.model.UserWallet.findOne({ where: { user_id: userId } }),
-      ]);
+    // 获取用户基本信息和钱包余额，如果找不到钱包，默认为 0
+    const [ user, wallet ] = await Promise.all([
+      service.user.findById(userId),
+      ctx.model.UserWallet.findOne({ where: { user_id: userId } }),
+    ]);
 
       if (!user) {
         ctx.throw(404, ctx.__('user.user_not_exist'));
@@ -169,26 +168,14 @@ class UserController extends Controller {
         user.balance = '0.00';
       }
 
-      ctx.body = {
-        code: 200,
-        message: 'success',
-        data: {
-          ...user,
-          balance: user.balance,
-        },
-      };
-    } catch (err) {
-      if (err.status === 404) {
-        ctx.status = 200;
-        ctx.body = {
-          code: 404,
-          message: ctx.__(err.message) || err.message,
-          data: null,
-        };
-        return;
-      }
-      throw err;
-    }
+    ctx.body = {
+      code: 200,
+      message: 'success',
+      data: {
+        ...user,
+        balance: user.balance,
+      },
+    };
   }
 
   /**
@@ -601,16 +588,6 @@ class UserController extends Controller {
       };
     } catch (err) {
       ctx.logger.error('Error in /api/mobile/getUserRevenue', err);
-      // 避免 404 导致前端 Axios 抛出全局异常，使页面其他接口数据（如统计）无法渲染
-      if (err.status === 404) {
-        ctx.status = 200;
-        ctx.body = {
-          code: 404,
-          message: ctx.__(err.message) || err.message,
-          data: null,
-        };
-        return;
-      }
       throw err;
     }
   }

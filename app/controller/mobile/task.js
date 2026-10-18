@@ -21,32 +21,26 @@ class TaskController extends Controller {
     ctx.set('Pragma', 'no-cache');
     ctx.set('Expires', '0');
 
-    try {
-      // 兼容多种 userId 的解析方式
-      const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+    // 兼容多种 userId 的解析方式
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
-      if (!userId) {
-        ctx.throw(401, ctx.__('common.not_logged_in'));
-      }
-
-      const user = await ctx.model.SysUser.findByPk(userId);
-      // 允许业务员(3)和店长(2)也能在移动端登录查看测试，不仅限于C端用户(4)
-      if (!user || ![ 2, 3, 4 ].includes(user.user_type)) {
-        ctx.throw(404, 'user.user_not_exist');
-      }
-
-      const result = await service.task.getUserTaskInfo(userId);
-
-      ctx.body = {
-        code: 200,
-        message: 'success',
-        data: result,
-      };
-    } catch (err) {
-      ctx.logger.error('Error in /api/mobile/getUserTaskInfo', err);
-      // 让外层的 error_handler 中间件接管
-      throw err;
+    if (!userId) {
+      ctx.throw(401, ctx.__('common.not_logged_in'));
     }
+
+    const user = await ctx.model.SysUser.findByPk(userId);
+    // 允许业务员(3)和店长(2)也能在移动端登录查看测试，不仅限于C端用户(4)
+    if (!user || ![ 2, 3, 4 ].includes(Number(user.user_type))) {
+      ctx.throw(404, 'user.user_not_exist');
+    }
+
+    const result = await service.task.getUserTaskInfo(userId);
+
+    ctx.body = {
+      code: 200,
+      message: 'success',
+      data: result,
+    };
   }
 
   /**

@@ -208,6 +208,32 @@ class H5ConfigController extends Controller {
       { where: { id, config_type: configType, shop_id: shopId, is_deleted: 0 } },
     );
 
+    // 为更新模板状态记录操作日志
+    ctx.runInBackground(async () => {
+      try {
+        const adminUser = ctx.state.adminInner || ctx.state.adminOuter || ctx.state.admin;
+        let operId = 0;
+        let operName = '未知';
+        if (adminUser) {
+          operId = adminUser.adminInnerId || adminUser.adminOuterId || adminUser.adminId;
+          operName = adminUser.username || String(operId);
+        }
+        await ctx.service.sysLog.recordOperationLog({
+          userId: operId,
+          username: operName,
+          title: 'H5配置模板管理',
+          businessType: 1, // 修改操作
+          operUrl: ctx.url,
+          requestMethod: ctx.method,
+          operParam: { id, status: Number(status), shop_id: shopId, action: 'updateStatus' },
+          jsonResult: { code: 200, message: '状态更新成功' },
+          status: 0,
+        });
+      } catch (err) {
+        ctx.logger.error('更新模板状态操作日志记录失败', err);
+      }
+    });
+
     ctx.body = { code: 200, message: '状态更新成功' };
   }
 
@@ -248,6 +274,32 @@ class H5ConfigController extends Controller {
       source_template_id: template_id, // 记录来源模板ID
       create_user_id: adminId,
       update_user_id: adminId,
+    });
+
+    // 为修改状态和绑定模板记录操作日志
+    ctx.runInBackground(async () => {
+      try {
+        const adminUser = ctx.state.adminInner || ctx.state.adminOuter || ctx.state.admin;
+        let operId = 0;
+        let operName = '未知';
+        if (adminUser) {
+          operId = adminUser.adminInnerId || adminUser.adminOuterId || adminUser.adminId;
+          operName = adminUser.username || String(operId);
+        }
+        await ctx.service.sysLog.recordOperationLog({
+          userId: operId,
+          username: operName,
+          title: 'H5配置模板管理',
+          businessType: 1, // 修改操作
+          operUrl: ctx.url,
+          requestMethod: ctx.method,
+          operParam: { shop_id: shopId, template_id, action: 'bindTemplate', templateName },
+          jsonResult: { code: 200, message: '绑定模板成功' },
+          status: 0,
+        });
+      } catch (err) {
+        ctx.logger.error('绑定模板操作日志记录失败', err);
+      }
     });
 
     ctx.body = { code: 200, message: '绑定模板成功', data: newTemplate };

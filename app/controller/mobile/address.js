@@ -71,26 +71,13 @@ class AddressController extends Controller {
     const { userId } = ctx.state.user;
     const { id } = ctx.params;
 
-    try {
-      const address = await service.address.detail(id, userId);
+    const address = await service.address.detail(id, userId);
 
-      ctx.body = {
-        code: 200,
-        message: 'success',
-        data: address,
-      };
-    } catch (err) {
-      if (err.status === 404) {
-        ctx.status = 200;
-        ctx.body = {
-          code: 404,
-          message: ctx.__(err.message) || err.message,
-          data: null,
-        };
-        return;
-      }
-      throw err;
-    }
+    ctx.body = {
+      code: 200,
+      message: 'success',
+      data: address,
+    };
   }
 
   /**

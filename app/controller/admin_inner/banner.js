@@ -165,6 +165,32 @@ class BannerController extends Controller {
     }
     const data = await service.banner.updateStatus(id, status, 0);
 
+    // 记录操作日志
+    ctx.runInBackground(async () => {
+      try {
+        const adminUser = ctx.state.adminInner || ctx.state.adminOuter || ctx.state.admin;
+        let operId = 0;
+        let operName = '未知';
+        if (adminUser) {
+          operId = adminUser.adminInnerId || adminUser.adminOuterId || adminUser.adminId;
+          operName = adminUser.username || String(operId);
+        }
+        await ctx.service.sysLog.recordOperationLog({
+          userId: operId,
+          username: operName,
+          title: 'H5配置-轮播图管理(全局)',
+          businessType: 1, // 修改操作
+          operUrl: ctx.url,
+          requestMethod: ctx.method,
+          operParam: { id, status: Number(status), shop_id: 0, action: 'updateStatusGlobal' },
+          jsonResult: { code: 200, message: '状态更新成功' },
+          status: 0,
+        });
+      } catch (err) {
+        ctx.logger.error('全局轮播图状态更新操作日志记录失败', err);
+      }
+    });
+
     ctx.body = { code: 200, message: '状态更新成功', data };
   }
 

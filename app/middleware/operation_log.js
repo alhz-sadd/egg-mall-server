@@ -81,6 +81,27 @@ module.exports = () => {
         adminOperType = 2;
       }
 
+      // 状态判定逻辑：
+      // 如果发生抛出异常 (originalError)，说明一定是失败的 (status=1)
+      // 如果没有抛出异常，但响应体(ctx.body)的 code 存在且不等于 200，也说明是业务失败 (status=1)
+      // 其他情况视为成功 (status=0)
+      let isSuccess = false;
+      if (!originalError) {
+        if (ctx.body && ctx.body.code !== undefined) {
+          isSuccess = ctx.body.code === 200;
+        } else {
+          isSuccess = ctx.status >= 200 && ctx.status < 400;
+        }
+      }
+
+      // 获取错误信息：如果是异常则取异常信息，如果是业务失败(code!=200)则取 body.message
+      let errMsg = null;
+      if (originalError) {
+        errMsg = originalError.message;
+      } else if (!isSuccess && ctx.body) {
+        errMsg = ctx.body.message;
+      }
+
       // 所有操作日志统一记录到 sys_oper_log 表
       // 采用 ctx.runInBackground 异步执行，不阻塞主流程的接口响应
       ctx.runInBackground(async () => {
@@ -99,8 +120,8 @@ module.exports = () => {
             device_type: parsedUa.deviceType,
             browser: parsedUa.browser,
             os: parsedUa.os,
-            status: (ctx.status >= 200 && ctx.status < 400 && !originalError) ? 0 : 1, // 只要有抛出异常就是失败
-            errorMsg: originalError ? originalError.message : (ctx.status >= 400 && ctx.body ? ctx.body.message : null),
+            status: isSuccess ? 0 : 1, // 0=正常, 1=异常
+            errorMsg: errMsg,
             costTime: cost,
             // 可以在 oper_desc 里追加标识，方便调试
             oper_desc: `${businessTypeInfo.title} - ${ctx.method}`,

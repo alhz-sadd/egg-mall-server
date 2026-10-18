@@ -79,30 +79,16 @@ class OrderController extends Controller {
     ctx.set('Pragma', 'no-cache');
     ctx.set('Expires', '0');
 
-    try {
-      const { userId } = ctx.state.user;
-      const { id } = ctx.params;
+    const { userId } = ctx.state.user;
+    const { id } = ctx.params;
 
-      const order = await service.order.detail(id, userId);
+    const order = await service.order.detail(id, userId);
 
-      ctx.body = {
-        code: 200,
-        message: 'success',
-        data: order,
-      };
-    } catch (err) {
-      // 避免 404 导致前端 Axios 抛出全局异常，使页面其他接口数据（如统计）无法渲染
-      if (err.status === 404) {
-        ctx.status = 200;
-        ctx.body = {
-          code: 404,
-          message: ctx.__(err.message) || err.message,
-          data: null,
-        };
-        return;
-      }
-      throw err;
-    }
+    ctx.body = {
+      code: 200,
+      message: 'success',
+      data: order,
+    };
   }
 
   /**
@@ -158,16 +144,6 @@ class OrderController extends Controller {
         err.status = 400;
         err.code = 1;
       }
-      // 避免 404 导致前端 Axios 抛出全局异常，使页面其他接口数据（如统计）无法渲染
-      if (err.status === 404) {
-        ctx.status = 200;
-        ctx.body = {
-          code: 404,
-          message: ctx.__(err.message) || err.message,
-          data: null,
-        };
-        return;
-      }
       throw err;
     }
   }
@@ -211,16 +187,6 @@ class OrderController extends Controller {
         err.status = 400;
         err.code = 1;
       }
-      // 避免 404 导致前端 Axios 抛出全局异常，使页面其他接口数据（如统计）无法渲染
-      if (err.status === 404) {
-        ctx.status = 200;
-        ctx.body = {
-          code: 404,
-          message: ctx.__(err.message) || err.message,
-          data: null,
-        };
-        return;
-      }
       throw err;
     }
   }
@@ -257,16 +223,6 @@ class OrderController extends Controller {
       if (err.message && err.message.includes('余额不足')) {
         err.status = 400;
         err.code = 1;
-      }
-      // 避免 404 导致前端 Axios 抛出全局异常，使页面其他接口数据（如统计）无法渲染
-      if (err.status === 404) {
-        ctx.status = 200;
-        ctx.body = {
-          code: 404,
-          message: ctx.__(err.message) || err.message,
-          data: null,
-        };
-        return;
       }
       throw err;
     }

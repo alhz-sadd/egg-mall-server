@@ -89,6 +89,32 @@ class RuleController extends Controller {
 
     const data = await service.rule.updateStatus(id, status, shopId);
 
+    // 记录操作日志
+    ctx.runInBackground(async () => {
+      try {
+        const adminUser = ctx.state.adminInner || ctx.state.adminOuter || ctx.state.admin;
+        let operId = 0;
+        let operName = '未知';
+        if (adminUser) {
+          operId = adminUser.adminInnerId || adminUser.adminOuterId || adminUser.adminId;
+          operName = adminUser.username || String(operId);
+        }
+        await ctx.service.sysLog.recordOperationLog({
+          userId: operId,
+          username: operName,
+          title: 'H5配置-规则管理',
+          businessType: 1, // 修改操作
+          operUrl: ctx.url,
+          requestMethod: ctx.method,
+          operParam: { id, status: Number(status), shop_id: shopId, action: 'updateStatus' },
+          jsonResult: { code: 200, message: '状态更新成功' },
+          status: 0,
+        });
+      } catch (err) {
+        ctx.logger.error('规则状态更新操作日志记录失败', err);
+      }
+    });
+
     ctx.body = {
       code: 200,
       message: '状态更新成功',
@@ -126,6 +152,32 @@ class RuleController extends Controller {
     }
 
     const data = await service.rule.bindTemplate(template_id, shopId);
+
+    // 记录操作日志
+    ctx.runInBackground(async () => {
+      try {
+        const adminUser = ctx.state.adminInner || ctx.state.adminOuter || ctx.state.admin;
+        let operId = 0;
+        let operName = '未知';
+        if (adminUser) {
+          operId = adminUser.adminInnerId || adminUser.adminOuterId || adminUser.adminId;
+          operName = adminUser.username || String(operId);
+        }
+        await ctx.service.sysLog.recordOperationLog({
+          userId: operId,
+          username: operName,
+          title: 'H5配置-规则管理',
+          businessType: 1, // 修改操作
+          operUrl: ctx.url,
+          requestMethod: ctx.method,
+          operParam: { shop_id: shopId, template_id, action: 'bindTemplate' },
+          jsonResult: { code: 200, message: '绑定模板成功' },
+          status: 0,
+        });
+      } catch (err) {
+        ctx.logger.error('规则绑定操作日志记录失败', err);
+      }
+    });
 
     ctx.body = {
       code: 200,
@@ -205,6 +257,32 @@ class RuleController extends Controller {
       ctx.throw(400, '必须传递 status 字段');
     }
     const data = await service.rule.updateStatus(id, status, 0);
+
+    // 记录操作日志
+    ctx.runInBackground(async () => {
+      try {
+        const adminUser = ctx.state.adminInner || ctx.state.adminOuter || ctx.state.admin;
+        let operId = 0;
+        let operName = '未知';
+        if (adminUser) {
+          operId = adminUser.adminInnerId || adminUser.adminOuterId || adminUser.adminId;
+          operName = adminUser.username || String(operId);
+        }
+        await ctx.service.sysLog.recordOperationLog({
+          userId: operId,
+          username: operName,
+          title: 'H5配置-规则管理(全局)',
+          businessType: 1, // 修改操作
+          operUrl: ctx.url,
+          requestMethod: ctx.method,
+          operParam: { id, status: Number(status), shop_id: 0, action: 'updateStatusGlobal' },
+          jsonResult: { code: 200, message: '状态更新成功' },
+          status: 0,
+        });
+      } catch (err) {
+        ctx.logger.error('全局规则状态更新操作日志记录失败', err);
+      }
+    });
 
     ctx.body = {
       code: 200,

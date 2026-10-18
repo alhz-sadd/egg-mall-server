@@ -836,22 +836,19 @@ class AdminOuterCustomerService extends Service {
 
       // 5. 写入操作日志 sys_oper_log
       if (operResult.length > 0) {
-        // 由于依赖了 sysLog，需要确保之前挂载过或者有通用日志服务，若没有可调整
-        if (ctx.service.sysLog && ctx.service.sysLog.createLog) {
-          await ctx.service.sysLog.createLog({
-            oper_user_id: currentUser.user_id,
-            oper_username: currentUser.username || '',
-            shop_id: currentUser.shop_id,
-            oper_type: 2, // 修改
-            oper_module: 'C端客户管理',
-            oper_desc: '编辑客户配置',
-            request_method: ctx.method,
-            request_url: ctx.url,
-            request_params: JSON.stringify(payload),
-            response_result: `code:200,msg:"修改成功",客户ID:${userId},修改项:[${operResult.join(',')}]`,
-            oper_status: 1,
-            oper_ip: ctx.ip,
-          });
+        if (ctx.service.sysLog && ctx.service.sysLog.recordOperationLog) {
+          await ctx.service.sysLog.recordOperationLog({
+            userId: currentUser.user_id,
+            username: currentUser.username || '',
+            title: '编辑客户配置',
+            businessType: 1, // 1: 修改
+            operUrl: ctx.url,
+            requestMethod: ctx.method,
+            operParam: JSON.stringify(payload),
+            jsonResult: JSON.stringify({ code: 200, msg: "修改成功", 修改项: operResult }),
+            status: 0,
+          operIp: ctx.ip,
+        });
         }
       }
 
@@ -1022,20 +1019,18 @@ class AdminOuterCustomerService extends Service {
       await transaction.commit();
 
       // 6. 异步记录操作日志
-      if (ctx.service.sysLog && ctx.service.sysLog.createLog) {
-        ctx.service.sysLog.createLog({
-          oper_user_id: currentUser.user_id,
-          oper_username: currentUser.username || '',
-          shop_id,
-          oper_type: 2, // 修改
-          oper_module: 'C端客户资金管理',
-          oper_desc: isAdd ? '后台增加资金' : '后台扣除资金',
-          request_method: ctx.method,
-          request_url: ctx.url,
-          request_params: JSON.stringify(payload),
-          response_result: `code:200,msg:"操作成功",客户ID:${userId},变动:${isAdd ? '+' : '-'}${opAmount}`,
-          oper_status: 1,
-          oper_ip: ctx.ip,
+      if (ctx.service.sysLog && ctx.service.sysLog.recordOperationLog) {
+        ctx.service.sysLog.recordOperationLog({
+          userId: currentUser.user_id,
+          username: currentUser.username || '',
+          title: isAdd ? '后台增加资金' : '后台扣除资金',
+          businessType: 1, // 1: 修改
+          operUrl: ctx.url,
+          requestMethod: ctx.method,
+          operParam: JSON.stringify(payload),
+          jsonResult: JSON.stringify({ code: 200, msg: "操作成功", 变动: `${isAdd ? '+' : '-'}${opAmount}` }),
+          status: 0,
+          operIp: ctx.ip,
         }).catch(err => ctx.logger.error('记录操作日志失败', err));
       }
 

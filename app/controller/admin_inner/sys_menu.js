@@ -95,8 +95,7 @@ class SysMenuController extends Controller {
     try {
       const menu = await ctx.model.SysMenu.findByPk(id);
       if (!menu) {
-        ctx.body = { code: 404, message: '菜单不存在' };
-        return;
+        ctx.throw(404, '菜单不存在');
       }
 
       const menuData = menu.toJSON();

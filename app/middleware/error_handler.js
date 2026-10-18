@@ -9,17 +9,58 @@ module.exports = () => {
   return async function errorHandler(ctx, next) {
     try {
       await next();
+      
+      // 处理未匹配到的路由 (404 Not Found)
+      if (ctx.status === 404 && !ctx.body) {
+        // 先走一遍多语言翻译，如果没匹配到则使用默认值
+        let notFoundMsg = 'Not Found';
+        let currentLang = 'en-US';
+        if (ctx.locale) {
+          currentLang = ctx.locale;
+        } else {
+          const headerLang = ctx.get('lang') || ctx.get('language') || ctx.get('accept-language');
+          if (headerLang) {
+            const match = headerLang.match(/[a-zA-Z]{2,3}-[a-zA-Z]{2,3}/);
+            if (match) {
+              const parts = match[0].split('-');
+              currentLang = `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
+            } else if (headerLang.toLowerCase().includes('zh')) {
+              currentLang = 'zh-CN';
+            }
+          }
+        }
+        try {
+          const dict = require(`../../config/locale/${currentLang}.js`);
+          notFoundMsg = dict['common.not_found'] || notFoundMsg;
+        } catch (e) {
+          // ignore
+        }
+
+        const isMobile = ctx.path.startsWith('/api/mobile');
+        ctx.status = isMobile ? 200 : 404;
+        ctx.body = {
+          code: isMobile ? 200 : 404,
+          message: notFoundMsg,
+          data: null,
+        };
+
+        // 为了方便排查，当发生 404 时，在后端日志中打印一条 WARN
+        ctx.logger.warn(`[404 未找到路由] ${ctx.method} ${ctx.url} - (H5已返回200)`);
+        
+        return;
+      }
     } catch (err) {
       let status = err.status || 500;
       let code = err.code || status;
-      let message = err.message || '服务器内部错误';
+      let message = err.message || 'common.server_error';
 
       // 400 级别的业务拦截（如任务不存在、余额不足），降级为普通的 WARN，避免污染 common-error.log
       if (status >= 500) {
-        // 记录错误日志
+        // 记录错误日志，并保留堆栈信息
         ctx.app.emit('error', err, ctx);
       } else {
-        ctx.logger.warn(`[业务拦截] ${ctx.method} ${ctx.url} - ${message}`);
+        // 打印业务拦截的警告，带上原始的请求路径，方便排查
+        ctx.logger.warn(`[业务拦截 ${status}] ${ctx.method} ${ctx.url} - ${message}`);
       }
 
       // 处理参数校验类错误（如 egg-validate 抛出的错误）
@@ -100,8 +141,17 @@ module.exports = () => {
         body.stack = err.stack;
       }
 
-      // 修复：不要强制返回 HTTP 200，应返回真实的 HTTP 状态码（如 500, 401, 422 等），以便前端 axios 拦截器能正确捕获异常
-      ctx.status = status;
+      // 如果是 H5 (mobile) 接口，统一 HTTP 状态码为 200，由 JSON 内部的 code 区分业务结果
+      const isMobile = ctx.path.startsWith('/api/mobile');
+      
+      // 针对移动端 404 错误（如用户不存在、任务不存在等），强制转换 code 为 200 并返回 data: null
+      // 避免触发前端 Axios 全局异常拦截器导致页面其他接口被中断、页面崩溃
+      if (isMobile && status === 404) {
+        code = 200;
+        body.code = 200;
+      }
+
+      ctx.status = isMobile ? 200 : status;
       ctx.body = body;
     }
   };

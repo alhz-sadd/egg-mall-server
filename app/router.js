@@ -121,8 +121,8 @@ module.exports = app => {
   // ==================== 内部系统 (admin-inner) ====================
   const adminInnerAuth = app.middleware.adminInnerAuth();
 
-  router.post('/api/admin-inner/login', controller.adminInner.auth.login);
-  router.post('/api/admin-inner/logout', adminInnerAuth, controller.adminInner.auth.logout);
+  router.post('/api/admin-inner/login', controller.adminInner.auth.login); // 管理员登录
+  router.post('/api/admin-inner/logout', adminInnerAuth, controller.adminInner.auth.logout); // 管理员退出登录
   router.post('/api/admin-inner/auth/refresh', controller.common.auth.refresh);
   router.get('/api/admin-inner/current', adminInnerAuth, controller.adminInner.auth.current);
 
@@ -262,12 +262,6 @@ module.exports = app => {
   router.put('/api/admin-inner/products/:id', adminInnerAuth, controller.adminInner.goods.update);
   router.delete('/api/admin-inner/products/:id', adminInnerAuth, controller.adminInner.goods.destroy);
 
-  // admin-inner 任务商品管理 (全平台任务商品)
-  router.get('/api/admin-inner/tasks', adminInnerAuth, controller.adminInner.task.adminList);
-  router.post('/api/admin-inner/tasks', adminInnerAuth, controller.adminInner.task.create);
-  router.put('/api/admin-inner/tasks/:id', adminInnerAuth, controller.adminInner.task.update);
-  router.delete('/api/admin-inner/tasks/:id', adminInnerAuth, controller.adminInner.task.destroy);
-
   // admin-inner 文件上传
   router.post('/api/admin-inner/upload/image', adminInnerAuth, controller.adminInner.upload.image);
 
@@ -398,12 +392,6 @@ module.exports = app => {
   router.post('/api/admin-outer/totp/bind-init', controller.adminOuter.auth.bindInit);
   router.post('/api/admin-outer/totp/bind-confirm', controller.adminOuter.auth.bindConfirm);
   router.post('/api/admin-outer/totp/login-verify', controller.adminOuter.auth.loginVerify);
-
-  // admin-inner 人工资金调整 (上分/下分)
-  router.get('/api/admin-inner/points-give/list', adminInnerAuth, controller.adminInner.points.giveList);
-  router.post('/api/admin-inner/points-give/create', adminInnerAuth, controller.adminInner.points.giveCreate);
-  router.get('/api/admin-inner/points-deduct/list', adminInnerAuth, controller.adminInner.points.deductList);
-  router.post('/api/admin-inner/points-deduct/create', adminInnerAuth, controller.adminInner.points.deductCreate);
 
   // admin-outer 给其他用户修改密码和重置谷歌
   router.put('/api/admin-outer/users/reset-pwd', adminOuterAuth, controller.adminOuter.auth.resetUserPwd);

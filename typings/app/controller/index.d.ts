@@ -18,7 +18,6 @@ import ExportAdminInnerLoginLog = require('../../../app/controller/admin_inner/l
 import ExportAdminInnerMerchant = require('../../../app/controller/admin_inner/merchant');
 import ExportAdminInnerOperationLog = require('../../../app/controller/admin_inner/operation_log');
 import ExportAdminInnerPayChannel = require('../../../app/controller/admin_inner/pay_channel');
-import ExportAdminInnerPoints = require('../../../app/controller/admin_inner/points');
 import ExportAdminInnerProduct = require('../../../app/controller/admin_inner/product');
 import ExportAdminInnerRecharge = require('../../../app/controller/admin_inner/recharge');
 import ExportAdminInnerRule = require('../../../app/controller/admin_inner/rule');
@@ -28,7 +27,6 @@ import ExportAdminInnerShopH5Binding = require('../../../app/controller/admin_in
 import ExportAdminInnerShopPayChannel = require('../../../app/controller/admin_inner/shop_pay_channel');
 import ExportAdminInnerSysMenu = require('../../../app/controller/admin_inner/sys_menu');
 import ExportAdminInnerSysRole = require('../../../app/controller/admin_inner/sys_role');
-import ExportAdminInnerTask = require('../../../app/controller/admin_inner/task');
 import ExportAdminInnerTelegramBot = require('../../../app/controller/admin_inner/telegram_bot');
 import ExportAdminInnerUpload = require('../../../app/controller/admin_inner/upload');
 import ExportAdminInnerVipLevel = require('../../../app/controller/admin_inner/vip_level');
@@ -96,7 +94,6 @@ declare module 'egg' {
       merchant: ExportAdminInnerMerchant;
       operationLog: ExportAdminInnerOperationLog;
       payChannel: ExportAdminInnerPayChannel;
-      points: ExportAdminInnerPoints;
       product: ExportAdminInnerProduct;
       recharge: ExportAdminInnerRecharge;
       rule: ExportAdminInnerRule;
@@ -106,7 +103,6 @@ declare module 'egg' {
       shopPayChannel: ExportAdminInnerShopPayChannel;
       sysMenu: ExportAdminInnerSysMenu;
       sysRole: ExportAdminInnerSysRole;
-      task: ExportAdminInnerTask;
       telegramBot: ExportAdminInnerTelegramBot;
       upload: ExportAdminInnerUpload;
       vipLevel: ExportAdminInnerVipLevel;

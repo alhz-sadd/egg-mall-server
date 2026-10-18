@@ -598,11 +598,12 @@ class SysLogService extends Service {
    */
   async loginLogs(query = {}, adminUser = null) {
     const { ctx, app } = this;
-    const { username, login_result, login_ip, login_location, device_type, page = 1, page_size = 10 } = query;
+    const { username, login_result, login_ip, login_location, device_type, page = 1, page_size = 10, shop_id, user_type, user_id } = query;
     const { Op } = app.Sequelize;
 
     const where = {};
     if (username) where.username = { [Op.like]: `%${username}%` };
+    if (user_id) where.user_id = Number(user_id);
     if (login_result !== undefined && login_result !== '') {
       where.login_result = Number(login_result);
     }
@@ -615,16 +616,21 @@ class SysLogService extends Service {
     include.push({
       model: ctx.model.SysUser,
       as: 'user',
-      attributes: [ 'nickname', 'shop_id' ],
+      attributes: [ 'nickname', 'shop_id', 'user_type' ],
     });
 
-    // 权限控制：A端(user_type=1)看全部，B端(user_type=2/3)只能看本店账号
+    // 权限控制：A端(user_type=1)看A端日志，B端(user_type=2/3)只能看本店账号
     if (adminUser) {
       if (adminUser.user_type === 1) { // A端
-        if (query.shop_id) {
-          where['$user.shop_id$'] = Number(query.shop_id);
+        if (shop_id) {
+          where['$user.shop_id$'] = Number(shop_id); // A端根据店铺id获取
+        } else if (user_id) {
+          // 已经有 where.user_id = Number(user_id); 不做额外限制
+        } else {
+          where.login_type = 1; // A端默认获取A端平台的日志
         }
       } else { // B端
+        // B端获取的是自己登录账号归属店铺的日志
         where['$user.shop_id$'] = adminUser.shop_id;
       }
     }
@@ -737,119 +743,8 @@ class SysLogService extends Service {
     await ctx.model.UserLoginLog.destroy({ where });
   }
 
-  /**
-   * 查询后台管理端(A/B端)登录日志列表
-   * @param {Object} query 查询参数
-   * @param {Object} adminUser 当前登录的管理员信息
-   */
-  async adminLoginLogs(query = {}, adminUser = null) {
-    const { ctx, app } = this;
-    const { username, login_result, login_ip, login_location, device_type, page = 1, page_size = 10, shop_id, user_type, user_id } = query;
-    const { Op } = app.Sequelize;
+    // remove adminLoginLogs
 
-    const where = {};
-    if (username) where.username = { [Op.like]: `%${username}%` };
-    if (user_id) where.user_id = Number(user_id);
-    if (login_result !== undefined && login_result !== '') {
-      where.login_result = Number(login_result);
-    }
-    if (login_ip) where.login_ip = { [Op.like]: `%${login_ip}%` };
-    if (login_location) where.login_location = { [Op.like]: `%${login_location}%` };
-    if (device_type !== undefined && device_type !== '') where.device_type = Number(device_type);
-
-    // 权限与数据隔离
-    if (adminUser) {
-      if (adminUser.user_type === 1) { // A端
-        if (shop_id) {
-          // A端想要查看指定店铺的登录日志
-          const userTypeCondition = user_type ? Number(user_type) : { [Op.in]: [ 2, 3, 4 ] };
-          const shopUsers = await ctx.model.SysUser.findAll({
-            where: { shop_id: Number(shop_id), user_type: userTypeCondition },
-            attributes: [ 'user_id' ],
-          });
-          where.user_id = { [Op.in]: shopUsers.map(u => u.user_id) };
-        } else {
-          // A端未传 shop_id 时
-          if (user_type) {
-            const users = await ctx.model.SysUser.findAll({
-              where: { user_type: Number(user_type) },
-              attributes: [ 'user_id' ],
-            });
-            where.user_id = { [Op.in]: users.map(u => u.user_id) };
-          } else {
-            // A端默认只看自己的 (A端管理员账号)
-            where.login_type = 1;
-          }
-        }
-      } else { // B端
-        // B端只能看本店子账号的登录日志（也放开C端用户的查看）
-        const userTypeCondition = user_type ? Number(user_type) : { [Op.in]: [ 2, 3, 4 ] };
-        const shopUsers = await ctx.model.SysUser.findAll({
-          where: { shop_id: adminUser.shop_id, user_type: userTypeCondition },
-          attributes: [ 'user_id' ],
-        });
-        where.user_id = { [Op.in]: shopUsers.map(u => u.user_id) };
-      }
-    }
-
-    const include = [];
-    if (adminUser && adminUser.user_type === 1 && !shop_id && !user_type) {
-      include.push({
-        model: ctx.model.SysUser,
-        as: 'user',
-        where: { user_type: 1 },
-        attributes: [ 'nickname', 'shop_id', 'user_type' ],
-      });
-    } else {
-      include.push({
-        model: ctx.model.SysUser,
-        as: 'user',
-        attributes: [ 'nickname', 'shop_id', 'user_type' ],
-      });
-    }
-
-    const { count, rows } = await ctx.model.UserLoginLog.findAndCountAll({
-      where,
-      include,
-      order: [[ 'login_time', 'DESC' ]],
-      offset: (page - 1) * page_size,
-      limit: Number(page_size),
-    });
-
-    const list = [];
-    for (const item of rows) {
-      const data = item.toJSON();
-
-      let loc = data.login_location;
-      if (!loc || loc === '' || loc === '未知') {
-        loc = await this.resolveIpLocation(data.login_ip);
-      }
-
-      list.push({
-        id: data.id,
-        log_no: data.log_no,
-        user_id: data.user_id,
-        username: data.username,
-        login_ip: data.login_ip,
-        login_location: loc,
-        device_type: data.device_type,
-        browser: data.browser,
-        os: data.os,
-        login_type: data.login_type,
-        login_result: data.login_result,
-        login_time: this.formatDate(data.login_time),
-        nickname: data.user ? data.user.nickname : null,
-        user_type: data.user ? data.user.user_type : null,
-      });
-    }
-
-    return {
-      total: count,
-      list,
-      page: Number(page),
-      page_size: Number(page_size),
-    };
-  }
 
   /**
    * 查询 C端操作日志列表 (B端查询本店客户，A端可查询全平台)
@@ -858,15 +753,24 @@ class SysLogService extends Service {
    */
   async operationLogs(query = {}, adminUser = null) {
     const { ctx, app } = this;
-    const { oper_username, oper_status, oper_module, oper_type, oper_location, start_time, end_time, page = 1, page_size = 10 } = query;
+    const { module, oper_name, oper_username, oper_status, oper_module, oper_type, oper_location, start_time, end_time, status, page = 1, page_size = 10, shop_id, user_type, user_id, oper_id } = query;
     const { Op } = app.Sequelize;
 
     const where = {};
     if (oper_username) where.username = { [Op.like]: `%${oper_username}%` };
+    if (oper_name) where.username = { [Op.like]: `%${oper_name}%` };
+    
     if (oper_status !== undefined && oper_status !== '') where.status = Number(oper_status);
+    if (status !== undefined && status !== '') where.status = Number(status);
+
     if (oper_module) where.title = { [Op.like]: `%${oper_module}%` };
+    if (module) where.title = { [Op.like]: `%${module}%` };
+
     if (oper_type !== undefined && oper_type !== '') where.business_type = Number(oper_type);
     if (oper_location) where.oper_location = { [Op.like]: `%${oper_location}%` };
+    
+    if (user_id) where.user_id = Number(user_id);
+    if (oper_id) where.user_id = Number(oper_id); // 支持 B端/A端 传 oper_id 过滤
 
     if ((start_time && start_time !== '') || (end_time && end_time !== '')) {
       where.oper_time = {};
@@ -884,13 +788,18 @@ class SysLogService extends Service {
       attributes: [ 'nickname', 'shop_id', 'user_type' ],
     }];
 
-    // 权限控制：A端(user_type=1)看全部，B端(user_type=2/3)只能看本店日志
+    // 权限控制：A端(user_type=1)看A端日志，B端(user_type=2/3)只能看本店日志
     if (adminUser) {
-      if (adminUser.user_type === 1) {
-        if (query.shop_id) {
-          where['$user.shop_id$'] = Number(query.shop_id);
+      if (adminUser.user_type === 1) { // A端
+        if (shop_id) {
+          where['$user.shop_id$'] = Number(shop_id); // A端根据店铺id获取
+        } else if (user_id) {
+          // 已经有 where.user_id = Number(user_id);
+        } else {
+          where['$user.user_type$'] = 1; // A端默认获取A端平台的操作日志
         }
-      } else {
+      } else { // B端
+        // B端获取的是自己登录账号归属店铺的日志
         where['$user.shop_id$'] = adminUser.shop_id;
       }
     }
@@ -904,6 +813,7 @@ class SysLogService extends Service {
     });
 
     const list = [];
+
     for (const item of rows) {
       const data = item.toJSON();
       const typeMap = { 0: '新增', 1: '修改', 2: '删除', 3: '授权', 4: '导出', 5: '导入', 6: '强退', 7: '生成代码', 8: '清空数据', 9: '其他' };
@@ -922,8 +832,10 @@ class SysLogService extends Service {
         oper_type: data.business_type,
         oper_desc: `${data.title} - ${typeMap[data.business_type] || '操作'}`,
         oper_id: data.user_id,
-        oper_user_type: data.user ? data.user.user_type : null,
         oper_name: (data.user && data.user.nickname) ? data.user.nickname : (data.username || '未知'),
+        username: data.username,
+        user_id: data.user_id,
+        oper_user_type: data.user ? data.user.user_type : null,
         oper_ip: data.oper_ip,
         oper_location: data.oper_location || await this.resolveIpLocation(data.oper_ip),
         status: data.status,
@@ -950,133 +862,7 @@ class SysLogService extends Service {
     };
   }
 
-  /**
-   * 查询后台管理端(A/B端)操作日志列表
-   * A端可以查看A端和所有B端店铺的日志；B端只能查看本店及其子账号的日志
-   * @param {Object} query 查询参数
-   * @param {Object} adminUser 当前登录的管理员信息
-   */
-  async adminOperationLogs(query = {}, adminUser = null) {
-    const { ctx, app } = this;
-    const { module, oper_name, oper_type, status, page = 1, page_size = 10, shop_id, user_type, user_id } = query;
-    const { Op } = app.Sequelize;
-
-    const where = {};
-    if (module) where.module = { [Op.like]: `%${module}%` };
-    if (oper_name) where.username = { [Op.like]: `%${oper_name}%` };
-    if (user_id) where.user_id = Number(user_id);
-    if (oper_type !== undefined && oper_type !== '') where.business_type = Number(oper_type);
-
-    // 原来过滤掉了失败状态或者只按条件查，现在我们放宽条件，确保前端无论传不传都能查出失败的
-    if (status !== undefined && status !== '') {
-      where.status = Number(status);
-    }
-
-    // 权限与数据隔离
-    if (adminUser) {
-      if (adminUser.user_type === 1) { // A端
-        if (shop_id) {
-          // A端想要查看指定店铺的日志
-          const userTypeCondition = user_type ? Number(user_type) : { [Op.in]: [ 2, 3, 4 ] };
-          const shopUsers = await ctx.model.SysUser.findAll({
-            where: { shop_id: Number(shop_id), user_type: userTypeCondition },
-            attributes: [ 'user_id' ],
-          });
-          where.user_id = { [Op.in]: shopUsers.map(u => u.user_id) };
-        } else {
-          // A端默认只看自己的 (通过 user_type 过滤，需要关联 SysUser)
-          if (user_type) {
-            const users = await ctx.model.SysUser.findAll({
-              where: { user_type: Number(user_type) },
-              attributes: [ 'user_id' ],
-            });
-            where.user_id = { [Op.in]: users.map(u => u.user_id) };
-          }
-        }
-      } else { // B端
-        // B端只能看本店的
-        const userTypeCondition = user_type ? Number(user_type) : { [Op.in]: [ 2, 3, 4 ] };
-        const shopUsers = await ctx.model.SysUser.findAll({
-          where: { shop_id: adminUser.shop_id, user_type: userTypeCondition },
-          attributes: [ 'user_id' ],
-        });
-        where.user_id = { [Op.in]: shopUsers.map(u => u.user_id) };
-      }
-    }
-
-    const include = [];
-    if (adminUser && adminUser.user_type === 1 && !shop_id && !user_type) {
-      include.push({
-        model: ctx.model.SysUser,
-        as: 'user',
-        where: { user_type: 1 },
-        attributes: [ 'nickname', 'shop_id', 'user_type' ],
-      });
-    } else {
-      include.push({
-        model: ctx.model.SysUser,
-        as: 'user',
-        attributes: [ 'nickname', 'shop_id', 'user_type' ],
-      });
-    }
-
-    const { count, rows } = await ctx.model.SysOperLog.findAndCountAll({
-      where,
-      include,
-      order: [[ 'oper_time', 'DESC' ]],
-      offset: (page - 1) * page_size,
-      limit: Number(page_size),
-    });
-
-    const list = [];
-    for (const item of rows) {
-      const data = item.toJSON();
-      const typeMap = { 0: '新增', 1: '修改', 2: '删除', 3: '授权', 4: '导出', 5: '导入', 6: '强退', 7: '生成代码', 8: '清空数据', 9: '其他' };
-
-      let params = {};
-      try {
-        params = data.oper_param ? (typeof data.oper_param === 'string' ? JSON.parse(data.oper_param) : data.oper_param) : {};
-      } catch (e) {
-        params = data.oper_param;
-      }
-
-      list.push({
-        id: data.id,
-        log_no: `AOP${data.id}`,
-        module: data.title,
-        oper_type: data.business_type,
-        oper_desc: data.method,
-        oper_id: data.user_id,
-        oper_user_type: data.user ? data.user.user_type : null,
-        oper_name: (data.user && data.user.nickname) ? data.user.nickname : (data.username || '未知'),
-        oper_ip: data.oper_ip,
-        oper_location: data.oper_location || await this.resolveIpLocation(data.oper_ip),
-        device_type: data.device_type,
-        browser: data.browser,
-        os: data.os,
-        status: data.status,
-        cost_time: data.cost_time || 0,
-        oper_time: this.formatDate(data.oper_time),
-        request_info: {
-          req_module: data.title,
-          req_url: data.oper_url,
-          req_params: params,
-          req_method: data.request_method,
-          res_body: data.json_result,
-          res_status: data.status,
-          cost_time: data.cost_time || 0,
-          req_desc: data.title,
-        },
-      });
-    }
-
-    return {
-      total: count,
-      list,
-      page: Number(page),
-      page_size: Number(page_size),
-    };
-  }
+    // remove adminOperationLogs
 
   /**
    * 批量删除操作日志

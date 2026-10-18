@@ -286,16 +286,6 @@ class MobileWithdrawController extends Controller {
       };
     } catch (err) {
       await transaction.rollback();
-      // 避免 404 导致前端 Axios 抛出全局异常，使页面其他接口数据（如统计）无法渲染
-      if (err.status === 404) {
-        ctx.status = 200;
-        ctx.body = {
-          code: 404,
-          message: ctx.__(err.message) || err.message,
-          data: null,
-        };
-        return;
-      }
       throw err;
     }
   }

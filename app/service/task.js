@@ -311,7 +311,7 @@ class TaskService extends Service {
     // 1. 获取用户信息和余额
     const user = await ctx.model.SysUser.findByPk(userId);
     // 允许业务员(3)和店长(2)也能在移动端登录查看测试
-    if (!user || ![ 2, 3, 4 ].includes(user.user_type)) {
+    if (!user || ![ 2, 3, 4 ].includes(Number(user.user_type))) {
       // 账号不存在或者角色不符时，返回 -1 状态避免产生 400 错误日志
       return { task_status: -1 };
     }
