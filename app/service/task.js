@@ -194,7 +194,12 @@ class TaskService extends Service {
       try {
         const cachedData = await ctx.app.redis.get(cacheKey);
         if (cachedData) {
-          return JSON.parse(cachedData);
+          try {
+            return JSON.parse(cachedData);
+          } catch (e) {
+            ctx.logger.error(`[TaskCacheError] 用户 ${dbUserId} 缓存解析失败`, e);
+            await ctx.app.redis.del(cacheKey);
+          }
         }
       } catch (err) {
         ctx.logger.warn(`[TaskService.getUserTaskInfo] Redis 获取缓存失败: ${err.message}`);
@@ -274,7 +279,7 @@ class TaskService extends Service {
     let hasMoney = '0.00';
     if (userWallet) {
       const balance = Number(userWallet.balance || 0);
-      hasMoney = balance.toFixed(2);
+      hasMoney = isNaN(balance) ? '0.00' : balance.toFixed(2);
     }
 
     const result = {
@@ -287,20 +292,21 @@ class TaskService extends Service {
       is_open: isOpen, // 是否已开启任务 0未开启，1已开启
     };
 
+    // 在返回前对 result 做一次深度的 BigInt 清洗，确保 Controller 层直接 body 返回时不会炸
+    const safeResult = JSON.parse(JSON.stringify(result, (key, value) =>
+      (typeof value === 'bigint' ? value.toString() : value)
+    ));
+
     // 存入 Redis 缓存 (10 秒，保护数据库防击穿)
     if (ctx.app.redis) {
       try {
-        // 自定义 replacer 处理 BigInt 防止低版本/序列化报错
-        const jsonStr = JSON.stringify(result, (key, value) =>
-          (typeof value === 'bigint' ? value.toString() : value),
-        );
-        await ctx.app.redis.set(cacheKey, jsonStr, 'EX', 10);
+        await ctx.app.redis.set(cacheKey, JSON.stringify(safeResult), 'EX', 10);
       } catch (err) {
         ctx.logger.warn(`[TaskService.getUserTaskInfo] Redis 设置缓存失败: ${err.message}`);
       }
     }
 
-    return result;
+    return safeResult;
   }
 
   async search(userId) {

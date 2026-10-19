@@ -95,22 +95,22 @@ const BUSINESS_RULES = [
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/employees\/[^\/]+(\?|$)/, businessType: 1, title: '修改员工' },
   { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/employees\/[^\/]+(\?|$)/, businessType: 2, title: '删除员工' },
 
-  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(products|goods)(\?|$)/, businessType: 0, title: '新增商品' },
-  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/(products|goods)\/[^\/]+(\?|$)/, businessType: 1, title: '修改商品' },
-  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/(products|goods)\/[^\/]+(\?|$)/, businessType: 2, title: '删除商品' },
+  { method: 'POST', pattern: /^\/api\/admin-inner\/(products|goods)(\?|$)/, businessType: 0, title: '新增商品' },
+  { method: 'PUT', pattern: /^\/api\/admin-inner\/(products|goods)\/[^\/]+(\?|$)/, businessType: 1, title: '修改商品' },
+  { method: 'DELETE', pattern: /^\/api\/admin-inner\/(products|goods)\/[^\/]+(\?|$)/, businessType: 2, title: '删除商品' },
 
-  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(notices|h5-config\/notices|shops\/[^\/]+\/notices)(\?|$)/, businessType: 0, title: '新增公告' },
-  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/(notices|h5-config\/notices|shops\/[^\/]+\/notices)\/[^\/]+(\?|$)/, businessType: 1, title: '修改公告' },
-  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/(notices|h5-config\/notices|shops\/[^\/]+\/notices)\/[^\/]+(\?|$)/, businessType: 2, title: '删除公告' },
+  { method: 'POST', pattern: /^\/api\/admin-inner\/(notices|h5-config\/notices|shops\/[^\/]+\/notices)(\?|$)/, businessType: 0, title: '新增公告' },
+  { method: 'PUT', pattern: /^\/api\/admin-inner\/(notices|h5-config\/notices|shops\/[^\/]+\/notices)\/[^\/]+(\?|$)/, businessType: 1, title: '修改公告' },
+  { method: 'DELETE', pattern: /^\/api\/admin-inner\/(notices|h5-config\/notices|shops\/[^\/]+\/notices)\/[^\/]+(\?|$)/, businessType: 2, title: '删除公告' },
 
-  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(banners|h5-config\/banners)(\?|$)/, businessType: 0, title: '新增轮播图' },
-  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/(banners|h5-config\/banners)\/[^\/]+(\?|$)/, businessType: 1, title: '修改轮播图' },
-  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/(banners|h5-config\/banners)\/[^\/]+(\?|$)/, businessType: 2, title: '删除轮播图' },
+  { method: 'POST', pattern: /^\/api\/admin-inner\/(banners|h5-config\/banners)(\?|$)/, businessType: 0, title: '新增轮播图' },
+  { method: 'PUT', pattern: /^\/api\/admin-inner\/(banners|h5-config\/banners)\/[^\/]+(\?|$)/, businessType: 1, title: '修改轮播图' },
+  { method: 'DELETE', pattern: /^\/api\/admin-inner\/(banners|h5-config\/banners)\/[^\/]+(\?|$)/, businessType: 2, title: '删除轮播图' },
 
-  { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/h5-config\/rules(\?|$)/, businessType: 0, title: '新增H5规则' },
-  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/h5-config\/rules\/[^\/]+\/status(\?|$)/, businessType: 1, title: '修改H5规则状态' },
-  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/h5-config\/rules\/?(\?|$)/, businessType: 1, title: '修改H5规则' },
-  { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/h5-config\/rules\/?(\?|$)/, businessType: 2, title: '删除H5规则' },
+  { method: 'POST', pattern: /^\/api\/admin-inner\/h5-config\/rules(\?|$)/, businessType: 0, title: '新增H5规则' },
+  { method: 'PUT', pattern: /^\/api\/admin-inner\/h5-config\/rules\/[^\/]+\/status(\?|$)/, businessType: 1, title: '修改H5规则状态' },
+  { method: 'PUT', pattern: /^\/api\/admin-inner\/h5-config\/rules\/?(\?|$)/, businessType: 1, title: '修改H5规则' },
+  { method: 'DELETE', pattern: /^\/api\/admin-inner\/h5-config\/rules\/?(\?|$)/, businessType: 2, title: '删除H5规则' },
 
   { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(customer-services|h5-services|h5-config\/service-entries)(\?|$)/, businessType: 0, title: '新增客服配置' },
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/(customer-services|h5-services|h5-config\/service-entries)\/[^\/]+(\?|$)/, businessType: 1, title: '修改客服配置' },
@@ -121,9 +121,8 @@ const BUSINESS_RULES = [
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/pay-channels\/[^\/]+(\?|$)/, businessType: 1, title: '修改支付通道' },
   { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/pay-channels\/[^\/]+(\?|$)/, businessType: 2, title: '删除支付通道' },
 
-  { method: 'POST', pattern: /^\/api\/admin-outer\/sales-address(\?|$)/, businessType: 0, title: '新增收款地址' },
-  { method: 'PUT', pattern: /^\/api\/admin-outer\/sales-address\/[^\/]+(\?|$)/, businessType: 1, title: '修改收款地址' },
-  { method: 'DELETE', pattern: /^\/api\/admin-outer\/sales-address\/[^\/]+(\?|$)/, businessType: 2, title: '删除收款地址' },
+  // 收款地址已不再使用，暂时移除
+
 
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/system\/config(\?|$)/, businessType: 1, title: '修改系统配置' },
 

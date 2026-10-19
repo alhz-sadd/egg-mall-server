@@ -139,16 +139,29 @@ class UserController extends Controller {
     ctx.set('Expires', '0');
 
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+    ctx.logger.info('Parsed userId from token:', userId, 'ctx.state.user:', ctx.state.user);
+
+    if (!userId) {
+      ctx.throw(401, ctx.__('common.missing_credentials') || 'Missing userId in token');
+    }
 
     // 获取用户基本信息和钱包余额，如果找不到钱包，默认为 0
-    const [ user, wallet ] = await Promise.all([
+    const [ userModel, wallet ] = await Promise.all([
       service.user.findById(userId),
       ctx.model.UserWallet.findOne({ where: { user_id: userId } }),
     ]);
 
-      if (!user) {
+    ctx.logger.info('findById result:', userModel);
+
+      if (!userModel) {
         ctx.throw(404, ctx.__('user.user_not_exist'));
       }
+
+      // 处理 Sequelize 模型转换为普通对象，并安全处理可能的 BigInt
+      let user = userModel.toJSON ? userModel.toJSON() : userModel;
+      user = JSON.parse(JSON.stringify(user, (key, value) =>
+        typeof value === 'bigint' ? value.toString() : value
+      ));
 
       // 补充 VIP 等级详情
       if (user.shop_id && user.vip_level !== undefined) {
@@ -163,7 +176,8 @@ class UserController extends Controller {
       // 补充用户余额
       if (wallet) {
         // 强制转换为两位小数的字符串，避免前端 0 被判断为 false 导致不渲染
-        user.balance = Number(wallet.balance || 0).toFixed(2);
+        const val = Number(wallet.balance || 0);
+        user.balance = isNaN(val) ? '0.00' : val.toFixed(2);
       } else {
         user.balance = '0.00';
       }

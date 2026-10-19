@@ -7,6 +7,13 @@
  */
 module.exports = () => {
   return async function errorHandler(ctx, next) {
+    // 全局禁用 API 请求的 TG 缓存
+    if (ctx.path.startsWith('/api/')) {
+      ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      ctx.set('Pragma', 'no-cache');
+      ctx.set('Expires', '0');
+    }
+
     try {
       await next();
       
@@ -38,6 +45,12 @@ module.exports = () => {
 
         const isMobile = ctx.path.startsWith('/api/mobile');
         ctx.status = isMobile ? 200 : 404;
+        
+        // 强制禁用错误响应的缓存，防止 TG 缓存 404/401 导致前端后续请求直接命中缓存失败
+        ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        ctx.set('Pragma', 'no-cache');
+        ctx.set('Expires', '0');
+
         ctx.body = {
           code: isMobile ? 200 : 404,
           message: notFoundMsg,
@@ -53,6 +66,11 @@ module.exports = () => {
       let status = err.status || 500;
       let code = err.code || status;
       let message = err.message || 'common.server_error';
+
+      // 强制禁用错误响应的缓存，防止 TG 缓存 404/401 导致前端后续请求直接命中缓存失败
+      ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+      ctx.set('Pragma', 'no-cache');
+      ctx.set('Expires', '0');
 
       // 400 级别的业务拦截（如任务不存在、余额不足），降级为普通的 WARN，避免污染 common-error.log
       if (status >= 500) {
@@ -141,7 +159,6 @@ module.exports = () => {
         body.stack = err.stack;
       }
 
-      // 如果是 H5 (mobile) 接口，统一 HTTP 状态码为 200，由 JSON 内部的 code 区分业务结果
       const isMobile = ctx.path.startsWith('/api/mobile');
       
       // 针对移动端 404 错误（如用户不存在、任务不存在等），强制转换 code 为 200 并返回 data: null
@@ -151,7 +168,13 @@ module.exports = () => {
         body.code = 200;
       }
 
-      ctx.status = isMobile ? 200 : status;
+      // 手机端的接口统一 HTTP 200 返回，业务错误码由 body.code 区分
+      if (isMobile) {
+        ctx.status = 200;
+      } else {
+        ctx.status = status;
+      }
+
       ctx.body = body;
     }
   };

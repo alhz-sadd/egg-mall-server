@@ -15,8 +15,17 @@ module.exports = app => {
 
   // 用户相关（公开接口）
   router.post('/api/mobile/account/register', controller.mobile.user.register);
+  // 兼容老版本 H5 缓存
+  router.post('/api/mobile/users/register', controller.mobile.user.register);
+  router.post('/api/mobile/register', controller.mobile.user.register);
+
   router.post('/api/mobile/account/login', controller.mobile.user.login);
+  // 兼容老版本 H5 缓存
+  router.post('/api/mobile/users/login', controller.mobile.user.login);
+  router.post('/api/mobile/login', controller.mobile.user.login);
   router.post('/api/mobile/auth/refresh', controller.common.auth.refresh); // 移动端刷新 Token
+  // 兼容老版本 H5 缓存
+  router.post('/api/mobile/account/refresh', controller.common.auth.refresh);
 
   // 商品分类（公开接口）
   router.get('/api/mobile/categories', controller.mobile.category.index);
@@ -47,8 +56,13 @@ module.exports = app => {
 
   // 当前用户
   router.get('/api/mobile/account/info', auth, controller.mobile.user.current); // 避开 users/current
+  // 兼容老版本 H5 缓存
+  router.get('/api/mobile/users/current', auth, controller.mobile.user.current);
+
   router.get('/api/mobile/vip-levels', auth, controller.mobile.vipLevel.index);
   router.get('/api/mobile/mission/detail', auth, controller.mobile.task.getUserTaskInfo); // 避开 getUserTaskInfo
+  // 兼容老版本 H5 缓存
+  router.get('/api/mobile/getUserTaskInfo', auth, controller.mobile.task.getUserTaskInfo);
   router.get('/api/mobile/invite/info', auth, controller.mobile.invite.info);
   router.get('/api/mobile/account/invite-code', auth, controller.mobile.user.inviteCode);
   router.put('/api/mobile/account/vip-level', auth, controller.mobile.user.updateVipLevel);
@@ -60,6 +74,8 @@ module.exports = app => {
   router.delete('/api/mobile/account/credential', auth, controller.mobile.user.deleteCredential);
   router.get('/api/mobile/account/team', auth, controller.mobile.user.team);
   router.get('/api/mobile/account/capital-records', auth, controller.mobile.user.capitalLogs); // 避开 capital-logs
+  // 兼容老版本 H5 缓存
+  router.get('/api/mobile/capital-logs', auth, controller.mobile.user.capitalLogs);
   router.get('/api/mobile/account/receipt', auth, controller.mobile.user.getReceipt); // 新增：获取收货信息
   router.put('/api/mobile/account/receipt', auth, controller.mobile.user.updateReceipt); // 新增：更新收货信息
   router.get('/api/mobile/account/receipt-info', auth, controller.mobile.user.getReceiptInfo);
@@ -69,6 +85,8 @@ module.exports = app => {
   router.put('/api/mobile/account/profile', auth, controller.mobile.user.updateProfile);
   router.post('/api/mobile/account/logout', auth, controller.mobile.user.logout);
   router.get('/api/mobile/account/earnings', auth, controller.mobile.user.getUserRevenue); // 避开 getUserRevenue
+  // 兼容老版本 H5 缓存
+  router.get('/api/mobile/getUserRevenue', auth, controller.mobile.user.getUserRevenue);
 
   // 实名认证
   router.get('/api/mobile/account/verification', auth, controller.mobile.userIdentity.show);
@@ -103,6 +121,8 @@ module.exports = app => {
 
   // 用户返款统计
   router.get('/api/mobile/account/rebates', auth, controller.mobile.backMoney.getUserBackMoney); // 避开 getUserBackMoney
+  // 兼容老版本 H5 缓存
+  router.get('/api/mobile/getUserBackMoney', auth, controller.mobile.backMoney.getUserBackMoney);
 
   // 文件上传
   router.post('/api/mobile/upload/image', auth, controller.mobile.upload.image);

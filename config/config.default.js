@@ -22,6 +22,7 @@ module.exports = appInfo => {
     origin: ctx => ctx.request.header.origin || '*',
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH,OPTIONS',
     allowHeaders: 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, lang, token, shop-id, tenant-id',
+    exposeHeaders: 'Authorization, Cache-Control, Content-Type, Expires, Pragma',
     credentials: true,
   };
 
