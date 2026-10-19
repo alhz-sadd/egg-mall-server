@@ -1,0 +1,31 @@
+【TG端用户获取不到数据/白屏/不显示任务 - 终极排查与修复记录】
+记录时间：2026-10-20
+
+为了防止AI助手在新建对话后遗忘，特此记录本项目针对“TG端个别用户获取不到数据、白屏、任务不显示”等疑难杂症的 6 大核心修复方案：
+
+1. Telegram 消息超时阻塞主流程 (500错误)
+   - 问题：原代码 `await ctx.service.telegram.sendMessage` 会因为网络超时导致整个充值/提现/登录接口抛出500异常，阻断主流程。
+   - 修复：改为 `ctx.runInBackground` 异步发送（Fire and Forget），不再阻塞业务响应。
+
+2. Sequelize Hook 未触发导致 Redis 脏数据
+   - 问题：充值/提现审核通过时使用的 `Model.update` 批量更新未触发清理 Redis 的 Hook，导致数据库加钱了，但 Redis 依然返回旧余额。
+   - 修复：在事务完全 `commit` 成功后，手动强制执行 `redis.del('user_balance:xxx')`。
+
+3. 应用层 Redis 缓存过期时间过长
+   - 问题：`getBalance` 和 `getUserTaskInfo` 接口曾经设置了 5~10秒 的 Redis 缓存。在资金变动时，极易因前端并发读取，将“旧数据”强行写回 Redis 续命，导致前端死活刷不出新数据。
+   - 修复：保留防数据库击穿机制，但将这两个敏感接口的缓存 TTL 极速缩短至 1 秒。
+
+4. 致命的 BigInt 序列化崩溃 (导致特定用户永久白屏)
+   - 问题：数据库的 BIGINT 字段被查询出来后，Node.js 原生的 `JSON.stringify` 无法序列化 BigInt，直接导致接口抛出 500 异常。特定用户因为名下有包含 BigInt 的记录，导致其无论怎么重新登录都一直报 500 白屏。
+   - 修复：在 `app/middleware/error_handler.js` 中增加全局“BigInt 清洗屏障”，拦截 `ctx.body` 自动遍历转换 BigInt 为字符串。
+
+5. TG 内置浏览器的 HTTP 强缓存 (死缓存)
+   - 问题：Telegram Android 端的 WebView 对 GET 请求缓存极其激进。
+   - 修复：在所有 Mobile 端的 GET 接口（如获取余额、资金明细、搜单等）强制注入 `Cache-Control: no-cache, no-store, must-revalidate` 和 `Expires: 0` 响应头。
+
+6. 全方位业务与异常追踪埋点
+   - 修复：在 `error_handler.js`、`user.js`、`task.js` 中加入了 `[任务埋点]`、`[余额获取埋点]`、`[致命异常埋点]`。
+   - 作用：下次再有反馈，直接通过服务器执行 `cat /root/logs/egg-mall-server/egg-web.log | grep 埋点` 即可精确知道数据是从 Redis 取的、还是被业务规则(如余额不足)拦截的。
+
+【给未来AI的提示】
+如果你在新的对话中看到了这份文件，请务必以此为上下文。如果在 TG 端依然出现数据不同步问题，请首先检查上述 6 点是否出现新漏洞，并引导用户去服务器查阅含有“埋点”字样的日志。
