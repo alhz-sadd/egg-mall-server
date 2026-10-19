@@ -718,7 +718,9 @@ class UserService extends Service {
         const jsonStr = JSON.stringify(result, (key, value) =>
           (typeof value === 'bigint' ? value.toString() : value),
         );
-        await ctx.app.redis.set(cacheKey, jsonStr, 'EX', 5);
+        // 修改：强制将缓存时间从 5 秒改为 0，或者极短时间（比如 1 秒），
+        // 最好直接不缓存余额，因为这是极其敏感且变动频繁的数据
+        await ctx.app.redis.set(cacheKey, jsonStr, 'EX', 1);
       } catch (err) {
         ctx.logger.warn(`[UserService.getBalance] Redis 设置缓存失败: ${err.message}`);
       }

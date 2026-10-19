@@ -188,7 +188,7 @@ class TaskService extends Service {
     const todayStr = dayjs().format('YYYY-MM-DD');
     const yesterdayStr = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
 
-    // 优先从 Redis 获取缓存 (缓存时间 10 秒)
+    // 优先从 Redis 获取缓存 (缓存时间缩短为 2 秒，防止数据不一致)
     const cacheKey = `user_task_info:${dbUserId}`;
     if (ctx.app.redis) {
       try {
@@ -297,10 +297,10 @@ class TaskService extends Service {
       (typeof value === 'bigint' ? value.toString() : value)
     ));
 
-    // 存入 Redis 缓存 (10 秒，保护数据库防击穿)
+    // 存入 Redis 缓存 (改为极短的 1 秒，因为这种资产/进度数据需要极高实时性，或者干脆不缓存只做防击穿)
     if (ctx.app.redis) {
       try {
-        await ctx.app.redis.set(cacheKey, JSON.stringify(safeResult), 'EX', 10);
+        await ctx.app.redis.set(cacheKey, JSON.stringify(safeResult), 'EX', 1);
       } catch (err) {
         ctx.logger.warn(`[TaskService.getUserTaskInfo] Redis 设置缓存失败: ${err.message}`);
       }
