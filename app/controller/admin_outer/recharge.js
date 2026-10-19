@@ -221,6 +221,7 @@ class AdminOuterRechargeController extends Controller {
       }, {
         where: { user_id: recharge.user_id },
         transaction,
+        individualHooks: true, // 确保触发 afterBulkUpdate/afterSave 钩子以清除 Redis 缓存
       });
 
       // 记录流水
