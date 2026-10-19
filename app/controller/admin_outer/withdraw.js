@@ -286,6 +286,12 @@ class AdminOuterWithdrawController extends Controller {
 
       await transaction.commit();
 
+      // 强制清除 Redis 缓存，防止 increment/decrement 不触发 hook 导致余额不更新
+      if (ctx.app.redis) {
+        await ctx.app.redis.del(`user_balance:${withdraw.user_id}`).catch(() => {});
+        await ctx.app.redis.del(`user_task_info:${withdraw.user_id}`).catch(() => {});
+      }
+
       // 发送 TG 异步通知 - 审核成功
       ctx.runInBackground(async () => {
         try {

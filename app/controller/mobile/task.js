@@ -51,6 +51,12 @@ class TaskController extends Controller {
    */
   async search() {
     const { ctx, service } = this;
+
+    // 禁用移动端 GET 请求缓存，防止 TG 强缓存导致接单状态不更新
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     try {
       // 这里的 userId 是从 token 解析出的 SysUser 表主键，兼容多种写法
       const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;

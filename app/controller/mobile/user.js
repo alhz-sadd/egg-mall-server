@@ -372,6 +372,12 @@ class UserController extends Controller {
    */
   async team() {
     const { ctx, service } = this;
+    
+    // 强制禁用移动端 GET 请求缓存
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
     const { page, page_size } = ctx.query;
 
@@ -547,6 +553,12 @@ class UserController extends Controller {
    */
   async capitalLogs() {
     const { ctx, service } = this;
+    
+    // 强制禁用移动端 GET 请求缓存
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
     const result = await service.user.getCapitalLogs(userId, ctx.query);
@@ -567,6 +579,12 @@ class UserController extends Controller {
    */
   async getUserRevenue() {
     const { ctx, service } = this;
+
+    // 强制禁用移动端 GET 请求缓存
+    ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    ctx.set('Pragma', 'no-cache');
+    ctx.set('Expires', '0');
+
     try {
       const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 

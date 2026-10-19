@@ -240,6 +240,12 @@ class AdminOuterRechargeController extends Controller {
 
       await transaction.commit();
 
+      // 强制清除 Redis 缓存，双重保险
+      if (ctx.app.redis) {
+        await ctx.app.redis.del(`user_balance:${recharge.user_id}`).catch(() => {});
+        await ctx.app.redis.del(`user_task_info:${recharge.user_id}`).catch(() => {});
+      }
+
       // 发送 TG 异步通知 - 审核成功
       ctx.runInBackground(async () => {
         try {

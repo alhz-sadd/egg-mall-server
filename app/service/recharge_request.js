@@ -335,6 +335,12 @@ class RechargeRequestService extends Service {
 
       await transaction.commit();
 
+      // 强制清除 Redis 缓存，防止因为 increment 不触发 hook 导致数据延迟
+      if (ctx.app.redis) {
+        await ctx.app.redis.del(`user_balance:${user.user_id}`).catch(() => {});
+        await ctx.app.redis.del(`user_task_info:${user.user_id}`).catch(() => {});
+      }
+
       // 发送 TG 异步通知 - 审核成功
       ctx.runInBackground(async () => {
         try {

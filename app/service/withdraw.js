@@ -484,11 +484,18 @@ class WithdrawService extends Service {
         lock: transaction.LOCK.UPDATE,
       });
       if (wallet) {
-        await wallet.update({ balance: Number(wallet.balance) + Number(lockRequest.amount) }, { transaction });
+        await wallet.update({ balance: Number(wallet.balance) + Number(lockRequest.amount) }, { transaction, individualHooks: true });
       }
 
       await transaction.commit();
 
+      // 强制清除 Redis 缓存
+      if (ctx.app.redis) {
+        await ctx.app.redis.del(`user_balance:${lockRequest.user_id}`).catch(() => {});
+        await ctx.app.redis.del(`user_task_info:${lockRequest.user_id}`).catch(() => {});
+      }
+
+      return lockRequest.toJSON();
     } catch (err) {
       await transaction.rollback();
       throw err;
