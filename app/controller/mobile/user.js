@@ -235,7 +235,7 @@ class UserController extends Controller {
 
   /**
    * @summary 获取当前用户账户余额
-   * @description 返回当前用户的账户余额
+   * @description 返回当前用户的账户余额 (支持 GET)
    * @router get /api/mobile/users/balance
    * @request header string Authorization Bearer token
    * @response 200 ApiResponse 余额信息
@@ -250,6 +250,26 @@ class UserController extends Controller {
 
     const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
 
+    const result = await service.user.getBalance(userId);
+
+    ctx.body = {
+      code: 200,
+      message: 'success',
+      data: result,
+    };
+  }
+
+  /**
+   * @summary 获取当前用户账户余额 (POST方式，防强缓存)
+   * @description 返回当前用户的账户余额，专为解决TG端GET强缓存设计的POST接口
+   * @router post /api/mobile/users/balance-sync
+   * @request header string Authorization Bearer token
+   * @response 200 ApiResponse 余额信息
+   */
+  async balanceSync() {
+    const { ctx, service } = this;
+
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
     const result = await service.user.getBalance(userId);
 
     ctx.body = {

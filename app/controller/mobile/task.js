@@ -44,6 +44,35 @@ class TaskController extends Controller {
   }
 
   /**
+   * @summary 获取用户任务信息 (POST方式，防强缓存)
+   * @description h5 用户 获取用户任务统计信息，专为解决TG端GET强缓存设计
+   * @router post /api/mobile/getUserTaskInfoSync
+   * @response 200 ApiResponse 用户任务统计信息
+   */
+  async getUserTaskInfoSync() {
+    const { ctx, service } = this;
+
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+
+    if (!userId) {
+      ctx.throw(401, ctx.__('common.not_logged_in'));
+    }
+
+    const user = await ctx.model.SysUser.findByPk(userId);
+    if (!user || ![ 2, 3, 4 ].includes(Number(user.user_type))) {
+      ctx.throw(404, 'user.user_not_exist');
+    }
+
+    const result = await service.task.getUserTaskInfo(userId);
+
+    ctx.body = {
+      code: 200,
+      message: 'success',
+      data: result,
+    };
+  }
+
+  /**
    * @summary 搜索任务
    * @description h5 用户 搜索任务
    * @router get /api/mobile/tasks/search
