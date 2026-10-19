@@ -686,12 +686,14 @@ class UserService extends Service {
   async getBalance(id) {
     const { ctx } = this;
 
-    // 优先从 Redis 获取缓存 (缓存时间 5 秒，资金数据时效性要求较高)
+    // 优先从 Redis 获取缓存 (缓存时间缩短为 1 秒)
     const cacheKey = `user_balance:${id}`;
     if (ctx.app.redis) {
       try {
         const cachedData = await ctx.app.redis.get(cacheKey);
         if (cachedData) {
+          // 埋点：记录成功从 Redis 获取余额
+          ctx.logger.info(`[余额获取埋点] 用户 ${id} 成功从 Redis 缓存获取余额: ${cachedData}`);
           return JSON.parse(cachedData);
         }
       } catch (err) {
@@ -701,6 +703,7 @@ class UserService extends Service {
 
     const user = await this.findUserByIdentifier(id);
     if (!user) {
+      ctx.logger.warn(`[余额获取埋点] 用户 ${id} 获取余额失败，原因：用户不存在`);
       ctx.throw(404, ctx.__('user.user_not_exist'));
     }
 
@@ -710,6 +713,9 @@ class UserService extends Service {
       user_id: user.user_id,
       balance: wallet ? wallet.balance : 0,
     };
+
+    // 埋点：记录成功从数据库查到余额
+    ctx.logger.info(`[余额获取埋点] 用户 ${id} 成功从 MySQL 数据库获取余额: ${result.balance}`);
 
     // 存入 Redis 缓存
     if (ctx.app.redis) {

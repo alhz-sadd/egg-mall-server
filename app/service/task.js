@@ -195,6 +195,8 @@ class TaskService extends Service {
         const cachedData = await ctx.app.redis.get(cacheKey);
         if (cachedData) {
           try {
+            // 埋点：记录成功从 Redis 获取任务首页数据
+            ctx.logger.info(`[任务首页埋点] 用户 ${dbUserId} 成功从 Redis 缓存获取任务首页数据`);
             return JSON.parse(cachedData);
           } catch (e) {
             ctx.logger.error(`[TaskCacheError] 用户 ${dbUserId} 缓存解析失败`, e);
@@ -297,6 +299,9 @@ class TaskService extends Service {
       (typeof value === 'bigint' ? value.toString() : value)
     ));
 
+    // 埋点：记录成功从数据库查到任务首页数据
+    ctx.logger.info(`[任务首页埋点] 用户 ${dbUserId} 成功从 MySQL 数据库获取任务首页数据, 余额: ${safeResult.has_money}, 任务状态: ${safeResult.is_open}`);
+
     // 存入 Redis 缓存 (改为极短的 1 秒，因为这种资产/进度数据需要极高实时性，或者干脆不缓存只做防击穿)
     if (ctx.app.redis) {
       try {
@@ -318,6 +323,8 @@ class TaskService extends Service {
     const user = await ctx.model.SysUser.findByPk(userId);
     // 允许业务员(3)和店长(2)也能在移动端登录查看测试
     if (!user || ![ 2, 3, 4 ].includes(Number(user.user_type))) {
+      // 埋点：记录为什么该用户搜索任务返回 -1
+      ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：用户不存在或角色不符，当前角色：${user ? user.user_type : 'null'}`);
       // 账号不存在或者角色不符时，返回 -1 状态避免产生 400 错误日志
       return { task_status: -1 };
     }
@@ -349,6 +356,7 @@ class TaskService extends Service {
       // 对于接任务界面，可以返回 3(代表已完成/待重新开启)，如果仅仅是 0，那就是还没做过
       if (boundTask) {
         if (boundTask.task_status === 2) {
+          ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：上一轮任务已完成(task_status=2)待重新开启`);
           return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
         }
         return { sequence_no: 0, task_status: 0, wares: {}, order: {}, is_lucky: 0 };
@@ -360,16 +368,19 @@ class TaskService extends Service {
         order: [[ 'id', 'DESC' ]],
       });
       if (completedTask) {
+        ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：所有任务已结束(status=2)`);
         return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
       }
 
       // 没有任何绑定的任务时，统一返回未开启提示，返回 -1 避免抛出 400 Error 刷屏日志
+      ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：该用户没有任何绑定的任务记录`);
       return { task_status: -1 };
     }
 
     const shopTask = await ctx.model.ShopTask.findByPk(shopTaskUser.task_id);
     if (!shopTask || shopTask.status !== 1) {
       // 任务被禁用或不存在，同样返回空状态
+      ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：绑定的主任务 ${shopTaskUser.task_id} 不存在或未开启(status!=1)`);
       return { task_status: -1 };
     }
 
@@ -377,6 +388,7 @@ class TaskService extends Service {
     // 注意：我们将这段逻辑前置到了生成订单之前，这样如果没有达到门槛金额，
     // 前端就能正确得到 { task_status: 1 } (余额不足状态) 而不会去走搜索逻辑
     if (totalBalance < Number(shopTask.min_amount)) {
+      ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：余额不足。当前余额：${totalBalance}，任务门槛：${shopTask.min_amount}`);
       return { sequence_no: 0, task_status: 1, wares: {}, order: {}, is_lucky: 0 };
     }
 
@@ -451,6 +463,7 @@ class TaskService extends Service {
     if (ctx.app.redis) {
       const acquired = await ctx.app.redis.set(searchLockKey, 'locked', 'EX', 3, 'NX');
       if (!acquired) {
+        ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：触发了 Redis 分布式防连点锁`);
         ctx.throw(429, ctx.__('task.task_is_generating') || '任务生成中，请勿重复点击');
       }
     }
@@ -467,6 +480,7 @@ class TaskService extends Service {
 
     if (!nextProgress) {
       // 没有未开始的子项了，说明全部完成，自动将其状态改回 0 (未开启)
+      ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务返回 3，原因：没有任何 status=0 且 is_processing=0 的进度，说明当前轮次任务已全部完成`);
       await shopTaskUser.update({ status: 0 });
       return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
     }
