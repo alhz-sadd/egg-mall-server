@@ -42,7 +42,9 @@ class TelegramService extends Service {
     const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
 
     try {
-      await ctx.curl(url, {
+      // 不再使用 await 等待，将请求放入后台执行（即“Fire and Forget”）
+      // 从而避免由于网络问题阻塞或超时影响主线程及客户端响应速度
+      ctx.curl(url, {
         method: 'POST',
         contentType: 'json',
         data: {
@@ -52,8 +54,15 @@ class TelegramService extends Service {
         },
         dataType: 'json',
         timeout: 5000, // 超时时间 5 秒
+      }).then(() => {
+        ctx.logger.info(`[Telegram] 消息发送成功，店铺ID: ${shopId}`);
+      }).catch(err => {
+        // 捕获错误，防止 TG 接口不通导致系统崩溃
+        ctx.logger.error('[Telegram] 发送消息失败:', err);
       });
-      ctx.logger.info(`[Telegram] 消息发送成功，店铺ID: ${shopId}`);
+      
+      // 立即返回成功状态给调用方
+      return;
     } catch (err) {
       // 捕获错误，防止 TG 接口不通导致系统崩溃
       ctx.logger.error('[Telegram] 发送消息失败:', err);

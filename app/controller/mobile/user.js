@@ -590,10 +590,15 @@ class UserController extends Controller {
         uTime: item.create_time,
       }));
 
+      // 在返回前对 result 做一次深度的 BigInt 清洗，防止 JSON.stringify 炸掉
+      const safeFormattedData = JSON.parse(JSON.stringify(formattedData, (key, value) =>
+        (typeof value === 'bigint' ? value.toString() : value)
+      ));
+
       ctx.body = {
         total: result.pagination.total,
         data: {
-          list: formattedData,
+          list: safeFormattedData,
           total_revenue: result.total_revenue || 0,
         },
         code: 200,
