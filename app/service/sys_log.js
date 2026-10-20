@@ -43,6 +43,8 @@ const BUSINESS_RULES = [
   { method: 'POST', pattern: /^\/api\/mobile\/orderMsg(\?|$)/, businessType: 9, title: '获取订单详情' },
 
   // === 4. 账号与资料管理 ===
+  { method: 'POST', pattern: /^\/api\/mobile\/users\/balance-sync(\?|$)/, businessType: 9, title: '同步获取余额' },
+  { method: 'POST', pattern: /^\/api\/mobile\/getUserTaskInfoSync(\?|$)/, businessType: 9, title: '同步获取任务信息' },
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/profile\/updatePwd(\?|$)/, businessType: 1, title: '修改后台密码' },
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/profile(\?|$)/, businessType: 1, title: '修改后台资料' },
   { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/totp\//, businessType: 1, title: '谷歌验证码操作' },
