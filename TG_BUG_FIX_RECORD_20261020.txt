@@ -23,9 +23,13 @@
    - 问题：Telegram Android 端的 WebView 对 GET 请求缓存极其激进。
    - 修复：在所有 Mobile 端的 GET 接口（如获取余额、资金明细、搜单等）强制注入 `Cache-Control: no-cache, no-store, must-revalidate` 和 `Expires: 0` 响应头。
 
-6. 全方位业务与异常追踪埋点
+6. 终极防御：新增防缓存专用 POST 接口
+   - 问题：即便后端加了 `Cache-Control` 响应头，部分魔改或特定的安卓 WebView 依然会无视协议强行缓存 GET 请求。
+   - 修复：在 `app/router.js` 中新增了专用的同步接口 `POST /api/mobile/users/balance-sync` 和 `POST /api/mobile/getUserTaskInfoSync`。因为浏览器底层标准强制不缓存 POST 请求，这能 100% 绕过所有前端本地死缓存机制。
+
+7. 全方位业务与异常追踪埋点
    - 修复：在 `error_handler.js`、`user.js`、`task.js` 中加入了 `[任务埋点]`、`[余额获取埋点]`、`[致命异常埋点]`。
    - 作用：下次再有反馈，直接通过服务器执行 `cat /root/logs/egg-mall-server/egg-web.log | grep 埋点` 即可精确知道数据是从 Redis 取的、还是被业务规则(如余额不足)拦截的。
 
 【给未来AI的提示】
-如果你在新的对话中看到了这份文件，请务必以此为上下文。如果在 TG 端依然出现数据不同步问题，请首先检查上述 6 点是否出现新漏洞，并引导用户去服务器查阅含有“埋点”字样的日志。
+如果你在新的对话中看到了这份文件，请务必以此为上下文。如果在 TG 端依然出现数据不同步问题，请首先检查上述 7 点是否出现新漏洞，特别是确认前端是否已经切换到了最新的 POST 同步接口，并引导用户去服务器查阅含有“埋点”字样的日志。
