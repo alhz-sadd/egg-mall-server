@@ -89,7 +89,8 @@ const BUSINESS_RULES = [
   { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/customers(\?|$)/, businessType: 0, title: '新增客户' },
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/customers\/[^\/]+\/reset-password(\?|$)/, businessType: 1, title: '重置客户密码' },
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/customers\/[^\/]+\/withdraw-password(\?|$)/, businessType: 1, title: '重置客户提现密码' },
-  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/customers\/[^\/]+(\?|$)/, businessType: 1, title: '修改客户' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/customers\/[^\/]+\/status(\?|$)/, businessType: 1, title: '修改用户状态' },
+  { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/customers\/[^\/]+(\?|$)/, businessType: 1, title: '修改客户备注' },
   { method: 'DELETE', pattern: /^\/api\/(admin-inner|admin-outer)\/customers\/[^\/]+(\?|$)/, businessType: 2, title: '删除客户' },
 
   { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/employees(\?|$)/, businessType: 0, title: '新增员工' },
