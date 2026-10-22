@@ -14,10 +14,15 @@ module.exports = () => {
       ctx.set('Expires', '0');
 
       // 2. 增加宽容的跨域和请求头放行 (CORS)
-      // 注意：由于我们在 config.default.js 中配置了 cors 插件，这里手动设置可能会被覆盖。
-      // 但为了应对某些极端浏览器拦截，我们在这里做双重保险强制注入。
-      ctx.set('Access-Control-Allow-Origin', '*');
-      ctx.set('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization, Token, token');
+      // 注意：不能使用 '*' 当请求携带 credentials (凭证/Token) 时，否则会被浏览器严格模式拦截
+      const origin = ctx.request.get('Origin');
+      if (origin) {
+        ctx.set('Access-Control-Allow-Origin', origin);
+      } else {
+        ctx.set('Access-Control-Allow-Origin', '*');
+      }
+      ctx.set('Access-Control-Allow-Credentials', 'true');
+      ctx.set('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization, Token, token, Accept, Accept-Language, language, lang, referer, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform');
       ctx.set('Access-Control-Allow-Methods', 'PUT, POST, GET, DELETE, OPTIONS');
 
       // 3. 处理 OPTIONS 预检请求，直接返回 204

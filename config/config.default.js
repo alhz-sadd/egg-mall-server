@@ -21,7 +21,7 @@ module.exports = appInfo => {
   config.cors = {
     origin: ctx => ctx.request.header.origin || '*',
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH,OPTIONS',
-    allowHeaders: 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, lang, token, shop-id, tenant-id',
+    allowHeaders: 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, lang, token, shop-id, tenant-id, referer, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform',
     exposeHeaders: 'Authorization, Cache-Control, Content-Type, Expires, Pragma',
     credentials: true,
   };
