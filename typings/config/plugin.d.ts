@@ -22,6 +22,7 @@ import 'egg-cors';
 import 'egg-swagger-doc';
 import 'egg-validate';
 import 'egg-oss';
+import 'egg-compress';
 import { EggPluginItem } from 'egg';
 declare module 'egg' {
   interface EggPlugin {
@@ -44,5 +45,6 @@ declare module 'egg' {
     swaggerdoc?: EggPluginItem;
     validate?: EggPluginItem;
     oss?: EggPluginItem;
+    compress?: EggPluginItem;
   }
 }

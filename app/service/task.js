@@ -471,26 +471,47 @@ class TaskService extends Service {
       }
     }
 
-    const nextProgress = await ctx.model.ShopTaskUserItemProgress.findOne({
-      where: {
-        shop_task_user_id: shopTaskUser.id,
-        user_id: userId,
-        status: 0,
-        is_processing: 0,
-      },
-      order: [[ 'id', 'ASC' ]],
-    });
+    // 优化：开启事务锁，防止在极端并发下（如多设备同时登录同账号）突破 Redis 锁后发生重复发单
+    const t = await ctx.model.transaction();
+    let nextProgress;
+    let currentItem;
+    
+    try {
+      nextProgress = await ctx.model.ShopTaskUserItemProgress.findOne({
+        where: {
+          shop_task_user_id: shopTaskUser.id,
+          user_id: userId,
+          status: 0,
+          is_processing: 0,
+        },
+        order: [[ 'id', 'ASC' ]],
+        lock: t.LOCK.UPDATE, // 排他锁，锁住这一行，其他并发请求必须等待
+        transaction: t,
+      });
 
-    if (!nextProgress) {
-      // 没有未开始的子项了，说明全部完成，自动将其状态改回 0 (未开启)
-      ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务返回 3，原因：没有任何 status=0 且 is_processing=0 的进度，说明当前轮次任务已全部完成`);
-      await shopTaskUser.update({ status: 0, task_status: 2 });
-      return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
-    }
+      if (!nextProgress) {
+        // 没有未开始的子项了，说明全部完成，自动将其状态改回 0 (未开启)
+        ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务返回 3，原因：没有任何 status=0 且 is_processing=0 的进度，说明当前轮次任务已全部完成`);
+        await shopTaskUser.update({ status: 0, task_status: 2 }, { transaction: t });
+        await t.commit();
+        if (ctx.app.redis) await ctx.app.redis.del(searchLockKey); // 释放锁
+        return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
+      }
 
-    const currentItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: nextProgress.task_item_id } });
-    if (!currentItem) {
-      ctx.throw(500, ctx.__('task.task_sub_config_missing'));
+      // 为了安全，直接将这个子项标记为处理中
+      await nextProgress.update({ is_processing: 1 }, { transaction: t });
+      await t.commit();
+      
+      // 剩下的逻辑不再需要锁，因为该子项已经被标记为处理中
+      currentItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: nextProgress.task_item_id } });
+      if (!currentItem) {
+        ctx.throw(500, ctx.__('task.task_sub_config_missing'));
+      }
+    } catch (err) {
+      // 捕获异常，回滚事务并释放 Redis 锁
+      await t.rollback();
+      if (ctx.app.redis) await ctx.app.redis.del(searchLockKey);
+      throw err;
     }
 
     // 6. 选取商品
@@ -728,6 +749,7 @@ class TaskService extends Service {
 
     const revenue = goodsPrice * yieldRate;
 
+    // 因为之前已经去掉了事务 t (为了缩小锁的范围)，这里使用普通的 update 即可，避免死锁
     await nextProgress.update({
       order_id: orderNo,
       goods_id: waresModel.id,

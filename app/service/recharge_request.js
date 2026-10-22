@@ -333,6 +333,20 @@ class RechargeRequestService extends Service {
         }, { transaction });
       }
 
+      // 生成资金流水记录
+      const logNo = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      await ctx.model.UserWalletLog.create({
+        user_id: user.user_id,
+        log_no: logNo,
+        biz_type: 1, // 充值
+        amount: Number(lockRequest.user_receive_amount),
+        balance_type: 1,
+        before_balance: wallet ? Number(wallet.balance) : 0,
+        after_balance: wallet ? Number(wallet.balance) + Number(lockRequest.user_receive_amount) : Number(lockRequest.user_receive_amount),
+        related_order_id: lockRequest.id,
+        remark: remark || '充值审核通过加款',
+      }, { transaction });
+
       await transaction.commit();
 
       // 强制清除 Redis 缓存，防止因为 increment 不触发 hook 导致数据延迟

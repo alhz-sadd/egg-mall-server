@@ -485,6 +485,20 @@ class WithdrawService extends Service {
       });
       if (wallet) {
         await wallet.update({ balance: Number(wallet.balance) + Number(lockRequest.amount) }, { transaction, individualHooks: true });
+        
+        // 生成资金流水记录（退回提现金额）
+        const logNo = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+        await ctx.model.UserWalletLog.create({
+          user_id: lockRequest.user_id,
+          log_no: logNo,
+          biz_type: 5, // 提现驳回退款
+          amount: Number(lockRequest.amount),
+          balance_type: 1,
+          before_balance: Number(wallet.balance) - Number(lockRequest.amount),
+          after_balance: Number(wallet.balance),
+          related_order_id: lockRequest.id,
+          remark: remark || '提现审核驳回，退回余额',
+        }, { transaction });
       }
 
       await transaction.commit();
