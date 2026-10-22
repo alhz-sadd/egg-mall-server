@@ -22,8 +22,8 @@ class ShopService extends Service {
       ctx.throw(422, '店铺名称已存在');
     }
 
-    // 生成店铺编号
-    const shop_no = `SH${Date.now()}${Math.floor(Math.random() * 1000)}`;
+    // 生成店铺编号 (纯数字，防止存入超限)
+    const shop_no = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
 
     let shop;
     // 使用事务保证店铺和配置同时创建

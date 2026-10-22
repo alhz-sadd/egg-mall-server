@@ -46,4 +46,9 @@ module.exports = {
     enable: true,
     package: 'egg-oss',
   },
+  // Gzip 压缩插件 (针对海外弱网优化)
+  compress: {
+    enable: true,
+    package: 'egg-compress',
+  },
 };

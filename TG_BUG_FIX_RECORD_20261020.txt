@@ -25,11 +25,27 @@
 
 6. 终极防御：新增防缓存专用 POST 接口
    - 问题：即便后端加了 `Cache-Control` 响应头，部分魔改或特定的安卓 WebView 依然会无视协议强行缓存 GET 请求。
-   - 修复：在 `app/router.js` 中新增了专用的同步接口 `POST /api/mobile/users/balance-sync` 和 `POST /api/mobile/getUserTaskInfoSync`。因为浏览器底层标准强制不缓存 POST 请求，这能 100% 绕过所有前端本地死缓存机制。
+   - 修复：在 `app/router.js` 中新增了专用的同步接口 `POST /api/mobile/users/balance-sync` 、 `POST /api/mobile/getUserTaskInfoSync` 和 `POST /api/mobile/missions/searchSync`。因为浏览器底层标准强制不缓存 POST 请求，这能 100% 绕过所有前端本地死缓存机制。
 
-7. 全方位业务与异常追踪埋点
-   - 修复：在 `error_handler.js`、`user.js`、`task.js` 中加入了 `[任务埋点]`、`[余额获取埋点]`、`[致命异常埋点]`。
-   - 作用：下次再有反馈，直接通过服务器执行 `cat /root/logs/egg-mall-server/egg-web.log | grep 埋点` 即可精确知道数据是从 Redis 取的、还是被业务规则(如余额不足)拦截的。
+7. 针对中东地区网络代理的跨域与断流防御
+   - 问题：中东等海外地区的运营商代理和部分内置浏览器存在激进的缓存和跨域拦截，甚至可能发生连接过早断开（ECONNRESET / 传输中断）。
+   - 修复：
+     1. 抽离了全局的 `app/middleware/mobile_no_cache.js`，为所有 C 端请求强制注入 `proxy-revalidate` 极限防缓存，以及宽容的 CORS 跨域放行头（包含 OPTIONS 预检请求）。
+     2. 在 `error_handler.js` 中针对数据截断/传输中断（`PayloadTooLargeError` 或 `ECONNRESET`）增加了专门的 `[传输中断埋点]`，用于监控此类底层网络异常。
+     3. 引入了 `geoip-lite` 和全局拦截中间件 `app/middleware/block_cn.js`，精准隔离和管理网络访问区域（拦截 CN 大陆 IP）。
+
+8. 核心业务漏洞修复 (2026-10-22)
+   - 问题1（性能）：`getUserTaskInfo` 里的并发查询打爆了 MySQL 连接池（引发大量 ECONNRESET 500错误），导致部分用户卡死白屏。
+   - 修复1：将高并发的 `Promise.all` 拆解为串行查询，并彻底重置了该接口的 Redis 缓存（修改缓存Key强制作废旧缓存）。
+   - 问题2（脏数据）：用户完成一轮任务后，代码漏改了 `task_status`，导致出现幽灵状态（`status=0 且 task_status=1`），系统返回空数据致使前端永久卡死。
+   - 修复2：补充状态机更新代码，并增加了**脏数据自动自愈机制**（检测到脏数据自动帮其修复并流转到下一轮）。
+
+9. 全方位业务与异常追踪埋点
+   - 修复：在 `error_handler.js`、`user.js`、`task.js` 中加入了 `[任务埋点]`、`[余额获取埋点]`、`[致命异常埋点]` 和 `[传输中断埋点]`。
+   - 作用：下次再有反馈，直接通过服务器执行 `cat /root/logs/egg-mall-server/common-error.log | grep 埋点` 即可精确追踪底层网络崩溃、跨域拦截或业务阻断。
 
 【给未来AI的提示】
-如果你在新的对话中看到了这份文件，请务必以此为上下文。如果在 TG 端依然出现数据不同步问题，请首先检查上述 7 点是否出现新漏洞，特别是确认前端是否已经切换到了最新的 POST 同步接口，并引导用户去服务器查阅含有“埋点”字样的日志。
+如果你在新的对话中看到了这份文件，请务必以此为上下文。如果在 TG 端依然出现数据不同步或白屏问题，请首先检查上述 9 点是否出现新漏洞，特别是：
+1. 确认前端是否已经全部切换到了最新的 POST 同步接口 (`searchSync` / `getUserTaskInfoSync`)。
+2. 检查日志中是否有 `[传输中断埋点]` 或 `[致命异常埋点]`，以排除海外网络代理或数据库连接池打爆的问题。
+3. 检查是否有针对 `[业务拦截埋点]` 的日志，排查是否又出现了未知的幽灵状态/脏数据拦截。

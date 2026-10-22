@@ -974,7 +974,8 @@ class AdminOuterCustomerService extends Service {
       await wallet.update({ balance: afterBalance }, { transaction });
 
       // 4. 生成资金流水
-      const logNo = 'BL' + Date.now() + Math.floor(Math.random() * 1000);
+      // 优化：修复订单号/流水号带有非数字字符或过长导致存入 BIGINT(order_id) 报错回滚问题
+      const logNo = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
       let remarkText = remark;
       if (!remarkText) {
         if (isAdd) {
@@ -1152,7 +1153,9 @@ class AdminOuterCustomerService extends Service {
    * @param {string} prefix
    */
   generateTempOrderNo(prefix) {
-    return prefix + Date.now() + Math.floor(Math.random() * 10000);
+    // 优化：确保生成纯数字，防止存入 BIGINT 报错
+    const numericPrefix = prefix.replace(/\D/g, '') || '99';
+    return numericPrefix + Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
   }
 
   /**

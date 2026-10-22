@@ -26,6 +26,15 @@ module.exports = appInfo => {
     credentials: true,
   };
 
+  // body 解析器配置 (防断流截断)
+  config.bodyParser = {
+    enable: true,
+    encoding: 'utf8',
+    formLimit: '10mb',
+    jsonLimit: '10mb',
+    strict: true,
+  };
+
   // 安全插件配置
   config.security = {
     csrf: {
@@ -55,6 +64,7 @@ module.exports = appInfo => {
     // 自定义上传临时目录，避免线上部署时系统 /tmp 目录无权限 (EACCES) 的问题
     tmpdir: path.join(appInfo.baseDir, 'run/multipart-tmp'),
   };
+  // 集群和网络底层配置
   config.cluster = {
     listen: {
       port: 7001,
@@ -62,6 +72,20 @@ module.exports = appInfo => {
     },
     // 注意：高并发场景下切勿将 workers 锁死为 1。注释掉或设为 CPU 核心数，充分利用多核性能
     // workers: 1,
+  };
+  
+  // 核心 HTTP 服务器配置（防弱网环境超时断流）
+  config.serverTimeout = 60000; // 整个请求的最长处理时间放宽到 60 秒
+  config.http = {
+    keepAliveTimeout: 60000, // 保持 HTTP 长连接，避免海外节点频繁握手导致 ECONNRESET
+    timeout: 60000,
+  };
+
+  // Gzip 数据压缩优化 (极大缓解中东弱网环境下的传输截断和超时)
+  config.compress = {
+    threshold: 1024, // 响应体大于 1KB 时开启压缩
+    enable: true, // 全局开启
+    match: /^\/api\//, // 只对 /api/ 开头的接口进行压缩
   };
   // OSS 配置
   config.oss = {
@@ -143,6 +167,7 @@ module.exports = appInfo => {
   // 强制开启代理信任，不管什么环境都生效
   config.proxy = true;
   config.maxProxyCount = 1; // 告诉 Egg.js 前面有 1 层代理 (Nginx)
+  config.maxIpsCount = 1; // 信任 X-Forwarded-For 中最近的1个IP
   config.appBaseUrl = process.env.APP_BASE_URL || '';
 
   // Swagger API 文档配置

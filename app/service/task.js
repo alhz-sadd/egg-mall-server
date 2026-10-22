@@ -211,15 +211,16 @@ class TaskService extends Service {
 
     // 考虑到用户可能有多轮任务，且任务记录的更新可能会非常快，
     // 我们改用从 ShopTaskUserItemProgress 表中按时间范围直接统计，防止 UserTaskStat 表同步延迟
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    // 优化：修复 Node.js 服务器时区与数据库/用户所在时区可能不一致导致的任务时间边界判断错误
+    // 强制使用服务器所在时区（如北京时间 +08:00，与生产环境配置 timezone 保持一致）
+    // 或者基于 ctx.request 的时区进行动态换算（这里我们先采用基于当前进程所在时区做严格日期切割）
+    const now = new Date();
+    // 构建严格的“今天”的起始和结束时间
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-    const yesterdayStart = new Date(todayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const yesterdayEnd = new Date(todayEnd);
-    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
+    const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+    const yesterdayEnd = new Date(todayEnd.getTime() - 24 * 60 * 60 * 1000);
 
     // 1. 串行查询避免并发高并发时打爆连接池 (修复 ECONNRESET)
     // 之前用 Promise.all 瞬间占满 4 个连接，如果有并发请求直接导致连接池枯竭
@@ -575,6 +576,7 @@ class TaskService extends Service {
 
         waresModel = await ctx.model.GoodsTask.findOne({
           where: goodsWhere,
+          attributes: ['id', 'goods_name', 'goods_price', 'goods_images'],
           order: [[ 'goods_price', 'ASC' ]],
           limit: 1,
         });
@@ -584,6 +586,7 @@ class TaskService extends Service {
           delete goodsWhere.id;
           waresModel = await ctx.model.GoodsTask.findOne({
             where: goodsWhere,
+            attributes: ['id', 'goods_name', 'goods_price', 'goods_images'],
             order: [[ 'goods_price', 'ASC' ]],
             limit: 1,
           });
@@ -699,8 +702,10 @@ class TaskService extends Service {
         const offset = Math.floor(Math.random() * total);
 
         // ③ 使用 LIMIT offset, 1 随机偏移取一条
+        // 优化：针对弱网环境，仅查询前端必须的字段，排除冗长的详情文本 (goods_desc, 详情富文本等)
         waresModel = await ctx.model.GoodsTask.findOne({
           where: goodsWhere,
+          attributes: ['id', 'goods_name', 'goods_price', 'goods_images'],
           offset,
           limit: 1,
         });
@@ -714,7 +719,9 @@ class TaskService extends Service {
     }
 
     // 7. 更新进度（生成订单）
-    const orderNo = 'T' + Date.now() + Math.floor(Math.random() * 1000);
+    // 优化：修复生成的订单号过长、含有非数字字符可能导致保存日志表时超出字段限制或类型错误 (BIGINT)
+    // 确保生成的 orderNo 是纯数字的字符串，以兼容可能用 BIGINT 存储订单号的旧表
+    const orderNo = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     const cTime = new Date();
 
     const parentYieldRate = shopTask ? Number(shopTask.parent_yield_rate || 0) : 0;

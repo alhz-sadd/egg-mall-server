@@ -243,6 +243,7 @@ class AdminOuterRechargeController extends Controller {
       // 强制清除 Redis 缓存，双重保险
       if (ctx.app.redis) {
         await ctx.app.redis.del(`user_balance:${recharge.user_id}`).catch(() => {});
+        await ctx.app.redis.del(`user_task_info_v2:${recharge.user_id}`).catch(() => {});
         await ctx.app.redis.del(`user_task_info:${recharge.user_id}`).catch(() => {});
       }
 

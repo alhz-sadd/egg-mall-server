@@ -111,6 +111,7 @@ module.exports = app => {
       try {
         const userId = wallet.user_id;
         await app.redis.del(`user_balance:${userId}`);
+        await app.redis.del(`user_task_info_v2:${userId}`);
         await app.redis.del(`user_task_info:${userId}`);
       } catch (err) {
         app.logger.warn(`[UserWallet Hook] 清除钱包 Redis 缓存失败: ${err.message}`);
@@ -127,6 +128,7 @@ module.exports = app => {
       try {
         const userId = options.where.user_id;
         await app.redis.del(`user_balance:${userId}`);
+        await app.redis.del(`user_task_info_v2:${userId}`);
         await app.redis.del(`user_task_info:${userId}`);
       } catch (err) {
         app.logger.warn(`[UserWallet Hook] 批量更新清除钱包 Redis 缓存失败: ${err.message}`);

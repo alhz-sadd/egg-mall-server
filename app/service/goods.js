@@ -131,9 +131,9 @@ class GoodsService extends Service {
     });
     ctx.assert(category, 422, '所选分类不存在或已被删除');
 
-    // 如果未传 goods_no，自动生成（规则：G + 时间戳 + 4位随机数）
+    // 如果未传 goods_no，自动生成（规则：13位时间戳 + 4位随机数，纯数字防止数据截断）
     if (!payload.goods_no) {
-      payload.goods_no = 'G' + Date.now() + Math.floor(Math.random() * 9000 + 1000);
+      payload.goods_no = Date.now().toString() + Math.floor(Math.random() * 9000 + 1000).toString();
     } else {
       // 如果手动传了，校验唯一性
       const exist = await ctx.model.Goods.findOne({

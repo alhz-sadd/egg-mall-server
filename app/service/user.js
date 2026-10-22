@@ -436,7 +436,8 @@ class UserService extends Service {
     const { user_phone, user_password } = payload;
     const { ip, shopId } = meta;
 
-    const logNo = `LL${Date.now()}${Math.floor(Math.random() * 10000)}`;
+    // 优化：去除 'LL' 前缀，改为纯数字，以防止 user_login_log 存入 BIGINT 时报错
+    const logNo = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
     const parsedUa = ctx.service.sysLog.resolveUserAgent(meta.userAgent);
 
     const whereCondition = { username: user_phone };

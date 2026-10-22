@@ -535,7 +535,8 @@ class SysLogService extends Service {
       }
 
       await ctx.model.UserLoginLog.create({
-        log_no: data.log_no || `L${Date.now()}${Math.floor(Math.random() * 1000)}`,
+        // 优化：去除 'L' 前缀，改为纯数字以兼容可能的 BIGINT 字段类型
+        log_no: data.log_no || (Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0')),
         user_id: data.userId || data.user_id || 0,
         username: data.username,
         login_ip: ip,

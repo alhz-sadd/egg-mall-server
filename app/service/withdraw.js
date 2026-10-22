@@ -492,6 +492,7 @@ class WithdrawService extends Service {
       // 强制清除 Redis 缓存
       if (ctx.app.redis) {
         await ctx.app.redis.del(`user_balance:${lockRequest.user_id}`).catch(() => {});
+        await ctx.app.redis.del(`user_task_info_v2:${lockRequest.user_id}`).catch(() => {});
         await ctx.app.redis.del(`user_task_info:${lockRequest.user_id}`).catch(() => {});
       }
 

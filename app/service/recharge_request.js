@@ -338,6 +338,7 @@ class RechargeRequestService extends Service {
       // 强制清除 Redis 缓存，防止因为 increment 不触发 hook 导致数据延迟
       if (ctx.app.redis) {
         await ctx.app.redis.del(`user_balance:${user.user_id}`).catch(() => {});
+        await ctx.app.redis.del(`user_task_info_v2:${user.user_id}`).catch(() => {});
         await ctx.app.redis.del(`user_task_info:${user.user_id}`).catch(() => {});
       }
 
