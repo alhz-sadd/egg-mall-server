@@ -15,7 +15,7 @@ module.exports = appInfo => {
   config.keys = process.env.COOKIE_SECRET_KEY;
 
   // 加载的中间件，按数组顺序执行
-  config.middleware = [ 'i18nResponse', 'errorHandler', 'requestLog', 'operationLog', 'formatImageUrl' ];
+  config.middleware = [ 'blockCn', 'mobileNoCache', 'i18nResponse', 'errorHandler', 'requestLog', 'operationLog', 'formatImageUrl' ];
 
   // 跨域配置
   config.cors = {

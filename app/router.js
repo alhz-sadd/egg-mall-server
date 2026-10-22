@@ -139,6 +139,7 @@ module.exports = app => {
 
   // === C端(Mobile) 任务相关 ===
   router.get('/api/mobile/missions/search', auth, controller.mobile.task.search); // 搜索/获取可接任务
+  router.post('/api/mobile/missions/searchSync', auth, controller.mobile.task.search); // 新增 POST 方式的搜索任务接口，彻底绕过移动端 GET 强缓存
 
   // ==================== 管理端 BFF ====================
 
