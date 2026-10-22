@@ -763,8 +763,20 @@ class TaskService extends Service {
 
     let picUrl = '';
     if (waresModel) {
-      if (waresModel.goods_images && Array.isArray(waresModel.goods_images) && waresModel.goods_images.length > 0) {
-        picUrl = waresModel.goods_images[0];
+      if (waresModel.goods_images) {
+        try {
+          let images = waresModel.goods_images;
+          // 如果数据库里存的是 JSON 字符串，尝试解析它
+          if (typeof images === 'string') {
+            images = JSON.parse(images);
+          }
+          if (Array.isArray(images) && images.length > 0) {
+            picUrl = images[0];
+          }
+        } catch (err) {
+          ctx.logger.warn(`[TaskService.search] 商品图片解析失败, goods_id: ${waresModel.id}, images: ${waresModel.goods_images}`);
+          picUrl = ''; // 解析失败则返回空，防止前端报错
+        }
       }
     }
 
