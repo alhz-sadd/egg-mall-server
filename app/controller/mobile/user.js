@@ -153,34 +153,34 @@ class UserController extends Controller {
 
     ctx.logger.info('findById result:', userModel);
 
-      if (!userModel) {
-        ctx.throw(404, ctx.__('user.user_not_exist'));
-      }
+    if (!userModel) {
+      ctx.throw(404, ctx.__('user.user_not_exist'));
+    }
 
-      // 处理 Sequelize 模型转换为普通对象，并安全处理可能的 BigInt
-      let user = userModel.toJSON ? userModel.toJSON() : userModel;
-      user = JSON.parse(JSON.stringify(user, (key, value) =>
-        typeof value === 'bigint' ? value.toString() : value
-      ));
+    // 处理 Sequelize 模型转换为普通对象，并安全处理可能的 BigInt
+    let user = userModel.toJSON ? userModel.toJSON() : userModel;
+    user = JSON.parse(JSON.stringify(user, (key, value) =>
+      (typeof value === 'bigint' ? value.toString() : value),
+    ));
 
-      // 补充 VIP 等级详情
-      if (user.shop_id && user.vip_level !== undefined) {
-        const vipInfo = await service.vipLevel.getVipLevelDetails(user.shop_id, user.vip_level);
-        user.vip_name = vipInfo ? vipInfo.level_name : '普通用户';
-        user.vip_benefit = vipInfo ? vipInfo.benefit : '';
-      } else {
-        user.vip_name = '普通用户';
-        user.vip_benefit = '';
-      }
+    // 补充 VIP 等级详情
+    if (user.shop_id && user.vip_level !== undefined) {
+      const vipInfo = await service.vipLevel.getVipLevelDetails(user.shop_id, user.vip_level);
+      user.vip_name = vipInfo ? vipInfo.level_name : '普通用户';
+      user.vip_benefit = vipInfo ? vipInfo.benefit : '';
+    } else {
+      user.vip_name = '普通用户';
+      user.vip_benefit = '';
+    }
 
-      // 补充用户余额
-      if (wallet) {
-        // 强制转换为两位小数的字符串，避免前端 0 被判断为 false 导致不渲染
-        const val = Number(wallet.balance || 0);
-        user.balance = isNaN(val) ? '0.00' : val.toFixed(2);
-      } else {
-        user.balance = '0.00';
-      }
+    // 补充用户余额
+    if (wallet) {
+      // 强制转换为两位小数的字符串，避免前端 0 被判断为 false 导致不渲染
+      const val = Number(wallet.balance || 0);
+      user.balance = isNaN(val) ? '0.00' : val.toFixed(2);
+    } else {
+      user.balance = '0.00';
+    }
 
     ctx.body = {
       code: 200,
@@ -392,7 +392,7 @@ class UserController extends Controller {
    */
   async team() {
     const { ctx, service } = this;
-    
+
     // 强制禁用移动端 GET 请求缓存
     ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     ctx.set('Pragma', 'no-cache');
@@ -573,7 +573,7 @@ class UserController extends Controller {
    */
   async capitalLogs() {
     const { ctx, service } = this;
-    
+
     // 强制禁用移动端 GET 请求缓存
     ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
     ctx.set('Pragma', 'no-cache');
@@ -630,7 +630,7 @@ class UserController extends Controller {
 
       // 在返回前对 result 做一次深度的 BigInt 清洗，防止 JSON.stringify 炸掉
       const safeFormattedData = JSON.parse(JSON.stringify(formattedData, (key, value) =>
-        (typeof value === 'bigint' ? value.toString() : value)
+        (typeof value === 'bigint' ? value.toString() : value),
       ));
 
       ctx.body = {

@@ -17,5 +17,5 @@ module.exports = {
   down: async (queryInterface, Sequelize) => {
     await queryInterface.removeColumn('sys_oper_log', 'target_id');
     await queryInterface.removeColumn('sys_oper_log', 'target_name');
-  }
+  },
 };

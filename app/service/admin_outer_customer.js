@@ -845,10 +845,10 @@ class AdminOuterCustomerService extends Service {
             operUrl: ctx.url,
             requestMethod: ctx.method,
             operParam: JSON.stringify(payload),
-            jsonResult: JSON.stringify({ code: 200, msg: "修改成功", 修改项: operResult }),
+            jsonResult: JSON.stringify({ code: 200, msg: '修改成功', 修改项: operResult }),
             status: 0,
-          operIp: ctx.ip,
-        });
+            operIp: ctx.ip,
+          });
         }
       }
 
@@ -1028,7 +1028,7 @@ class AdminOuterCustomerService extends Service {
           operUrl: ctx.url,
           requestMethod: ctx.method,
           operParam: JSON.stringify(payload),
-          jsonResult: JSON.stringify({ code: 200, msg: "操作成功", 变动: `${isAdd ? '+' : '-'}${opAmount}` }),
+          jsonResult: JSON.stringify({ code: 200, msg: '操作成功', 变动: `${isAdd ? '+' : '-'}${opAmount}` }),
           status: 0,
           operIp: ctx.ip,
         }).catch(err => ctx.logger.error('记录操作日志失败', err));

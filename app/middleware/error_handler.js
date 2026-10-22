@@ -16,12 +16,12 @@ module.exports = () => {
 
     try {
       await next();
-      
+
       // 全局拦截 ctx.body 进行 BigInt 清洗，彻底防止因任何遗漏的 BigInt 字段导致 JSON 序列化 500 崩溃
       if (ctx.body && typeof ctx.body === 'object') {
         try {
           ctx.body = JSON.parse(JSON.stringify(ctx.body, (key, value) =>
-            typeof value === 'bigint' ? value.toString() : value
+            (typeof value === 'bigint' ? value.toString() : value),
           ));
         } catch (e) {
           ctx.logger.error(`[ErrorHandler] 全局 BigInt 清洗失败 - URL: ${ctx.url}, UserID: ${ctx.state.user ? (ctx.state.user.id || ctx.state.user.user_id) : '未登录'}, Error: ${e.message}`);
@@ -56,7 +56,7 @@ module.exports = () => {
 
         const isMobile = ctx.path.startsWith('/api/mobile');
         ctx.status = isMobile ? 200 : 404;
-        
+
         // 强制禁用错误响应的缓存，防止 TG 缓存 404/401 导致前端后续请求直接命中缓存失败
         ctx.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         ctx.set('Pragma', 'no-cache');
@@ -70,7 +70,7 @@ module.exports = () => {
 
         // 为了方便排查，当发生 404 时，在后端日志中打印一条 WARN
         ctx.logger.warn(`[404 未找到路由] ${ctx.method} ${ctx.url} - (H5已返回200)`);
-        
+
         return;
       }
     } catch (err) {
@@ -86,7 +86,7 @@ module.exports = () => {
       // 针对获取不到数据/白屏的痛点埋点：记录详细的请求参数、Header和响应错误
       const isMobile = ctx.path.startsWith('/api/mobile');
       const userId = ctx.state.user ? (ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId) : '未登录';
-      
+
       if (status >= 500) {
         ctx.logger.error(`[致命异常埋点] 状态码: ${status} | URL: ${ctx.method} ${ctx.url} | UserID: ${userId} | Error: ${err.message} | User-Agent: ${ctx.get('user-agent')} | IP: ${ctx.ip}`);
         // 记录错误日志，并保留堆栈信息
@@ -176,7 +176,7 @@ module.exports = () => {
       }
 
       const isMobileError = ctx.path.startsWith('/api/mobile');
-      
+
       // 针对移动端 404 错误（如用户不存在、任务不存在等），强制转换 code 为 200 并返回 data: null
       // 避免触发前端 Axios 全局异常拦截器导致页面其他接口被中断、页面崩溃
       if (isMobileError && status === 404) {

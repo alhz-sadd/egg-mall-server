@@ -189,7 +189,8 @@ class TaskService extends Service {
     const yesterdayStr = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
 
     // 优先从 Redis 获取缓存 (缓存时间缩短为 2 秒，防止数据不一致)
-    const cacheKey = `user_task_info:${dbUserId}`;
+    // 【修复死缓存】：更改 cacheKey 版本号，强制所有用户的旧死缓存失效
+    const cacheKey = `user_task_info_v2:${dbUserId}`;
     if (ctx.app.redis) {
       try {
         const cachedData = await ctx.app.redis.get(cacheKey);
@@ -220,32 +221,31 @@ class TaskService extends Service {
     const yesterdayEnd = new Date(todayEnd);
     yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
 
-    // 1. 使用 Promise.all 并行执行无依赖的查询，大幅提升接口响应速度
-    const [ userWallet, todayIncomeResult, yesterdayIncomeResult, currentTaskUser ] = await Promise.all([
-      ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } }),
-      ctx.model.ShopTaskUserItemProgress.sum('revenue', {
-        where: {
-          user_id: dbUserId,
-          status: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] }, // 只要完成了(或异常)就算收益
-          update_time: {
-            [ctx.app.Sequelize.Op.between]: [ todayStart, todayEnd ],
-          },
+    // 1. 串行查询避免并发高并发时打爆连接池 (修复 ECONNRESET)
+    // 之前用 Promise.all 瞬间占满 4 个连接，如果有并发请求直接导致连接池枯竭
+    const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
+    const todayIncomeResult = await ctx.model.ShopTaskUserItemProgress.sum('revenue', {
+      where: {
+        user_id: dbUserId,
+        status: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] }, // 只要完成了(或异常)就算收益
+        update_time: {
+          [ctx.app.Sequelize.Op.between]: [ todayStart, todayEnd ],
         },
-      }),
-      ctx.model.ShopTaskUserItemProgress.sum('revenue', {
-        where: {
-          user_id: dbUserId,
-          status: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] },
-          update_time: {
-            [ctx.app.Sequelize.Op.between]: [ yesterdayStart, yesterdayEnd ],
-          },
+      },
+    });
+    const yesterdayIncomeResult = await ctx.model.ShopTaskUserItemProgress.sum('revenue', {
+      where: {
+        user_id: dbUserId,
+        status: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] },
+        update_time: {
+          [ctx.app.Sequelize.Op.between]: [ yesterdayStart, yesterdayEnd ],
         },
-      }),
-      ctx.model.ShopTaskUser.findOne({
-        where: { user_id: dbUserId, status: { [ctx.app.Sequelize.Op.in]: [ 0, 1 ] } }, // 0: 已绑定, 1: 任务进行中
-        order: [[ 'id', 'DESC' ]],
-      }),
-    ]);
+      },
+    });
+    const currentTaskUser = await ctx.model.ShopTaskUser.findOne({
+      where: { user_id: dbUserId, status: { [ctx.app.Sequelize.Op.in]: [ 0, 1 ] } }, // 0: 已绑定, 1: 任务进行中
+      order: [[ 'id', 'DESC' ]],
+    });
 
     const todayIncomeVal = todayIncomeResult ? Number(todayIncomeResult) : 0;
     const yesterdayIncomeVal = yesterdayIncomeResult ? Number(yesterdayIncomeResult) : 0;
@@ -259,17 +259,15 @@ class TaskService extends Service {
         isOpen = 1;
       }
 
-      // 2. 将后续依赖 currentTaskUser 的查询也改为并行执行
-      const [ overNumResult, taskResult ] = await Promise.all([
-        ctx.model.ShopTaskUserItemProgress.count({
-          where: {
-            shop_task_user_id: currentTaskUser.id,
-            user_id: dbUserId,
-            status: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] }, // 1:已完成 2:异常
-          },
-        }),
-        ctx.model.ShopTask.findByPk(currentTaskUser.task_id),
-      ]);
+      // 2. 将后续依赖 currentTaskUser 的查询也改为串行执行
+      const overNumResult = await ctx.model.ShopTaskUserItemProgress.count({
+        where: {
+          shop_task_user_id: currentTaskUser.id,
+          user_id: dbUserId,
+          status: { [ctx.app.Sequelize.Op.in]: [ 1, 2 ] }, // 1:已完成 2:异常
+        },
+      });
+      const taskResult = await ctx.model.ShopTask.findByPk(currentTaskUser.task_id);
 
       overNum = overNumResult;
 
@@ -296,7 +294,7 @@ class TaskService extends Service {
 
     // 在返回前对 result 做一次深度的 BigInt 清洗，确保 Controller 层直接 body 返回时不会炸
     const safeResult = JSON.parse(JSON.stringify(result, (key, value) =>
-      (typeof value === 'bigint' ? value.toString() : value)
+      (typeof value === 'bigint' ? value.toString() : value),
     ));
 
     // 埋点：记录成功从数据库查到任务首页数据
@@ -355,7 +353,11 @@ class TaskService extends Service {
       // 注意：这里需要区分，如果 status 是 0 但 task_status 是 2，说明他刚做完了一轮，
       // 对于接任务界面，可以返回 3(代表已完成/待重新开启)，如果仅仅是 0，那就是还没做过
       if (boundTask) {
-        if (boundTask.task_status === 2) {
+        if (boundTask.task_status === 2 || boundTask.task_status === 1) {
+          // 修复历史脏数据：如果 status=0 且 task_status=1，说明是之前 search() 漏改了 task_status 的脏数据
+          if (boundTask.task_status === 1) {
+            await boundTask.update({ task_status: 2 });
+          }
           ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：上一轮任务已完成(task_status=2)待重新开启`);
           return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
         }
@@ -481,7 +483,7 @@ class TaskService extends Service {
     if (!nextProgress) {
       // 没有未开始的子项了，说明全部完成，自动将其状态改回 0 (未开启)
       ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务返回 3，原因：没有任何 status=0 且 is_processing=0 的进度，说明当前轮次任务已全部完成`);
-      await shopTaskUser.update({ status: 0 });
+      await shopTaskUser.update({ status: 0, task_status: 2 });
       return { sequence_no: 0, task_status: 3, wares: {}, order: {}, is_lucky: 0 };
     }
 

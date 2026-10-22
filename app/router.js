@@ -87,7 +87,7 @@ module.exports = app => {
   router.get('/api/mobile/account/earnings', auth, controller.mobile.user.getUserRevenue); // 避开 getUserRevenue
   // 兼容老版本 H5 缓存
   router.get('/api/mobile/getUserRevenue', auth, controller.mobile.user.getUserRevenue);
-  
+
   // 新增：防TG强缓存的 POST 查询接口
   router.post('/api/mobile/users/balance-sync', auth, controller.mobile.user.balanceSync);
   router.post('/api/mobile/getUserTaskInfoSync', auth, controller.mobile.task.getUserTaskInfoSync);

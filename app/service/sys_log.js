@@ -747,7 +747,7 @@ class SysLogService extends Service {
     await ctx.model.UserLoginLog.destroy({ where });
   }
 
-    // remove adminLoginLogs
+  // remove adminLoginLogs
 
 
   /**
@@ -763,7 +763,7 @@ class SysLogService extends Service {
     const where = {};
     if (oper_username) where.username = { [Op.like]: `%${oper_username}%` };
     if (oper_name) where.username = { [Op.like]: `%${oper_name}%` };
-    
+
     if (oper_status !== undefined && oper_status !== '') where.status = Number(oper_status);
     if (status !== undefined && status !== '') where.status = Number(status);
 
@@ -772,7 +772,7 @@ class SysLogService extends Service {
 
     if (oper_type !== undefined && oper_type !== '') where.business_type = Number(oper_type);
     if (oper_location) where.oper_location = { [Op.like]: `%${oper_location}%` };
-    
+
     if (user_id) where.user_id = Number(user_id);
     if (oper_id) where.user_id = Number(oper_id); // 支持 B端/A端 传 oper_id 过滤
 
@@ -866,7 +866,7 @@ class SysLogService extends Service {
     };
   }
 
-    // remove adminOperationLogs
+  // remove adminOperationLogs
 
   /**
    * 批量删除操作日志
