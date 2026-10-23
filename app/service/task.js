@@ -325,7 +325,17 @@ class TaskService extends Service {
       const acquired = await ctx.app.redis.set(searchLockKey, 'locked', 'EX', 3, 'NX');
       if (!acquired) {
         ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：触发了 Redis 分布式防连点锁`);
-        ctx.throw(429, ctx.__('task.task_is_generating') || '任务生成中，请勿重复点击');
+        // 使用 ctx.body 直接返回前端可识别的状态，避免抛出 Error 导致大量后台日志
+        // 这里可以直接返回 { code: 429, message: ... } 或前端能接受的任务状态结构
+        // 因为这是一个频繁发生的正常拦截行为，不需要记录到 ERROR 级别日志里
+        ctx.status = 200;
+        ctx.body = {
+          code: 429,
+          message: ctx.__('task.task_is_generating') || '任务生成中，请勿重复点击',
+          data: { sequence_no: 0, task_status: 1, wares: {}, order: {}, is_lucky: 0 } // 根据前端所需格式返回，或仅返回提示
+        };
+        // 中断执行，但不是抛异常
+        return ctx.body.data;
       }
     }
 

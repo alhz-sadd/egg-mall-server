@@ -90,6 +90,11 @@ class TaskController extends Controller {
       }
 
       const result = await service.task.search(userId);
+      
+      // 如果 service 层直接修改了 ctx.body (比如防连点 429)，说明已经被接管了，直接 return
+      if (ctx.body && ctx.body.code === 429) {
+        return;
+      }
 
       // 如果返回的状态是 -1 (代表暂无任务)，则通过 message 返回多语言提示，让前端弹窗
       let message = 'success';
