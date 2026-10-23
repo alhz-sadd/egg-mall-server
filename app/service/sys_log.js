@@ -555,6 +555,25 @@ class SysLogService extends Service {
   }
 
   /**
+   * 安全的 JSON.stringify，避免 circular 报错
+   * @param {any} obj
+   * @return {string}
+   */
+  safeStringify(obj) {
+    if (obj === undefined) return undefined;
+    const cache = new Set();
+    return JSON.stringify(obj, (key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (cache.has(value)) {
+          return '[Circular]';
+        }
+        cache.add(value);
+      }
+      return value;
+    });
+  }
+
+  /**
    * 记录操作日志
    * @param {Object} data 日志数据
    */
@@ -585,8 +604,8 @@ class SysLogService extends Service {
         oper_url: data.operUrl || data.oper_url,
         oper_ip: operIp,
         oper_location: operLocation,
-        oper_param: typeof data.operParam === 'object' ? JSON.stringify(data.operParam) : data.operParam,
-        json_result: typeof data.jsonResult === 'object' ? JSON.stringify(data.jsonResult) : data.jsonResult,
+        oper_param: typeof data.operParam === 'object' ? this.safeStringify(data.operParam) : data.operParam,
+        json_result: typeof data.jsonResult === 'object' ? this.safeStringify(data.jsonResult) : data.jsonResult,
         status: data.status !== undefined ? data.status : 0,
         error_msg: data.errorMsg || data.error_msg,
         cost_time: data.costTime !== undefined ? data.costTime : (data.cost_time !== undefined ? data.cost_time : 0),
