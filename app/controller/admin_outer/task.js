@@ -542,26 +542,26 @@ class AdminOuterTaskController extends Controller {
       order: [[ 'id', 'DESC' ]],
     });
 
-    if (currentTaskUser && currentTaskUser.status === 1) {
-      ctx.throw(400, '用户当前任务正在执行中，无法切换模板，请先关闭当前任务或等待任务完成');
+    if (currentTaskUser) {
+      if (currentTaskUser.status === 1) {
+        ctx.throw(400, '用户当前任务正在执行中，无法切换模板，请先关闭当前任务或等待任务完成');
+      } else if (currentTaskUser.status === 0 && currentTaskUser.task_status !== 2) {
+        // 如果是已绑定且未完成(包含未开启或完成中途关闭)，不允许重复绑定
+        ctx.throw(400, '用户当前已有绑定的任务模板，且未全部完成，请先完成或清理历史任务');
+      }
     }
 
     // 用户只能绑定一个任务模板。切换新的模板后，需要删除之前绑定的任务及子项，确保只有一条规则
     const transaction = await ctx.model.transaction();
     let bindRecord;
     try {
-      // 删除该用户之前所有未支付的进度子项（保留已支付的，作为历史记录）
-      await ctx.model.ShopTaskUserItemProgress.destroy({
-        where: { user_id, status: 0 },
-        transaction,
-        force: true,
-      });
-
-      // 将该用户之前所有的绑定记录置为关闭/失效状态 (2)
+      // 软删除或封存用户之前所有的绑定记录（将 status 设为 2 表示已失效/作废）
+      // 【修复】不能漏掉修改 task_status。对于被强制废弃的未完成任务，不仅 status=2，task_status 最好也归为失效，以免干扰后续查询
       await ctx.model.ShopTaskUser.update({
         status: 2,
+        task_status: 3, // 3: 已过期截止/作废
       }, {
-        where: { user_id },
+        where: { user_id, status: { [ctx.model.Sequelize.Op.in]: [ 0, 1 ] } },
         transaction,
       });
 
@@ -661,7 +661,7 @@ class AdminOuterTaskController extends Controller {
     const transaction = await ctx.model.transaction();
     try {
       // 1. 更新主任务状态为进行中
-      await userTask.update({ status: 1 }, { transaction });
+      await userTask.update({ status: 1, task_status: 1 }, { transaction });
 
       // 注：不再在此初始化子项，改为在 bindUser 绑定时即生成，以支持绑定后开启前修改子项
 
@@ -719,7 +719,7 @@ class AdminOuterTaskController extends Controller {
       });
 
       // 2. 将当前任务记录状态设为 2 (已终止/历史)
-      await userTask.update({ status: 2 }, { transaction });
+      await userTask.update({ status: 2, task_status: 3 }, { transaction });
 
       // 3. 为该用户重新绑定一份该任务的全新模板，状态为 0 (未开启)
       const bindRecord = await ctx.model.ShopTaskUser.create({

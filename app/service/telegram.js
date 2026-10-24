@@ -56,13 +56,13 @@ class TelegramService extends Service {
           },
           dataType: 'json',
           // 缩短超时时间，[连接超时, 读写超时]
-          timeout: [2000, 3000],
+          timeout: [3000, 5000],
         });
         // 使用 app.logger 避免在后台任务中打印带有原请求上下文(5000ms耗时)的日志，引起误解
         ctx.app.logger.info(`[Telegram] 消息发送成功，店铺ID: ${shopId}`);
       } catch (err) {
         // 捕获错误，只打印简短的 message，不要打印完整的 err 对象，避免 urllib 打印带有堆栈和请求上下文的超长日志
-        ctx.app.logger.error(`[Telegram] 发送消息失败: ${err.message || err.name}`);
+        ctx.app.logger.error(`[Telegram] 发送消息失败 (店铺ID: ${shopId}): ${err.message || err.name}`);
       }
     });
 
