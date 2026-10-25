@@ -545,10 +545,8 @@ class AdminOuterTaskController extends Controller {
     if (currentTaskUser) {
       if (currentTaskUser.status === 1) {
         ctx.throw(400, '用户当前任务正在执行中，无法切换模板，请先关闭当前任务或等待任务完成');
-      } else if (currentTaskUser.status === 0 && currentTaskUser.task_status !== 2) {
-        // 如果是已绑定且未完成(包含未开启或完成中途关闭)，不允许重复绑定
-        ctx.throw(400, '用户当前已有绑定的任务模板，且未全部完成，请先完成或清理历史任务');
       }
+      // 如果 status === 0（已关闭/未开启），允许直接切换，旧记录将被废弃
     }
 
     // 用户只能绑定一个任务模板。切换新的模板后，需要删除之前绑定的任务及子项，确保只有一条规则
