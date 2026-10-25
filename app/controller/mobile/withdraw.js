@@ -117,7 +117,7 @@ class MobileWithdrawController extends Controller {
       });
 
       if (!wallet || Number(wallet.balance) < payload.amount) {
-        throw new Error(ctx.__('wallet.balance_not_enough'));
+        ctx.throw(400, ctx.__('wallet.balance_not_enough'));
       }
 
       // 最高状态第二：临时提现打开，允许任务中，下级还没完成任务下提现
@@ -133,7 +133,7 @@ class MobileWithdrawController extends Controller {
         });
 
         if (pendingWithdraw) {
-          throw new Error(ctx.__('withdraw.has_pending_withdraw'));
+          ctx.throw(400, ctx.__('withdraw.has_pending_withdraw'));
         }
 
         // 规则4：未绑定任务的用户，需要绑定任务模板，开启完成后才能提现
@@ -146,7 +146,7 @@ class MobileWithdrawController extends Controller {
         });
 
         if (!anyTask) {
-          throw new Error(ctx.__('withdraw.tasks_incomplete_withdraw'));
+          ctx.throw(400, ctx.__('withdraw.tasks_incomplete_withdraw'));
         }
 
         // 规则1：用户自身，绑定了任务，不管是否开启任务，都必须完成
@@ -169,7 +169,7 @@ class MobileWithdrawController extends Controller {
         });
 
         if (unfinishedTask) {
-          throw new Error(ctx.__('withdraw.tasks_incomplete_withdraw'));
+          ctx.throw(400, ctx.__('withdraw.tasks_incomplete_withdraw'));
         }
 
         // 规则2：任务中，只需要有一单还没支付就不允许提现
@@ -182,7 +182,7 @@ class MobileWithdrawController extends Controller {
         });
 
         if (uncompletedItemCount > 0) {
-          throw new Error(ctx.__('withdraw.tasks_incomplete_withdraw'));
+          ctx.throw(400, ctx.__('withdraw.tasks_incomplete_withdraw'));
         }
 
         // 规则3：自属下级，开启任务后，下级任务未完成的，也是需要完成所有任务订单
@@ -214,7 +214,7 @@ class MobileWithdrawController extends Controller {
         });
 
         if (activeSubTask) {
-          throw new Error(ctx.__('withdraw.tasks_incomplete_withdraw'));
+          ctx.throw(400, ctx.__('withdraw.tasks_incomplete_withdraw'));
         }
 
         // 店铺如果设置了需要完成实名认证后才能提现，就必须完成实名后才能提现
@@ -228,7 +228,7 @@ class MobileWithdrawController extends Controller {
           });
 
           if (!identity) {
-            throw new Error(ctx.__('withdraw.complete_identity_before_withdraw'));
+            ctx.throw(400, ctx.__('withdraw.complete_identity_before_withdraw'));
           }
         }
       }
