@@ -193,6 +193,62 @@ class UserController extends Controller {
   }
 
   /**
+   * @summary 获取当前登录用户信息 (POST方式，防强缓存)
+   * @description 获取当前登录用户的详细信息，专为解决TG端GET强缓存设计的POST接口
+   * @router post /api/mobile/account/info-sync
+   * @request header string Authorization Bearer token
+   * @response 200 ApiResponse 用户信息
+   */
+  async currentSync() {
+    const { ctx, service } = this;
+
+    const userId = ctx.state.user.id || ctx.state.user.user_id || ctx.state.user.userId;
+
+    if (!userId) {
+      ctx.throw(401, ctx.__('common.missing_credentials') || 'Missing userId in token');
+    }
+
+    const [ userModel, wallet ] = await Promise.all([
+      service.user.findById(userId),
+      ctx.model.UserWallet.findOne({ where: { user_id: userId } }),
+    ]);
+
+    if (!userModel) {
+      ctx.throw(404, ctx.__('user.user_not_exist'));
+    }
+
+    let user = userModel.toJSON ? userModel.toJSON() : userModel;
+    user = JSON.parse(JSON.stringify(user, (key, value) =>
+      (typeof value === 'bigint' ? value.toString() : value),
+    ));
+
+    if (user.shop_id && user.vip_level !== undefined) {
+      const vipInfo = await service.vipLevel.getVipLevelDetails(user.shop_id, user.vip_level);
+      user.vip_name = vipInfo ? vipInfo.level_name : '普通用户';
+      user.vip_benefit = vipInfo ? vipInfo.benefit : '';
+    } else {
+      user.vip_name = '普通用户';
+      user.vip_benefit = '';
+    }
+
+    if (wallet) {
+      const val = Number(wallet.balance || 0);
+      user.balance = isNaN(val) ? '0.00' : val.toFixed(2);
+    } else {
+      user.balance = '0.00';
+    }
+
+    ctx.body = {
+      code: 200,
+      message: 'success',
+      data: {
+        ...user,
+        balance: user.balance,
+      },
+    };
+  }
+
+  /**
    * @summary 获取当前用户邀请码及邀请收入
    * @description 返回当前用户的邀请码和邀请收入统计
    * @router get /api/mobile/users/invite-code

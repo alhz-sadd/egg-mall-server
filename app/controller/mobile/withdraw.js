@@ -286,6 +286,16 @@ class MobileWithdrawController extends Controller {
         remark: '发起提现，扣除可用余额',
       }, { transaction });
 
+      // 临时提现是一次性的：只要用户提现成功，就立即关闭临时提现特权，下次提现需再次开启
+      if (isTempWithdrawAllowed) {
+        await ctx.model.SysUser.update({
+          temp_withdraw_status: 0,
+        }, {
+          where: { user_id: userId },
+          transaction,
+        });
+      }
+
       await transaction.commit();
 
       // 发送 TG 异步通知

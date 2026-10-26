@@ -188,9 +188,10 @@ class TaskService extends Service {
     const todayStr = dayjs().format('YYYY-MM-DD');
     const yesterdayStr = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
 
-    // 优先从 Redis 获取缓存 (缓存时间缩短为 2 秒，防止数据不一致)
-    // 【修复死缓存】：更改 cacheKey 版本号，强制所有用户的旧死缓存失效
+    // 【终极修复】：彻底废弃任务大厅的 Redis 缓存，强制每次都走 DB，解决用户刚做完任务后 1-2 秒内回到首页数据不刷新的偶发问题。
+    // 因为 search 抢单接口已经有防连点锁了，任务大厅详情页这点并发对于 MySQL 来说完全能抗住。
     const cacheKey = `user_task_info_v2:${dbUserId}`;
+    /* 彻底移除缓存读取
     if (ctx.app.redis) {
       try {
         const cachedData = await ctx.app.redis.get(cacheKey);
@@ -208,6 +209,7 @@ class TaskService extends Service {
         ctx.logger.warn(`[TaskService.getUserTaskInfo] Redis 获取缓存失败: ${err.message}`);
       }
     }
+    */
 
     // 考虑到用户可能有多轮任务，且任务记录的更新可能会非常快，
     // 我们改用从 ShopTaskUserItemProgress 表中按时间范围直接统计，防止 UserTaskStat 表同步延迟
@@ -301,7 +303,7 @@ class TaskService extends Service {
     // 埋点：记录成功从数据库查到任务首页数据
     ctx.logger.info(`[任务首页埋点] 用户 ${dbUserId} 成功从 MySQL 数据库获取任务首页数据, 余额: ${safeResult.has_money}, 任务状态: ${safeResult.is_open}`);
 
-    // 存入 Redis 缓存 (改为极短的 1 秒，因为这种资产/进度数据需要极高实时性，或者干脆不缓存只做防击穿)
+    /* 彻底移除缓存写入
     if (ctx.app.redis) {
       try {
         await ctx.app.redis.set(cacheKey, JSON.stringify(safeResult), 'EX', 1);
@@ -309,6 +311,7 @@ class TaskService extends Service {
         ctx.logger.warn(`[TaskService.getUserTaskInfo] Redis 设置缓存失败: ${err.message}`);
       }
     }
+    */
 
     return safeResult;
   }

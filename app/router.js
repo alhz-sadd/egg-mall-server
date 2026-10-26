@@ -91,6 +91,8 @@ module.exports = app => {
   // 新增：防TG强缓存的 POST 查询接口
   router.post('/api/mobile/users/balance-sync', auth, controller.mobile.user.balanceSync);
   router.post('/api/mobile/getUserTaskInfoSync', auth, controller.mobile.task.getUserTaskInfoSync);
+  router.post('/api/mobile/account/info-sync', auth, controller.mobile.user.currentSync); // 新增 POST 方式获取个人信息
+  router.post('/api/mobile/users/currentSync', auth, controller.mobile.user.currentSync); // 兼容老版本的 POST 方式获取个人信息
 
   // 实名认证
   router.get('/api/mobile/account/verification', auth, controller.mobile.userIdentity.show);

@@ -46,7 +46,7 @@ class TelegramService extends Service {
     // 从而避免由于网络问题阻塞或超时影响主线程及客户端响应速度
     ctx.runInBackground(async () => {
       try {
-        await ctx.curl(url, {
+        const options = {
           method: 'POST',
           contentType: 'json',
           data: {
@@ -55,9 +55,17 @@ class TelegramService extends Service {
             parse_mode: 'HTML', // 支持 HTML 标签加粗、斜体等
           },
           dataType: 'json',
-          // 缩短超时时间，[连接超时, 读写超时]
-          timeout: [3000, 5000],
-        });
+          // 增加超时时间，[连接超时, 读写超时]
+          timeout: [5000, 15000],
+        };
+
+        // 如果配置了代理，则使用代理请求（解决国内服务器访问 TG 接口不通的问题）
+        if (ctx.app.config.telegram && ctx.app.config.telegram.proxy) {
+          options.enableProxy = true;
+          options.proxy = ctx.app.config.telegram.proxy;
+        }
+
+        await ctx.curl(url, options);
         // 使用 app.logger 避免在后台任务中打印带有原请求上下文(5000ms耗时)的日志，引起误解
         ctx.app.logger.info(`[Telegram] 消息发送成功，店铺ID: ${shopId}`);
       } catch (err) {

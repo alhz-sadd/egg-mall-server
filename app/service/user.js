@@ -687,8 +687,10 @@ class UserService extends Service {
   async getBalance(id) {
     const { ctx } = this;
 
-    // 优先从 Redis 获取缓存 (缓存时间缩短为 1 秒)
+    // 【终极修复】：彻底废弃余额获取的 Redis 缓存。个人中心页的余额对实时性要求极高。
+    // 如果有 1 秒缓存，用户提现/充值/做任务后立刻跳转个人中心，会有概率显示旧余额。
     const cacheKey = `user_balance:${id}`;
+    /* 彻底移除缓存读取
     if (ctx.app.redis) {
       try {
         const cachedData = await ctx.app.redis.get(cacheKey);
@@ -701,6 +703,7 @@ class UserService extends Service {
         ctx.logger.warn(`[UserService.getBalance] Redis 获取缓存失败: ${err.message}`);
       }
     }
+    */
 
     const user = await this.findUserByIdentifier(id);
     if (!user) {
@@ -718,7 +721,7 @@ class UserService extends Service {
     // 埋点：记录成功从数据库查到余额
     ctx.logger.info(`[余额获取埋点] 用户 ${id} 成功从 MySQL 数据库获取余额: ${result.balance}`);
 
-    // 存入 Redis 缓存
+    /* 彻底移除缓存写入
     if (ctx.app.redis) {
       try {
         // 自定义 replacer 处理 BigInt 防止低版本/序列化报错
@@ -732,6 +735,7 @@ class UserService extends Service {
         ctx.logger.warn(`[UserService.getBalance] Redis 设置缓存失败: ${err.message}`);
       }
     }
+    */
 
     return result;
   }
