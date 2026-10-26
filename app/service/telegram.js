@@ -56,7 +56,7 @@ class TelegramService extends Service {
           },
           dataType: 'json',
           // 增加超时时间，[连接超时, 读写超时]
-          timeout: [5000, 15000],
+          timeout: [5000, 10000],
         };
 
         // 如果配置了代理，则使用代理请求（解决国内服务器访问 TG 接口不通的问题）

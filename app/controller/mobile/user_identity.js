@@ -46,6 +46,12 @@ class MobileUserIdentityController extends Controller {
   // 解密身份证号
   decryptIdCard(encryptedStr) {
     if (!encryptedStr) return encryptedStr;
+    
+    // 兼容历史明文脏数据：如果长度不是偶数，或包含非 hex 字符，直接原样返回，避免抛出解密异常
+    if (encryptedStr.length % 2 !== 0 || !/^[0-9a-fA-F]+$/.test(encryptedStr)) {
+      return encryptedStr;
+    }
+
     try {
       const algorithm = 'aes-256-cbc';
 
