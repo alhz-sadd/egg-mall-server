@@ -72,6 +72,16 @@ class CommonAuthController extends Controller {
         ctx.throw(401, '无效的 refreshToken');
       }
 
+      // 刷新前校验用户状态，防止被禁用的用户继续刷新 token
+      if (decoded.userId) {
+        const user = await ctx.model.SysUser.findByPk(decoded.userId, {
+          attributes: [ 'status', 'is_deleted' ],
+        });
+        if (!user || user.is_deleted === 1 || user.status !== 1) {
+          ctx.throw(401, '账号已被禁用，无法刷新 Token');
+        }
+      }
+
       // 签发新的 accessToken
       const payload = { ...decoded };
       delete payload.isRefresh;
