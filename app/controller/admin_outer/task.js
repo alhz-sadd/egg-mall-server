@@ -571,6 +571,14 @@ class AdminOuterTaskController extends Controller {
         task_status: 0,
       }, { transaction });
 
+      // 提现门票制：用户绑定了新任务，立刻作废之前的门票
+      await ctx.model.SysUser.update({
+        withdraw_ticket: 0
+      }, {
+        where: { user_id },
+        transaction,
+      });
+
       // 查询模板的所有子项
       const taskItems = await ctx.model.ShopTaskItem.findAll({
         where: { task_id, is_deleted: 0 },
@@ -660,6 +668,14 @@ class AdminOuterTaskController extends Controller {
     try {
       // 1. 更新主任务状态为进行中
       await userTask.update({ status: 1, task_status: 1 }, { transaction });
+
+      // 提现门票制：开启了新任务，立刻作废之前的门票
+      await ctx.model.SysUser.update({
+        withdraw_ticket: 0
+      }, {
+        where: { user_id },
+        transaction,
+      });
 
       // 注：不再在此初始化子项，改为在 bindUser 绑定时即生成，以支持绑定后开启前修改子项
 
