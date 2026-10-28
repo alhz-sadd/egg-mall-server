@@ -171,6 +171,12 @@ module.exports = app => {
       defaultValue: 1,
       comment: '临时提现状态：0关闭，1开启',
     },
+    withdraw_ticket: {
+      type: app.Sequelize.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      comment: '提现门票数量，完成一次自身任务+1，提现/下级产生收益/绑定新任务作废清零',
+    },
     receipt_name: {
       type: STRING(64),
       allowNull: true,

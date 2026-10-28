@@ -82,7 +82,7 @@ class MobileWithdrawController extends Controller {
 
     // 1. 最高状态第一：如果用户的提现状态是未开启状态，则永远提现不了
     if (user.withdrawal_status === 0) {
-      ctx.throw(400, 'withdraw.account_restricted_withdraw');
+      ctx.throw(400, ctx.__('withdraw.account_restricted_withdraw'));
     }
 
     // 获取手续费配置
@@ -136,84 +136,8 @@ class MobileWithdrawController extends Controller {
           ctx.throw(400, ctx.__('withdraw.has_pending_withdraw'));
         }
 
-        // 规则4：未绑定任务的用户，需要绑定任务模板，开启完成后才能提现
-        const anyTask = await ctx.model.ShopTaskUser.findOne({
-          where: { 
-            user_id: userId,
-            status: { [ctx.app.Sequelize.Op.ne]: 2 } // 必须有非作废的任务记录
-          },
-          transaction,
-        });
-
-        if (!anyTask) {
-          ctx.throw(400, ctx.__('withdraw.tasks_incomplete_withdraw'));
-        }
-
-        // 规则1：用户自身，绑定了任务，不管是否开启任务，都必须完成
-        // (注意：status 为 2 代表已被后台作废或强制覆盖的历史任务，不算做有效绑定)
-        const unfinishedTask = await ctx.model.ShopTaskUser.findOne({
-          where: { 
-            user_id: userId,
-            [ctx.app.Sequelize.Op.or]: [
-              { task_status: { [ctx.app.Sequelize.Op.in]: [0, 1] } },
-              { status: 1 } // 兼容脏数据
-            ],
-            status: {
-              [ctx.app.Sequelize.Op.ne]: 2 // 排除已作废的历史任务
-            },
-            task_status: {
-              [ctx.app.Sequelize.Op.ne]: 2 // 绝对排除已经完成的任务
-            }
-          },
-          transaction,
-        });
-
-        if (unfinishedTask) {
-          ctx.throw(400, ctx.__('withdraw.tasks_incomplete_withdraw'));
-        }
-
-        // 规则2：任务中，只需要有一单还没支付就不允许提现
-        const uncompletedItemCount = await ctx.model.ShopTaskUserItemProgress.count({
-          where: { 
-            user_id: userId,
-            status: 0 // 0表示未完成/未支付
-          },
-          transaction,
-        });
-
-        if (uncompletedItemCount > 0) {
-          ctx.throw(400, ctx.__('withdraw.tasks_incomplete_withdraw'));
-        }
-
-        // 规则3：自属下级，开启任务后，下级任务未完成的，也是需要完成所有任务订单
-        // 用户明确规则：只有下级开启任务才作为条件。绑定未开启(0)允许，已开启完成(2)允许，只有已开启未完成(1)不允许
-        // 【注意】系统的底层状态可能存在 status=1(进行中) 但 task_status=0 的脏数据或并发状态，所以需要兼容这两种表示进行中的状态
-        const activeSubTask = await ctx.model.ShopTaskUser.findOne({
-          include: [{
-            model: ctx.model.SysUser,
-            as: 'user',
-            attributes: [],
-            where: {
-              inviter_user_id: userId,
-              is_deleted: 0,
-            },
-          }],
-          where: {
-            // 满足以下任一条件即认为下级任务在进行中：
-            // 1. task_status = 1 (标准的进行中)
-            // 2. status = 1 (开启任务时某些旧代码或并发逻辑只改了 status 没改 task_status)
-            [ctx.app.Sequelize.Op.or]: [
-              { task_status: 1 },
-              { status: 1 }
-            ],
-            // 但必须排除掉真正已经全部完成的 (task_status = 2) 和被作废的 (status = 2)
-            task_status: { [ctx.app.Sequelize.Op.ne]: 2 },
-            status: { [ctx.app.Sequelize.Op.ne]: 2 }
-          },
-          transaction,
-        });
-
-        if (activeSubTask) {
+        // 提现门票制（一任务一解锁）：没有门票不能提现
+        if (user.withdraw_ticket <= 0) {
           ctx.throw(400, ctx.__('withdraw.tasks_incomplete_withdraw'));
         }
 
@@ -286,11 +210,14 @@ class MobileWithdrawController extends Controller {
         remark: '发起提现，扣除可用余额',
       }, { transaction });
 
-      // 临时提现是一次性的：只要用户提现成功，就立即关闭临时提现特权，下次提现需再次开启
+      // 如果开启了临时提现则关闭临时提现特权
+      const updateUserData = {};
       if (isTempWithdrawAllowed) {
-        await ctx.model.SysUser.update({
-          temp_withdraw_status: 0,
-        }, {
+        updateUserData.temp_withdraw_status = 0;
+      }
+
+      if (Object.keys(updateUserData).length > 0) {
+        await ctx.model.SysUser.update(updateUserData, {
           where: { user_id: userId },
           transaction,
         });

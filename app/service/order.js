@@ -534,7 +534,16 @@ class OrderService extends Service {
           where: { id: progress.shop_task_user_id },
           transaction,
         });
-        ctx.logger.info(`[订单支付] 任务进度已全部完成，自动将用户任务状态改为未开启(status:0)，task_status设为(2) shop_task_user_id: ${progress.shop_task_user_id}`);
+
+        // 提现门票制：完成一次自身任务 = 获得一次提现门票（永远只有1张）
+        await ctx.model.SysUser.update({
+          withdraw_ticket: 1
+        }, {
+          where: { user_id: dbUserId },
+          transaction,
+        });
+
+        ctx.logger.info(`[订单支付] 任务进度已全部完成，自动将用户任务状态改为未开启(status:0)，task_status设为(2)，并奖励提现门票1张 shop_task_user_id: ${progress.shop_task_user_id}`);
       }
 
       // 6. 更新用户钱包 (扣除本金, 发放本金+静态收益)
@@ -680,6 +689,15 @@ class OrderService extends Service {
               remark: '下级任务订单动态收益',
               create_time: new Date(),
             }, { transaction });
+
+            // 提现门票制：下级佣金产生（即下级有新收益进账），不管用户之前有没有门票，旧门票立刻作废。
+            await ctx.model.SysUser.update({
+              withdraw_ticket: 0
+            }, {
+              where: { user_id: userObj.inviter_user_id },
+              transaction,
+            });
+            ctx.logger.info(`[订单支付] 下级产生收益，作废上级(user_id: ${userObj.inviter_user_id})的提现门票。`);
           }
         } else {
           ctx.logger.warn(`[订单支付] 上级用户(ID: ${userObj.inviter_user_id})不存在、被删除或被禁用，放弃向其发放动态收益。`);
