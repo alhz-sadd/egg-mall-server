@@ -163,23 +163,32 @@ class UserController extends Controller {
       (typeof value === 'bigint' ? value.toString() : value),
     ));
 
-    // 补充 VIP 等级详情
+    // 补充 VIP 等级详情，确保字段始终存在
+    user.vip_name = '普通用户';
+    user.vip_benefit = '';
     if (user.shop_id && user.vip_level !== undefined) {
       const vipInfo = await service.vipLevel.getVipLevelDetails(user.shop_id, user.vip_level);
-      user.vip_name = vipInfo ? vipInfo.level_name : '普通用户';
-      user.vip_benefit = vipInfo ? vipInfo.benefit : '';
-    } else {
-      user.vip_name = '普通用户';
-      user.vip_benefit = '';
+      if (vipInfo) {
+        user.vip_name = vipInfo.level_name;
+        user.vip_benefit = vipInfo.benefit;
+      }
     }
 
-    // 补充用户余额
+    // 补充用户余额及钱包相关所有字段，确保结构完整
+    user.balance = '0.00';
+    user.recharge_balance = '0.00';
+    user.voucher_balance = '0.00';
+    user.freeze_voucher_balance = '0.00';
+    user.static_income = '0.00';
+    user.dynamic_income = '0.00';
+    
     if (wallet) {
-      // 强制转换为两位小数的字符串，避免前端 0 被判断为 false 导致不渲染
-      const val = Number(wallet.balance || 0);
-      user.balance = isNaN(val) ? '0.00' : val.toFixed(2);
-    } else {
-      user.balance = '0.00';
+      user.balance = isNaN(Number(wallet.balance)) ? '0.00' : Number(wallet.balance).toFixed(2);
+      user.recharge_balance = isNaN(Number(wallet.recharge_balance)) ? '0.00' : Number(wallet.recharge_balance).toFixed(2);
+      user.voucher_balance = isNaN(Number(wallet.voucher_balance)) ? '0.00' : Number(wallet.voucher_balance).toFixed(2);
+      user.freeze_voucher_balance = isNaN(Number(wallet.freeze_voucher_balance)) ? '0.00' : Number(wallet.freeze_voucher_balance).toFixed(2);
+      user.static_income = isNaN(Number(wallet.static_income)) ? '0.00' : Number(wallet.static_income).toFixed(2);
+      user.dynamic_income = isNaN(Number(wallet.dynamic_income)) ? '0.00' : Number(wallet.dynamic_income).toFixed(2);
     }
 
     ctx.body = {
@@ -222,20 +231,32 @@ class UserController extends Controller {
       (typeof value === 'bigint' ? value.toString() : value),
     ));
 
+    // 补充 VIP 等级详情，确保字段始终存在
+    user.vip_name = '普通用户';
+    user.vip_benefit = '';
     if (user.shop_id && user.vip_level !== undefined) {
       const vipInfo = await service.vipLevel.getVipLevelDetails(user.shop_id, user.vip_level);
-      user.vip_name = vipInfo ? vipInfo.level_name : '普通用户';
-      user.vip_benefit = vipInfo ? vipInfo.benefit : '';
-    } else {
-      user.vip_name = '普通用户';
-      user.vip_benefit = '';
+      if (vipInfo) {
+        user.vip_name = vipInfo.level_name;
+        user.vip_benefit = vipInfo.benefit;
+      }
     }
 
+    // 补充用户余额及钱包相关所有字段，确保结构完整
+    user.balance = '0.00';
+    user.recharge_balance = '0.00';
+    user.voucher_balance = '0.00';
+    user.freeze_voucher_balance = '0.00';
+    user.static_income = '0.00';
+    user.dynamic_income = '0.00';
+    
     if (wallet) {
-      const val = Number(wallet.balance || 0);
-      user.balance = isNaN(val) ? '0.00' : val.toFixed(2);
-    } else {
-      user.balance = '0.00';
+      user.balance = isNaN(Number(wallet.balance)) ? '0.00' : Number(wallet.balance).toFixed(2);
+      user.recharge_balance = isNaN(Number(wallet.recharge_balance)) ? '0.00' : Number(wallet.recharge_balance).toFixed(2);
+      user.voucher_balance = isNaN(Number(wallet.voucher_balance)) ? '0.00' : Number(wallet.voucher_balance).toFixed(2);
+      user.freeze_voucher_balance = isNaN(Number(wallet.freeze_voucher_balance)) ? '0.00' : Number(wallet.freeze_voucher_balance).toFixed(2);
+      user.static_income = isNaN(Number(wallet.static_income)) ? '0.00' : Number(wallet.static_income).toFixed(2);
+      user.dynamic_income = isNaN(Number(wallet.dynamic_income)) ? '0.00' : Number(wallet.dynamic_income).toFixed(2);
     }
 
     ctx.body = {
