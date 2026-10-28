@@ -419,9 +419,9 @@ class AdminOuterWithdrawController extends Controller {
       }, { transaction });
 
       // 提现门票制：因为 C 端发起提现时没有直接扣除门票，
-      // 所以这里只需要判断在此期间下级是否有新收益产生。
-      // 如果提现申请时间（withdraw.create_time）之后，该用户收到了 biz_type = 5（下级任务订单动态收益）的流水，
-      // 说明在提现期间下级产生了新收益，根据规则门票作废，此时将门票清零即可。
+      // 所以这里只需要判断在此期间下级是否有新收益产生，或者用户是否绑定了新任务。
+      
+      // 条件1：判断是否在提现期间下级产生了新收益
       const hasNewDynamicIncome = await ctx.model.UserWalletLog.findOne({
         where: {
           user_id: withdraw.user_id,
@@ -433,14 +433,26 @@ class AdminOuterWithdrawController extends Controller {
         transaction,
       });
 
-      if (hasNewDynamicIncome) {
+      // 条件2：判断是否在提现期间绑定了新任务模板
+      const hasNewTaskBinding = await ctx.model.ShopTaskUser.findOne({
+        where: {
+          user_id: withdraw.user_id,
+          create_time: {
+            [ctx.app.Sequelize.Op.gt]: withdraw.create_time, // 大于提现申请时间
+          }
+        },
+        transaction,
+      });
+
+      if (hasNewDynamicIncome || hasNewTaskBinding) {
         await ctx.model.SysUser.update({
           withdraw_ticket: 0
         }, {
           where: { user_id: withdraw.user_id },
           transaction,
         });
-        ctx.logger.info(`[提现驳回] 提现申请(ID: ${withdraw.id})期间下级产生了新收益，提现门票已作废(归零)`);
+        const reason = hasNewDynamicIncome ? '下级产生了新收益' : '绑定了新任务模板';
+        ctx.logger.info(`[提现驳回] 提现申请(ID: ${withdraw.id})期间${reason}，提现门票已作废(归零)`);
       } else {
         await ctx.model.SysUser.update({
           withdraw_ticket: 1
@@ -448,7 +460,7 @@ class AdminOuterWithdrawController extends Controller {
           where: { user_id: withdraw.user_id },
           transaction,
         });
-        ctx.logger.info(`[提现驳回] 提现申请(ID: ${withdraw.id})期间下级无新收益，提现门票保留(设为1)`);
+        ctx.logger.info(`[提现驳回] 提现申请(ID: ${withdraw.id})期间下级无新收益且未更换任务，提现门票保留(设为1)`);
       }
 
       await transaction.commit();
