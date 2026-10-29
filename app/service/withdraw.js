@@ -485,7 +485,7 @@ class WithdrawService extends Service {
       });
       if (wallet) {
         await wallet.update({ balance: Number(wallet.balance) + Number(lockRequest.amount) }, { transaction, individualHooks: true });
-        
+
         // 生成资金流水记录（退回提现金额）
         const logNo = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
         await ctx.model.UserWalletLog.create({

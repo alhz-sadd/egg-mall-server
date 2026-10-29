@@ -537,7 +537,7 @@ class OrderService extends Service {
 
         // 提现门票制：完成一次自身任务 = 获得一次提现门票（永远只有1张）
         await ctx.model.SysUser.update({
-          withdraw_ticket: 1
+          withdraw_ticket: 1,
         }, {
           where: { user_id: dbUserId },
           transaction,
@@ -692,7 +692,7 @@ class OrderService extends Service {
 
             // 提现门票制：下级佣金产生（即下级有新收益进账），不管用户之前有没有门票，旧门票立刻作废。
             await ctx.model.SysUser.update({
-              withdraw_ticket: 0
+              withdraw_ticket: 0,
             }, {
               where: { user_id: userObj.inviter_user_id },
               transaction,

@@ -36,10 +36,10 @@ const BUSINESS_RULES = [
   { method: 'POST', pattern: /^\/api\/admin-outer\/tasks(\?|$)/, businessType: 0, title: '新增任务模板' },
   { method: 'PUT', pattern: /^\/api\/admin-outer\/tasks\/[^\/]+(\?|$)/, businessType: 1, title: '修改任务模板' },
   { method: 'DELETE', pattern: /^\/api\/admin-outer\/tasks\/[^\/]+(\?|$)/, businessType: 2, title: '删除任务模板' },
-  { method: 'POST', pattern: /^\/api\/mobile\/orders\/[^\/]+\/pay(\?|$)/, businessType: 1, title: '支付订单', ignore: true  },
-  { method: 'PUT', pattern: /^\/api\/mobile\/orders\/[^\/]+\/cancel(\?|$)/, businessType: 1, title: '取消订单', ignore: true  },
-  { method: 'POST', pattern: /^\/api\/mobile\/orders(\?|$)/, businessType: 0, title: '创建订单', ignore: true  },
-  { method: 'POST', pattern: /^\/api\/mobile\/finishOrder(\?|$)/, businessType: 1, title: '完成任务订单', ignore: true  },
+  { method: 'POST', pattern: /^\/api\/mobile\/orders\/[^\/]+\/pay(\?|$)/, businessType: 1, title: '支付订单', ignore: true },
+  { method: 'PUT', pattern: /^\/api\/mobile\/orders\/[^\/]+\/cancel(\?|$)/, businessType: 1, title: '取消订单', ignore: true },
+  { method: 'POST', pattern: /^\/api\/mobile\/orders(\?|$)/, businessType: 0, title: '创建订单', ignore: true },
+  { method: 'POST', pattern: /^\/api\/mobile\/finishOrder(\?|$)/, businessType: 1, title: '完成任务订单', ignore: true },
   { method: 'POST', pattern: /^\/api\/mobile\/missions\/searchSync(\?|$)/, businessType: 0, title: '同步抢单数据', ignore: true },
   { method: 'POST', pattern: /^\/api\/mobile\/orderMsg(\?|$)/, businessType: 9, title: '获取订单详情', ignore: true }, // 高频心跳接口，忽略防重复
 
@@ -55,16 +55,16 @@ const BUSINESS_RULES = [
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/users\/reset-google(\?|$)/, businessType: 1, title: '重置用户谷歌验证' },
   { method: 'PUT', pattern: /^\/api\/mobile\/users\/password(\?|$)/, businessType: 1, title: '修改登录密码' },
   { method: 'PUT', pattern: /^\/api\/mobile\/users\/withdraw-password(\?|$)/, businessType: 1, title: '修改提现密码' },
-  { method: 'PUT', pattern: /^\/api\/mobile\/users\/profile(\?|$)/, businessType: 1, title: '修改个人资料', ignore: true  },
-  { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt-info(\?|$)/, businessType: 1, title: '修改收货信息', ignore: true  },
-  { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt(\?|$)/, businessType: 1, title: '修改收货信息', ignore: true  },
+  { method: 'PUT', pattern: /^\/api\/mobile\/users\/profile(\?|$)/, businessType: 1, title: '修改个人资料', ignore: true },
+  { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt-info(\?|$)/, businessType: 1, title: '修改收货信息', ignore: true },
+  { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt(\?|$)/, businessType: 1, title: '修改收货信息', ignore: true },
   { method: 'POST', pattern: /^\/api\/mobile\/users\/credential(\?|$)/, businessType: 0, title: '上传凭证' },
   { method: 'DELETE', pattern: /^\/api\/mobile\/users\/credential(\?|$)/, businessType: 2, title: '删除凭证' },
 
   // === 5. C端收货地址 ===
-  { method: 'POST', pattern: /^\/api\/mobile\/addresses(\?|$)/, businessType: 0, title: '新增收货地址', ignore: true  },
-  { method: 'PUT', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 1, title: '修改收货地址', ignore: true  },
-  { method: 'DELETE', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 2, title: '删除收货地址', ignore: true  },
+  { method: 'POST', pattern: /^\/api\/mobile\/addresses(\?|$)/, businessType: 0, title: '新增收货地址', ignore: true },
+  { method: 'PUT', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 1, title: '修改收货地址', ignore: true },
+  { method: 'DELETE', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 2, title: '删除收货地址', ignore: true },
 
   // === 6. VIP 模板 ===
   { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(shop-)?vip-levels\/bind-shop(\?|$)/, businessType: 1, title: '同步VIP模板' },
@@ -898,7 +898,7 @@ class SysLogService extends Service {
     for (const item of rows) {
       const data = item.toJSON();
       list.push(data);
-      
+
       let targetId = data.target_id;
       if (!targetId) {
         try {
@@ -931,8 +931,8 @@ class SysLogService extends Service {
     if (targetUserIds.size > 0) {
       const users = await ctx.model.SysUser.findAll({
         where: { user_id: Array.from(targetUserIds) },
-        attributes: ['user_id', 'username', 'nickname'],
-        raw: true
+        attributes: [ 'user_id', 'username', 'nickname' ],
+        raw: true,
       });
       users.forEach(u => {
         targetUserInfoMap[u.user_id] = u;
@@ -967,7 +967,7 @@ class SysLogService extends Service {
         username: data.username,
         user_id: data.user_id,
         oper_user_type: data.user ? data.user.user_type : null,
-        
+
         // --- 核心：输出被操作人信息给前端 ---
         target_user: targetUser,
         // -----------------------------------

@@ -12,5 +12,5 @@ module.exports = {
 
   down: async (queryInterface, Sequelize) => {
     await queryInterface.removeColumn('sys_user', 'withdraw_ticket');
-  }
+  },
 };

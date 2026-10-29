@@ -73,14 +73,14 @@ module.exports = appInfo => {
     // 注意：高并发场景下切勿将 workers 锁死为 1。注释掉或设为 CPU 核心数，充分利用多核性能
     // workers: 1,
   };
-  
+
   // 核心 HTTP 服务器配置（防弱网环境超时断流）
   config.serverTimeout = 120000; // 整个请求的最长处理时间放宽到 120 秒 (针对低端安卓+极差网络)
   config.http = {
     keepAliveTimeout: 120000, // 保持 HTTP 长连接，避免海外节点频繁握手导致 ECONNRESET
     timeout: 120000,
     // 增加 headersTimeout，防止低端安卓在极差网络下发送 headers 过慢被直接掐断
-    headersTimeout: 120000, 
+    headersTimeout: 120000,
   };
 
   // Gzip 数据压缩优化 (极大缓解中东弱网环境下的传输截断和超时)

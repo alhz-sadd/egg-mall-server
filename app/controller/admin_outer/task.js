@@ -573,7 +573,7 @@ class AdminOuterTaskController extends Controller {
 
       // 提现门票制：用户绑定了新任务，立刻作废之前的门票
       await ctx.model.SysUser.update({
-        withdraw_ticket: 0
+        withdraw_ticket: 0,
       }, {
         where: { user_id },
         transaction,
@@ -671,7 +671,7 @@ class AdminOuterTaskController extends Controller {
 
       // 提现门票制：开启了新任务，立刻作废之前的门票
       await ctx.model.SysUser.update({
-        withdraw_ticket: 0
+        withdraw_ticket: 0,
       }, {
         where: { user_id },
         transaction,

@@ -286,7 +286,7 @@ class AdminOuterWithdrawController extends Controller {
 
       // 提现门票制：审核通过后，真正作废门票（正常消耗）
       await ctx.model.SysUser.update({
-        withdraw_ticket: 0
+        withdraw_ticket: 0,
       }, {
         where: { user_id: withdraw.user_id },
         transaction,
@@ -420,7 +420,7 @@ class AdminOuterWithdrawController extends Controller {
 
       // 提现门票制：因为 C 端发起提现时没有直接扣除门票，
       // 所以这里只需要判断在此期间下级是否有新收益产生，或者用户是否绑定了新任务。
-      
+
       // 条件1：判断是否在提现期间下级产生了新收益
       const hasNewDynamicIncome = await ctx.model.UserWalletLog.findOne({
         where: {
@@ -428,7 +428,7 @@ class AdminOuterWithdrawController extends Controller {
           biz_type: 5, // 动态收益发放
           create_time: {
             [ctx.app.Sequelize.Op.gt]: withdraw.create_time, // 大于提现申请时间
-          }
+          },
         },
         transaction,
       });
@@ -439,14 +439,14 @@ class AdminOuterWithdrawController extends Controller {
           user_id: withdraw.user_id,
           create_time: {
             [ctx.app.Sequelize.Op.gt]: withdraw.create_time, // 大于提现申请时间
-          }
+          },
         },
         transaction,
       });
 
       if (hasNewDynamicIncome || hasNewTaskBinding) {
         await ctx.model.SysUser.update({
-          withdraw_ticket: 0
+          withdraw_ticket: 0,
         }, {
           where: { user_id: withdraw.user_id },
           transaction,
@@ -455,7 +455,7 @@ class AdminOuterWithdrawController extends Controller {
         ctx.logger.info(`[提现驳回] 提现申请(ID: ${withdraw.id})期间${reason}，提现门票已作废(归零)`);
       } else {
         await ctx.model.SysUser.update({
-          withdraw_ticket: 1
+          withdraw_ticket: 1,
         }, {
           where: { user_id: withdraw.user_id },
           transaction,

@@ -181,7 +181,7 @@ class UserController extends Controller {
     user.freeze_voucher_balance = '0.00';
     user.static_income = '0.00';
     user.dynamic_income = '0.00';
-    
+
     if (wallet) {
       user.balance = isNaN(Number(wallet.balance)) ? '0.00' : Number(wallet.balance).toFixed(2);
       user.recharge_balance = isNaN(Number(wallet.recharge_balance)) ? '0.00' : Number(wallet.recharge_balance).toFixed(2);
@@ -249,7 +249,7 @@ class UserController extends Controller {
     user.freeze_voucher_balance = '0.00';
     user.static_income = '0.00';
     user.dynamic_income = '0.00';
-    
+
     if (wallet) {
       user.balance = isNaN(Number(wallet.balance)) ? '0.00' : Number(wallet.balance).toFixed(2);
       user.recharge_balance = isNaN(Number(wallet.recharge_balance)) ? '0.00' : Number(wallet.recharge_balance).toFixed(2);

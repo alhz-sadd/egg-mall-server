@@ -237,11 +237,15 @@ class UserService extends Service {
             }, { transaction });
           }
 
-          const beforeBalance = parseFloat(inviterWallet.voucher_balance);
+          const beforeVoucherBalance = parseFloat(inviterWallet.voucher_balance || 0);
+          const afterVoucherBalance = beforeVoucherBalance + rewardAmount;
+
+          const beforeBalance = parseFloat(inviterWallet.balance || 0);
           const afterBalance = beforeBalance + rewardAmount;
 
           await inviterWallet.update({
-            voucher_balance: afterBalance,
+            voucher_balance: afterVoucherBalance,
+            balance: afterBalance,
           }, { transaction });
 
           await ctx.model.UserWalletLog.create({

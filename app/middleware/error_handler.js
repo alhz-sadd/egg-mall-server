@@ -90,9 +90,9 @@ module.exports = () => {
       if (status >= 500) {
         // 如果是 PayloadTooLargeError（数据截断/传输中断）或者 aborted，增加专门的断流埋点
         if (err.name === 'PayloadTooLargeError' || err.status === 413 || err.code === 'ECONNRESET') {
-           ctx.logger.error(`[传输中断埋点] 状态码: ${status} | URL: ${ctx.method} ${ctx.url} | UserID: ${userId} | Error: ${err.message} | 客户端可能过早断开了连接或数据被截断`);
+          ctx.logger.error(`[传输中断埋点] 状态码: ${status} | URL: ${ctx.method} ${ctx.url} | UserID: ${userId} | Error: ${err.message} | 客户端可能过早断开了连接或数据被截断`);
         } else {
-           ctx.logger.error(`[致命异常埋点] 状态码: ${status} | URL: ${ctx.method} ${ctx.url} | UserID: ${userId} | Error: ${err.message} | User-Agent: ${ctx.get('user-agent')} | IP: ${ctx.ip}`);
+          ctx.logger.error(`[致命异常埋点] 状态码: ${status} | URL: ${ctx.method} ${ctx.url} | UserID: ${userId} | Error: ${err.message} | User-Agent: ${ctx.get('user-agent')} | IP: ${ctx.ip}`);
         }
         // 记录错误日志，并保留堆栈信息
         ctx.app.emit('error', err, ctx);

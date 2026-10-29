@@ -335,7 +335,7 @@ class TaskService extends Service {
         ctx.body = {
           code: 429,
           message: ctx.__('task.task_is_generating') || '任务生成中，请勿重复点击',
-          data: { sequence_no: 0, task_status: 1, wares: {}, order: {}, is_lucky: 0 } // 根据前端所需格式返回，或仅返回提示
+          data: { sequence_no: 0, task_status: 1, wares: {}, order: {}, is_lucky: 0 }, // 根据前端所需格式返回，或仅返回提示
         };
         // 中断执行，但不是抛异常
         return ctx.body.data;
@@ -499,7 +499,7 @@ class TaskService extends Service {
       const t = await ctx.model.transaction();
       let nextProgress;
       let currentItem;
-      
+
       try {
         nextProgress = await ctx.model.ShopTaskUserItemProgress.findOne({
           where: {
@@ -525,7 +525,7 @@ class TaskService extends Service {
         // 为了安全，直接将这个子项标记为处理中
         await nextProgress.update({ is_processing: 1 }, { transaction: t });
         await t.commit();
-        
+
         // 剩下的逻辑不再需要锁，因为该子项已经被标记为处理中
         currentItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: nextProgress.task_item_id } });
         if (!currentItem) {
@@ -620,7 +620,7 @@ class TaskService extends Service {
 
           waresModel = await ctx.model.GoodsTask.findOne({
             where: goodsWhere,
-            attributes: ['id', 'goods_name', 'goods_price', 'goods_images'],
+            attributes: [ 'id', 'goods_name', 'goods_price', 'goods_images' ],
             order: [[ 'goods_price', 'ASC' ]],
             limit: 1,
           });
@@ -630,7 +630,7 @@ class TaskService extends Service {
             delete goodsWhere.id;
             waresModel = await ctx.model.GoodsTask.findOne({
               where: goodsWhere,
-              attributes: ['id', 'goods_name', 'goods_price', 'goods_images'],
+              attributes: [ 'id', 'goods_name', 'goods_price', 'goods_images' ],
               order: [[ 'goods_price', 'ASC' ]],
               limit: 1,
             });
@@ -749,7 +749,7 @@ class TaskService extends Service {
           // 优化：针对弱网环境，仅查询前端必须的字段，排除冗长的详情文本 (goods_desc, 详情富文本等)
           waresModel = await ctx.model.GoodsTask.findOne({
             where: goodsWhere,
-            attributes: ['id', 'goods_name', 'goods_price', 'goods_images'],
+            attributes: [ 'id', 'goods_name', 'goods_price', 'goods_images' ],
             offset,
             limit: 1,
           });

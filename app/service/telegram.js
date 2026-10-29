@@ -44,35 +44,35 @@ class TelegramService extends Service {
     try {
     // 使用 ctx.runInBackground 将请求放入后台执行（即“Fire and Forget”）
     // 从而避免由于网络问题阻塞或超时影响主线程及客户端响应速度
-    ctx.runInBackground(async () => {
-      try {
-        const options = {
-          method: 'POST',
-          contentType: 'json',
-          data: {
-            chat_id: chatId,
-            text: message,
-            parse_mode: 'HTML', // 支持 HTML 标签加粗、斜体等
-          },
-          dataType: 'json',
-          // 增加超时时间，[连接超时, 读写超时]
-          timeout: [5000, 10000],
-        };
+      ctx.runInBackground(async () => {
+        try {
+          const options = {
+            method: 'POST',
+            contentType: 'json',
+            data: {
+              chat_id: chatId,
+              text: message,
+              parse_mode: 'HTML', // 支持 HTML 标签加粗、斜体等
+            },
+            dataType: 'json',
+            // 增加超时时间，[连接超时, 读写超时]
+            timeout: [ 5000, 10000 ],
+          };
 
-        // 如果配置了代理，则使用代理请求（解决国内服务器访问 TG 接口不通的问题）
-        if (ctx.app.config.telegram && ctx.app.config.telegram.proxy) {
-          options.enableProxy = true;
-          options.proxy = ctx.app.config.telegram.proxy;
-        }
+          // 如果配置了代理，则使用代理请求（解决国内服务器访问 TG 接口不通的问题）
+          if (ctx.app.config.telegram && ctx.app.config.telegram.proxy) {
+            options.enableProxy = true;
+            options.proxy = ctx.app.config.telegram.proxy;
+          }
 
-        await ctx.curl(url, options);
-        // 使用 app.logger 避免在后台任务中打印带有原请求上下文(5000ms耗时)的日志，引起误解
-        ctx.app.logger.info(`[Telegram] 消息发送成功，店铺ID: ${shopId}`);
-      } catch (err) {
+          await ctx.curl(url, options);
+          // 使用 app.logger 避免在后台任务中打印带有原请求上下文(5000ms耗时)的日志，引起误解
+          ctx.app.logger.info(`[Telegram] 消息发送成功，店铺ID: ${shopId}`);
+        } catch (err) {
         // 捕获错误，只打印简短的 message，不要打印完整的 err 对象，避免 urllib 打印带有堆栈和请求上下文的超长日志
-        ctx.app.logger.error(`[Telegram] 发送消息失败 (店铺ID: ${shopId}): ${err.message || err.name}`);
-      }
-    });
+          ctx.app.logger.error(`[Telegram] 发送消息失败 (店铺ID: ${shopId}): ${err.message || err.name}`);
+        }
+      });
 
       // 立即返回成功状态给调用方
       return;

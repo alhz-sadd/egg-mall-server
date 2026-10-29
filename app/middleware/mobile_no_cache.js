@@ -22,7 +22,7 @@ module.exports = () => {
         ctx.set('Access-Control-Allow-Origin', '*');
       }
       ctx.set('Access-Control-Allow-Credentials', 'true');
-      ctx.set('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Authorization, Token, token, Accept, Accept-Language, language, lang, referer, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform');
+      ctx.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, lang, token, shop-id, tenant-id, referer, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform');
       ctx.set('Access-Control-Allow-Methods', 'PUT, POST, GET, DELETE, OPTIONS');
 
       // 3. 处理 OPTIONS 预检请求，直接返回 204
