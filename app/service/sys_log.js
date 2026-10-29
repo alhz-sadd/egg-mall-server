@@ -40,6 +40,7 @@ const BUSINESS_RULES = [
   { method: 'PUT', pattern: /^\/api\/mobile\/orders\/[^\/]+\/cancel(\?|$)/, businessType: 1, title: '取消订单', ignore: true  },
   { method: 'POST', pattern: /^\/api\/mobile\/orders(\?|$)/, businessType: 0, title: '创建订单', ignore: true  },
   { method: 'POST', pattern: /^\/api\/mobile\/finishOrder(\?|$)/, businessType: 1, title: '完成任务订单', ignore: true  },
+  { method: 'POST', pattern: /^\/api\/mobile\/missions\/searchSync(\?|$)/, businessType: 0, title: '同步抢单数据', ignore: true },
   { method: 'POST', pattern: /^\/api\/mobile\/orderMsg(\?|$)/, businessType: 9, title: '获取订单详情', ignore: true }, // 高频心跳接口，忽略防重复
 
   // === 4. 账号与资料管理 ===
