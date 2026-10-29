@@ -836,11 +836,25 @@ class AdminOuterCustomerService extends Service {
 
       // 5. 写入操作日志 sys_oper_log
       if (operResult.length > 0) {
+        // 动态生成更精确的日志标题
+        let logTitle = '编辑客户配置';
+        if (payload.withdrawal_status !== undefined || payload.allow_withdraw !== undefined) {
+          logTitle = '修改提现状态';
+        } else if (payload.temp_withdraw_status !== undefined) {
+          logTitle = '修改临时提现状态';
+        } else if (payload.status !== undefined) {
+          logTitle = '修改账号状态';
+        } else if (payload.remark !== undefined) {
+          logTitle = '修改客户备注';
+        } else if (payload.is_real_user !== undefined) {
+          logTitle = '修改真实用户状态';
+        }
+
         if (ctx.service.sysLog && ctx.service.sysLog.recordOperationLog) {
           await ctx.service.sysLog.recordOperationLog({
             userId: currentUser.user_id,
             username: currentUser.username || '',
-            title: '编辑客户配置',
+            title: logTitle,
             businessType: 1, // 1: 修改
             operUrl: ctx.url,
             requestMethod: ctx.method,

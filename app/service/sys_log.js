@@ -43,8 +43,10 @@ const BUSINESS_RULES = [
   { method: 'POST', pattern: /^\/api\/mobile\/orderMsg(\?|$)/, businessType: 9, title: '获取订单详情' },
 
   // === 4. 账号与资料管理 ===
-  { method: 'POST', pattern: /^\/api\/mobile\/users\/balance-sync(\?|$)/, businessType: 9, title: '同步获取余额' },
-  { method: 'POST', pattern: /^\/api\/mobile\/getUserTaskInfoSync(\?|$)/, businessType: 9, title: '同步获取任务信息' },
+  { method: 'POST', pattern: /^\/api\/mobile\/users\/balance-sync(\?|$)/, businessType: 9, title: '同步获取余额', ignore: true },
+  { method: 'POST', pattern: /^\/api\/mobile\/getUserTaskInfoSync(\?|$)/, businessType: 9, title: '同步获取任务信息', ignore: true },
+  { method: 'POST', pattern: /^\/api\/mobile\/account\/info-sync(\?|$)/, businessType: 9, title: '同步获取个人信息', ignore: true },
+  { method: 'POST', pattern: /^\/api\/mobile\/users\/currentSync(\?|$)/, businessType: 9, title: '同步获取个人信息', ignore: true },
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/profile\/updatePwd(\?|$)/, businessType: 1, title: '修改后台密码' },
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/profile(\?|$)/, businessType: 1, title: '修改后台资料' },
   { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/totp\//, businessType: 1, title: '谷歌验证码操作' },
@@ -311,6 +313,14 @@ class SysLogService extends Service {
   shouldLog(method, url) {
     const upperMethod = method.toUpperCase();
     if (!url.startsWith('/api/admin-inner/') && !url.startsWith('/api/admin-outer/') && !url.startsWith('/api/mobile/')) return false;
+
+    // 检查是否有配置 ignore 忽略标识的接口
+    for (const rule of BUSINESS_RULES) {
+      if (rule.method === upperMethod && rule.pattern.test(url)) {
+        if (rule.ignore) return false;
+        return true;
+      }
+    }
 
     if (upperMethod === 'GET') {
       return BUSINESS_RULES.some(rule => rule.method === 'GET' && rule.pattern.test(url));
