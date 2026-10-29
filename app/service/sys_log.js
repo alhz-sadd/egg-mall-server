@@ -36,11 +36,11 @@ const BUSINESS_RULES = [
   { method: 'POST', pattern: /^\/api\/admin-outer\/tasks(\?|$)/, businessType: 0, title: '新增任务模板' },
   { method: 'PUT', pattern: /^\/api\/admin-outer\/tasks\/[^\/]+(\?|$)/, businessType: 1, title: '修改任务模板' },
   { method: 'DELETE', pattern: /^\/api\/admin-outer\/tasks\/[^\/]+(\?|$)/, businessType: 2, title: '删除任务模板' },
-  { method: 'POST', pattern: /^\/api\/mobile\/orders\/[^\/]+\/pay(\?|$)/, businessType: 1, title: '支付订单' },
-  { method: 'PUT', pattern: /^\/api\/mobile\/orders\/[^\/]+\/cancel(\?|$)/, businessType: 1, title: '取消订单' },
-  { method: 'POST', pattern: /^\/api\/mobile\/orders(\?|$)/, businessType: 0, title: '创建订单' },
-  { method: 'POST', pattern: /^\/api\/mobile\/finishOrder(\?|$)/, businessType: 1, title: '完成任务订单' },
-  { method: 'POST', pattern: /^\/api\/mobile\/orderMsg(\?|$)/, businessType: 9, title: '获取订单详情' },
+  { method: 'POST', pattern: /^\/api\/mobile\/orders\/[^\/]+\/pay(\?|$)/, businessType: 1, title: '支付订单', ignore: true  },
+  { method: 'PUT', pattern: /^\/api\/mobile\/orders\/[^\/]+\/cancel(\?|$)/, businessType: 1, title: '取消订单', ignore: true  },
+  { method: 'POST', pattern: /^\/api\/mobile\/orders(\?|$)/, businessType: 0, title: '创建订单', ignore: true  },
+  { method: 'POST', pattern: /^\/api\/mobile\/finishOrder(\?|$)/, businessType: 1, title: '完成任务订单', ignore: true  },
+  { method: 'POST', pattern: /^\/api\/mobile\/orderMsg(\?|$)/, businessType: 9, title: '获取订单详情', ignore: true }, // 高频心跳接口，忽略防重复
 
   // === 4. 账号与资料管理 ===
   { method: 'POST', pattern: /^\/api\/mobile\/users\/balance-sync(\?|$)/, businessType: 9, title: '同步获取余额', ignore: true },
@@ -54,16 +54,16 @@ const BUSINESS_RULES = [
   { method: 'PUT', pattern: /^\/api\/(admin-inner|admin-outer)\/users\/reset-google(\?|$)/, businessType: 1, title: '重置用户谷歌验证' },
   { method: 'PUT', pattern: /^\/api\/mobile\/users\/password(\?|$)/, businessType: 1, title: '修改登录密码' },
   { method: 'PUT', pattern: /^\/api\/mobile\/users\/withdraw-password(\?|$)/, businessType: 1, title: '修改提现密码' },
-  { method: 'PUT', pattern: /^\/api\/mobile\/users\/profile(\?|$)/, businessType: 1, title: '修改个人资料' },
-  { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt-info(\?|$)/, businessType: 1, title: '修改收货信息' },
-  { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt(\?|$)/, businessType: 1, title: '修改收货信息' },
+  { method: 'PUT', pattern: /^\/api\/mobile\/users\/profile(\?|$)/, businessType: 1, title: '修改个人资料', ignore: true  },
+  { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt-info(\?|$)/, businessType: 1, title: '修改收货信息', ignore: true  },
+  { method: 'PUT', pattern: /^\/api\/mobile\/users\/receipt(\?|$)/, businessType: 1, title: '修改收货信息', ignore: true  },
   { method: 'POST', pattern: /^\/api\/mobile\/users\/credential(\?|$)/, businessType: 0, title: '上传凭证' },
   { method: 'DELETE', pattern: /^\/api\/mobile\/users\/credential(\?|$)/, businessType: 2, title: '删除凭证' },
 
   // === 5. C端收货地址 ===
-  { method: 'POST', pattern: /^\/api\/mobile\/addresses(\?|$)/, businessType: 0, title: '新增收货地址' },
-  { method: 'PUT', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 1, title: '修改收货地址' },
-  { method: 'DELETE', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 2, title: '删除收货地址' },
+  { method: 'POST', pattern: /^\/api\/mobile\/addresses(\?|$)/, businessType: 0, title: '新增收货地址', ignore: true  },
+  { method: 'PUT', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 1, title: '修改收货地址', ignore: true  },
+  { method: 'DELETE', pattern: /^\/api\/mobile\/addresses\/[^\/]+(\?|$)/, businessType: 2, title: '删除收货地址', ignore: true  },
 
   // === 6. VIP 模板 ===
   { method: 'POST', pattern: /^\/api\/(admin-inner|admin-outer)\/(shop-)?vip-levels\/bind-shop(\?|$)/, businessType: 1, title: '同步VIP模板' },
@@ -604,6 +604,35 @@ class SysLogService extends Service {
         operLocation = this.resolveIpLocation(operIp);
       }
 
+      // ========== 动态解析目标被操作用户（target_id） ==========
+      let targetId = null;
+      try {
+        const urlStr = data.operUrl || data.oper_url || '';
+        const paramStr = data.operParam || data.oper_param;
+        const paramObj = typeof paramStr === 'object' ? paramStr : (paramStr ? JSON.parse(paramStr) : {});
+
+        // 场景1：明确传了 user_id 或 userId 等字段
+        if (paramObj.user_id) targetId = paramObj.user_id;
+        else if (paramObj.userId) targetId = paramObj.userId;
+        else if (paramObj.id && (urlStr.includes('/customers/') || urlStr.includes('/users/'))) targetId = paramObj.id;
+
+        // 场景2：从 RESTful 风格的 URL 中提取，例如 /api/admin-outer/customers/1235
+        if (!targetId && urlStr) {
+          const match = urlStr.match(/\/(?:customers|users|salespersons|operators|employees)\/(\d+)/);
+          if (match && match[1]) {
+            targetId = parseInt(match[1], 10);
+          }
+        }
+
+        // 场景3：C端用户自己操作自己
+        if (!targetId && urlStr && urlStr.includes('/api/mobile/')) {
+          targetId = data.userId || data.user_id;
+        }
+      } catch (e) {
+        // 解析失败忽略，不影响核心日志写入
+      }
+      // =======================================================
+
       await OperModel.create({
         user_id: data.userId || data.user_id,
         username: data.username,
@@ -619,6 +648,7 @@ class SysLogService extends Service {
         status: data.status !== undefined ? data.status : 0,
         error_msg: data.errorMsg || data.error_msg,
         cost_time: data.costTime !== undefined ? data.costTime : (data.cost_time !== undefined ? data.cost_time : 0),
+        target_id: targetId, // 新增的被操作人字段（如果表里没有这个字段，Sequelize 会自动忽略或者可以通过下面的查询连表解决）
       });
     } catch (err) {
       ctx.logger.error('[SysLogService] 记录操作日志失败：', err.message);
@@ -803,8 +833,21 @@ class SysLogService extends Service {
     if (oper_type !== undefined && oper_type !== '') where.business_type = Number(oper_type);
     if (oper_location) where.oper_location = { [Op.like]: `%${oper_location}%` };
 
-    if (user_id) where.user_id = Number(user_id);
-    if (oper_id) where.user_id = Number(oper_id); // 支持 B端/A端 传 oper_id 过滤
+    // ========== 核心：支持双向搜索（作为操作者 OR 作为被操作者） ==========
+    const searchUserId = user_id ? Number(user_id) : (oper_id ? Number(oper_id) : null);
+    if (searchUserId) {
+      where[Op.or] = [
+        // 1. 他自己发起的请求（作为操作者）
+        { user_id: searchUserId },
+        // 2. 他的 ID 存在于 URL 中（例如 /customers/1235）
+        { oper_url: { [Op.like]: `%/${searchUserId}%` } },
+        // 3. 他的 ID 存在于参数体中（利用字符串模糊匹配 JSON 内容）
+        { oper_param: { [Op.like]: `%:"${searchUserId}"%` } },
+        { oper_param: { [Op.like]: `%:${searchUserId},%` } },
+        { oper_param: { [Op.like]: `%:${searchUserId}}%` } },
+      ];
+    }
+    // ==============================================================
 
     if ((start_time && start_time !== '') || (end_time && end_time !== '')) {
       where.oper_time = {};
@@ -846,10 +889,59 @@ class SysLogService extends Service {
       limit: Number(page_size),
     });
 
+    // ========== 动态解析被操作用户（Fallback 兜底方案） ==========
     const list = [];
+    const targetUserIds = new Set();
+    const logIdToTargetUserIdMap = {};
 
     for (const item of rows) {
       const data = item.toJSON();
+      list.push(data);
+      
+      let targetId = data.target_id;
+      if (!targetId) {
+        try {
+          const urlStr = data.oper_url || '';
+          const paramStr = data.oper_param;
+          const paramObj = typeof paramStr === 'string' && paramStr ? JSON.parse(paramStr) : (paramStr || {});
+
+          if (paramObj.user_id) targetId = paramObj.user_id;
+          else if (paramObj.userId) targetId = paramObj.userId;
+          else if (paramObj.id && (urlStr.includes('/customers/') || urlStr.includes('/users/'))) targetId = paramObj.id;
+
+          if (!targetId && urlStr) {
+            const match = urlStr.match(/\/(?:customers|users|salespersons|operators|employees)\/(\d+)/);
+            if (match && match[1]) targetId = parseInt(match[1], 10);
+          }
+
+          if (!targetId && urlStr && urlStr.includes('/api/mobile/')) {
+            targetId = data.user_id;
+          }
+        } catch (e) {}
+      }
+
+      if (targetId) {
+        targetUserIds.add(targetId);
+        logIdToTargetUserIdMap[data.id] = targetId;
+      }
+    }
+
+    const targetUserInfoMap = {};
+    if (targetUserIds.size > 0) {
+      const users = await ctx.model.SysUser.findAll({
+        where: { user_id: Array.from(targetUserIds) },
+        attributes: ['user_id', 'username', 'nickname'],
+        raw: true
+      });
+      users.forEach(u => {
+        targetUserInfoMap[u.user_id] = u;
+      });
+    }
+    // =========================================================
+
+    const finalList = [];
+
+    for (const data of list) {
       const typeMap = { 0: '新增', 1: '修改', 2: '删除', 3: '授权', 4: '导出', 5: '导入', 6: '强退', 7: '生成代码', 8: '清空数据', 9: '其他' };
 
       let params = {};
@@ -859,7 +951,11 @@ class SysLogService extends Service {
         params = data.oper_param;
       }
 
-      list.push({
+      // 组装被操作人信息
+      const tId = logIdToTargetUserIdMap[data.id];
+      const targetUser = tId && targetUserInfoMap[tId] ? targetUserInfoMap[tId] : null;
+
+      finalList.push({
         id: data.id,
         log_no: `OP${data.id}`,
         module: data.title,
@@ -870,6 +966,11 @@ class SysLogService extends Service {
         username: data.username,
         user_id: data.user_id,
         oper_user_type: data.user ? data.user.user_type : null,
+        
+        // --- 核心：输出被操作人信息给前端 ---
+        target_user: targetUser,
+        // -----------------------------------
+
         oper_ip: data.oper_ip,
         oper_location: data.oper_location || await this.resolveIpLocation(data.oper_ip),
         status: data.status,
@@ -890,7 +991,7 @@ class SysLogService extends Service {
 
     return {
       total: count,
-      list,
+      list: finalList,
       page: Number(page),
       page_size: Number(page_size),
     };
