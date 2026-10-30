@@ -34,7 +34,7 @@ class BackMoneyService extends Service {
 
     const trendBacks = tasks.map(task => ({
       userId: user.user_id,
-      trendBack: Number(task.reward || 0).toString(),
+      trendBack: Number(task.reward || 0),
       utime: task.updated_at ? new Date(task.updated_at).toISOString() : null,
     }));
 

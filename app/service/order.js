@@ -76,14 +76,14 @@ class OrderService extends Service {
     return {
       order_id: progress.order_id,
       order_type: progress.is_lucky_order === 1 ? 2 : 1, // 1:普通订单任务, 2:幸运订单任务
-      need_price: needPrice.toString(),
+      need_price: Number(needPrice),
       remark: '任务订单',
-      revenue_rate: revenueRate.toString(),
-      return_money: revenue.toFixed(2), // 回报金额 (即静态收益)
-      revenue: revenue.toString(),
-      total_price: totalAmount.toString(),
-      parent_revenue_rate: parentRevenueRate.toString(),
-      parent_revenue: (revenue * parentRevenueRate).toFixed(2), // 动态收益 = 静态收益 * 上级收益率
+      revenue_rate: Number(revenueRate),
+      return_money: Number(revenue.toFixed(2)), // 回报金额 (即静态收益)
+      revenue: Number(revenue),
+      total_price: Number(totalAmount),
+      parent_revenue_rate: Number(parentRevenueRate),
+      parent_revenue: Number((revenue * parentRevenueRate).toFixed(2)), // 动态收益 = 静态收益 * 上级收益率
       status: mappedStatus,
       pic_url: picUrl,
       wares_name: progress.goods_title || '',
@@ -265,12 +265,12 @@ class OrderService extends Service {
       list.push({
         order_id: progress.order_id,
         order_type: progress.is_lucky_order === 1 ? 2 : 1, // 1:普通订单, 2:幸运订单
-        total_price: totalAmount.toString(),
-        revenue_rate: revenueRate.toString(),
-        return_money: revenue.toString(), // 回报金额 (即静态收益)
-        revenue: revenue.toString(),
-        parent_revenue_rate: parentRevenueRate.toString(),
-        parent_revenue: (revenue * parentRevenueRate).toFixed(2), // 动态收益 = 静态收益 * 上级收益率
+        total_price: Number(totalAmount),
+        revenue_rate: Number(revenueRate),
+        return_money: Number(revenue), // 回报金额 (即静态收益)
+        revenue: Number(revenue),
+        parent_revenue_rate: Number(parentRevenueRate),
+        parent_revenue: Number((revenue * parentRevenueRate).toFixed(2)), // 动态收益 = 静态收益 * 上级收益率
         status: mappedStatus,
         pic_url: picUrl,
         wares_name: progress.goods_title || '',
@@ -422,17 +422,17 @@ class OrderService extends Service {
     return {
       order_id: progress.order_id,
       order_type: progress.is_lucky_order === 1 ? 2 : 1, // 1:普通订单, 2:幸运订单
-      total_price: totalAmount.toString(),
-      revenue_rate: revenueRate.toString(),
-      return_money: revenue.toFixed(2), // 回报金额 = 静态收益
-      revenue: revenue.toString(),
-      parent_revenue_rate: parentRevenueRate.toString(),
-      parent_revenue: (revenue * parentRevenueRate).toFixed(2), // 动态收益 = 静态收益 * 上级收益率
+      total_price: Number(totalAmount),
+      revenue_rate: Number(revenueRate),
+      return_money: Number(revenue.toFixed(2)), // 回报金额 (即静态收益)
+      revenue: Number(revenue),
+      parent_revenue_rate: Number(parentRevenueRate),
+      parent_revenue: Number((revenue * parentRevenueRate).toFixed(2)), // 动态收益 = 静态收益 * 上级收益率
       status: mappedStatus,
       pic_url: picUrl,
       wares_name: progress.goods_title || '',
       c_time: progress.create_time ? new Date(progress.create_time).toISOString() : null,
-      need_price: needPrice.toString(), // 不足金额 = 商品价格 - 用户余额
+      need_price: Number(needPrice), // 不足金额 = 商品价格 - 用户余额
     };
   }
 

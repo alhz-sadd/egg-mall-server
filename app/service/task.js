@@ -279,19 +279,19 @@ class TaskService extends Service {
       }
     }
 
-    let hasMoney = '0.00';
+    let hasMoney = 0;
     if (userWallet) {
       const balance = Number(userWallet.balance || 0);
-      hasMoney = isNaN(balance) ? '0.00' : balance.toFixed(2).toString();
+      hasMoney = isNaN(balance) ? 0 : Number(balance.toFixed(2));
     }
 
     const result = {
-      freeze_voucher_balance: userWallet ? Number(userWallet.freeze_voucher_balance || 0).toFixed(2).toString() : '0.00', // 冻结金额
+      freeze_voucher_balance: userWallet ? Number(Number(userWallet.freeze_voucher_balance || 0).toFixed(2)) : 0, // 冻结金额
       has_money: hasMoney,
       num: sumNum, // 当前任务总数量
       over_num: overNum || 0,
-      revenue_today: todayIncomeVal.toFixed(2).toString(), // 今日收益
-      revenue_yesterday: yesterdayIncomeVal.toFixed(2).toString(), // 昨日收益
+      revenue_today: Number(todayIncomeVal.toFixed(2)), // 今日收益
+      revenue_yesterday: Number(yesterdayIncomeVal.toFixed(2)), // 昨日收益
       is_open: isOpen, // 是否已开启任务 0未开启，1已开启
     };
 
