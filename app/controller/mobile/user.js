@@ -183,12 +183,14 @@ class UserController extends Controller {
     user.dynamic_income = '0.00';
 
     if (wallet) {
-      user.balance = isNaN(Number(wallet.balance)) ? '0.00' : Number(wallet.balance).toFixed(2);
-      user.recharge_balance = isNaN(Number(wallet.recharge_balance)) ? '0.00' : Number(wallet.recharge_balance).toFixed(2);
-      user.voucher_balance = isNaN(Number(wallet.voucher_balance)) ? '0.00' : Number(wallet.voucher_balance).toFixed(2);
-      user.freeze_voucher_balance = isNaN(Number(wallet.freeze_voucher_balance)) ? '0.00' : Number(wallet.freeze_voucher_balance).toFixed(2);
-      user.static_income = isNaN(Number(wallet.static_income)) ? '0.00' : Number(wallet.static_income).toFixed(2);
-      user.dynamic_income = isNaN(Number(wallet.dynamic_income)) ? '0.00' : Number(wallet.dynamic_income).toFixed(2);
+      // 增加双保险，先把可能因为某些数据库设置返回的字符串强制转为纯粹的 Number
+      // 再通过 .toFixed(2) 格式化，最后 toString() 保证发给前端的绝对是带两位的字符串，避免因类型混淆导致的序列化失败
+      user.balance = isNaN(Number(wallet.balance)) ? '0.00' : Number(wallet.balance).toFixed(2).toString();
+      user.recharge_balance = isNaN(Number(wallet.recharge_balance)) ? '0.00' : Number(wallet.recharge_balance).toFixed(2).toString();
+      user.voucher_balance = isNaN(Number(wallet.voucher_balance)) ? '0.00' : Number(wallet.voucher_balance).toFixed(2).toString();
+      user.freeze_voucher_balance = isNaN(Number(wallet.freeze_voucher_balance)) ? '0.00' : Number(wallet.freeze_voucher_balance).toFixed(2).toString();
+      user.static_income = isNaN(Number(wallet.static_income)) ? '0.00' : Number(wallet.static_income).toFixed(2).toString();
+      user.dynamic_income = isNaN(Number(wallet.dynamic_income)) ? '0.00' : Number(wallet.dynamic_income).toFixed(2).toString();
     }
 
     ctx.body = {
@@ -251,12 +253,14 @@ class UserController extends Controller {
     user.dynamic_income = '0.00';
 
     if (wallet) {
-      user.balance = isNaN(Number(wallet.balance)) ? '0.00' : Number(wallet.balance).toFixed(2);
-      user.recharge_balance = isNaN(Number(wallet.recharge_balance)) ? '0.00' : Number(wallet.recharge_balance).toFixed(2);
-      user.voucher_balance = isNaN(Number(wallet.voucher_balance)) ? '0.00' : Number(wallet.voucher_balance).toFixed(2);
-      user.freeze_voucher_balance = isNaN(Number(wallet.freeze_voucher_balance)) ? '0.00' : Number(wallet.freeze_voucher_balance).toFixed(2);
-      user.static_income = isNaN(Number(wallet.static_income)) ? '0.00' : Number(wallet.static_income).toFixed(2);
-      user.dynamic_income = isNaN(Number(wallet.dynamic_income)) ? '0.00' : Number(wallet.dynamic_income).toFixed(2);
+      // 增加双保险，先把可能因为某些数据库设置返回的字符串强制转为纯粹的 Number
+      // 再通过 .toFixed(2) 格式化，最后 toString() 保证发给前端的绝对是带两位的字符串，避免因类型混淆导致的序列化失败
+      user.balance = isNaN(Number(wallet.balance)) ? '0.00' : Number(wallet.balance).toFixed(2).toString();
+      user.recharge_balance = isNaN(Number(wallet.recharge_balance)) ? '0.00' : Number(wallet.recharge_balance).toFixed(2).toString();
+      user.voucher_balance = isNaN(Number(wallet.voucher_balance)) ? '0.00' : Number(wallet.voucher_balance).toFixed(2).toString();
+      user.freeze_voucher_balance = isNaN(Number(wallet.freeze_voucher_balance)) ? '0.00' : Number(wallet.freeze_voucher_balance).toFixed(2).toString();
+      user.static_income = isNaN(Number(wallet.static_income)) ? '0.00' : Number(wallet.static_income).toFixed(2).toString();
+      user.dynamic_income = isNaN(Number(wallet.dynamic_income)) ? '0.00' : Number(wallet.dynamic_income).toFixed(2).toString();
     }
 
     ctx.body = {

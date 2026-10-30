@@ -18,7 +18,8 @@ module.exports = () => {
       await next();
 
       // 全局拦截 ctx.body 进行 BigInt 清洗，彻底防止因任何遗漏的 BigInt 字段导致 JSON 序列化 500 崩溃
-      if (ctx.body && typeof ctx.body === 'object') {
+      // 注意：这里必须排查 ctx.body 是不是一个可序列化的纯净对象，如果是 Stream 或者是带循环引用的对象，这里会直接抛错导致返回异常！
+      if (ctx.body && typeof ctx.body === 'object' && !Buffer.isBuffer(ctx.body) && typeof ctx.body.pipe !== 'function') {
         try {
           ctx.body = JSON.parse(JSON.stringify(ctx.body, (key, value) =>
             (typeof value === 'bigint' ? value.toString() : value),
@@ -40,8 +41,7 @@ module.exports = () => {
           if (headerLang) {
             const match = headerLang.match(/[a-zA-Z]{2,3}-[a-zA-Z]{2,3}/);
             if (match) {
-              const parts = match[0].split('-');
-              currentLang = `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
+              currentLang = match[0];
             } else if (headerLang.toLowerCase().includes('zh')) {
               currentLang = 'zh-CN';
             }
@@ -135,8 +135,7 @@ module.exports = () => {
         if (headerLang) {
           const match = headerLang.match(/[a-zA-Z]{2,3}-[a-zA-Z]{2,3}/);
           if (match) {
-            const parts = match[0].split('-');
-            currentLang = `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
+            currentLang = match[0];
           } else if (headerLang.toLowerCase().includes('zh')) {
             currentLang = 'zh-CN';
           }

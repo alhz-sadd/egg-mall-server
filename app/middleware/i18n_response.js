@@ -20,10 +20,12 @@ module.exports = () => {
         if (customLang) {
           ctx.locale = customLang;
         } else if (headerLocale) {
+          // 修改匹配规则：兼容形如 zh-CN, ar-SA, fr-FR 等各种 2~3 位字母组合
           const match = headerLocale.match(/[a-zA-Z]{2,3}-[a-zA-Z]{2,3}/);
           if (match) {
-            const parts = match[0].split('-');
-            ctx.locale = `${parts[0].toLowerCase()}-${parts[1].toUpperCase()}`;
+            // 修复：不强制将后半部分大写，直接使用前端传过来的原始格式，或者只做基础校验
+            // 因为有些语言包可能就是小写的，或者前端传的就是严格区分大小写的格式
+            ctx.locale = match[0];
           } else if (headerLocale.toLowerCase().includes('zh')) {
             ctx.locale = 'zh-CN';
           } else {
@@ -41,9 +43,16 @@ module.exports = () => {
     if (ctx.path.startsWith('/api/mobile/') && ctx.body && typeof ctx.body === 'object' && ctx.body.message) {
       const msgKey = ctx.body.message;
 
+      // 防止极其特殊的恶意或不规范 locale 字符串导致文件路径穿越或 require 崩溃
+      // 例如：用户的 TG 语言设置了某种极度罕见的标记，或者被注入了特殊字符
+      let safeLocale = 'en-US';
+      if (typeof ctx.locale === 'string' && /^[a-zA-Z0-9-]+$/.test(ctx.locale)) {
+        safeLocale = ctx.locale;
+      }
+
       let dict;
       try {
-        dict = require(`../../config/locale/${ctx.locale}.js`);
+        dict = require(`../../config/locale/${safeLocale}.js`);
       } catch (e) {
         dict = require('../../config/locale/en-US.js');
       }
