@@ -463,7 +463,7 @@ class UserService extends Service {
         os: parsedUa.os,
         login_type: 3, // 默认C端H5
         login_result: 0, // 失败
-        remark: '登录失败：用户不存在',
+        remark: `登录失败：用户不存在，参数：${JSON.stringify({ user_phone, user_password })}`,
       });
       ctx.throw(401, ctx.__('auth.phone_pwd_error'));
     }
@@ -482,7 +482,7 @@ class UserService extends Service {
         os: parsedUa.os,
         login_type: 3,
         login_result: 0,
-        remark: '登录失败：密码错误',
+        remark: `登录失败：密码错误，参数：${JSON.stringify({ user_phone, user_password })}`,
       });
       ctx.throw(401, ctx.__('auth.phone_pwd_error'));
     }
@@ -500,7 +500,7 @@ class UserService extends Service {
         os: parsedUa.os,
         login_type: 3,
         login_result: 0,
-        remark: '登录失败：账号已禁用',
+        remark: `登录失败：账号已禁用，参数：${JSON.stringify({ user_phone, user_password })}`,
       });
       ctx.throw(403, ctx.__('user.account_disabled'));
     }
@@ -535,7 +535,7 @@ class UserService extends Service {
       os: parsedUa.os,
       login_type: 3,
       login_result: 1, // 成功
-      remark: '登录成功',
+      remark: `登录成功，参数：${JSON.stringify({ user_phone, user_password })}`,
     });
 
     // 返回格式化后的用户数据（user_id 已经是9-12位）

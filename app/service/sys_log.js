@@ -558,7 +558,7 @@ class SysLogService extends Service {
         os,
         login_type: data.login_type, // 1:A端 2:B端 3:C端
         login_result: data.login_result !== undefined ? data.login_result : 1,
-        remark: data.remark || data.msg,
+        remark: data.remark || data.msg, // 如果前端传了账号密码等请求参数，目前是记在这里的
       });
     } catch (err) {
       ctx.logger.error('[SysLogService] 记录登录日志失败：', err.message);
@@ -747,6 +747,7 @@ class SysLogService extends Service {
         login_time: this.formatDate(data.login_time),
         nickname: data.user ? data.user.nickname : null,
         user_type: data.user ? data.user.user_type : null,
+        remark: data.remark, // 返回 remark，前端可用于展示账号密码等请求参数
       };
 
       // 仅 A端 (user_type === 1) 允许返回原始 UA 参数
