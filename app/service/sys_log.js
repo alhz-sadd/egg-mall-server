@@ -732,7 +732,7 @@ class SysLogService extends Service {
         }
       }
 
-      list.push({
+      const logItem = {
         id: data.id,
         log_no: data.log_no,
         user_id: data.user_id,
@@ -747,7 +747,14 @@ class SysLogService extends Service {
         login_time: this.formatDate(data.login_time),
         nickname: data.user ? data.user.nickname : null,
         user_type: data.user ? data.user.user_type : null,
-      });
+      };
+
+      // 仅 A端 (user_type === 1) 允许返回原始 UA 参数
+      if (adminUser && adminUser.user_type === 1) {
+        logItem.user_agent = data.user_agent;
+      }
+
+      list.push(logItem);
     }
 
     return {
