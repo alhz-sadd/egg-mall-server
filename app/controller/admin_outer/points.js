@@ -143,18 +143,24 @@ class AdminOuterPointsController extends Controller {
     });
     if (!customer) ctx.throw(404, 'C端客户不存在');
 
-    let wallet = await ctx.model.UserWallet.findOne({ where: { user_id: final_user_id } });
-    if (!wallet) {
-      wallet = await ctx.model.UserWallet.create({ user_id: final_user_id });
-    }
-
     const transaction = await ctx.model.transaction();
     try {
-      const before_balance = Number(wallet.voucher_balance);
+      let wallet = await ctx.model.UserWallet.findOne({
+        where: { user_id: final_user_id },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!wallet) {
+        wallet = await ctx.model.UserWallet.create({ user_id: final_user_id }, { transaction });
+      }
+
+      const before_balance = Number(wallet.voucher_balance || 0);
       const after_balance = before_balance + Number(final_amount);
 
-      await wallet.increment('voucher_balance', { by: Number(final_amount), transaction });
-      await wallet.increment('balance', { by: Number(final_amount), transaction });
+      await wallet.update({
+        voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${Number(final_amount)}`),
+        balance: ctx.app.Sequelize.literal(`balance + ${Number(final_amount)}`),
+      }, { transaction });
 
       const log_no = `B_GV_${Date.now()}`;
 

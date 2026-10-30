@@ -248,25 +248,24 @@ class AdminOuterWithdrawController extends Controller {
       const wallet = await ctx.model.UserWallet.findOne({
         where: { user_id: withdraw.user_id },
         transaction,
+        lock: transaction.LOCK.UPDATE,
       });
 
       if (wallet) {
         // 如果要记录总提现金额，可以累加 total_withdraw_amount
-        await wallet.increment('total_withdraw_amount', {
-          by: withdraw.amount,
-          transaction,
-        });
-
         // B端审核通过：直接将之前申请时冻结的资产 (freeze_voucher_balance) 扣除即可
         // 因为 C 端申请提现时，已经把 balance 减掉了并加到了 freeze_voucher_balance 里。
         if (wallet.freeze_voucher_balance >= withdraw.amount) {
-          await wallet.decrement('freeze_voucher_balance', {
-            by: withdraw.amount,
-            transaction,
-          });
+          await wallet.update({
+            total_withdraw_amount: ctx.app.Sequelize.literal(`total_withdraw_amount + ${withdraw.amount}`),
+            freeze_voucher_balance: ctx.app.Sequelize.literal(`freeze_voucher_balance - ${withdraw.amount}`),
+          }, { transaction });
         } else {
           // 如果冻结金额对不上，为了让流程走通，直接将冻结金额清零
-          await wallet.update({ freeze_voucher_balance: 0 }, { transaction });
+          await wallet.update({
+            total_withdraw_amount: ctx.app.Sequelize.literal(`total_withdraw_amount + ${withdraw.amount}`),
+            freeze_voucher_balance: 0,
+          }, { transaction });
         }
       }
 
