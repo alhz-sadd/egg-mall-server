@@ -317,12 +317,19 @@ class RechargeRequestService extends Service {
         transaction,
         lock: transaction.LOCK.UPDATE,
       });
+
+      let beforeBalance = 0;
+      let afterBalance = Number(lockRequest.user_receive_amount);
+
       if (wallet) {
+        beforeBalance = Number(wallet.balance || 0);
+        afterBalance = beforeBalance + Number(lockRequest.user_receive_amount);
+
         // 用户走充值，并且B端通过的金额是 recharge_balance，同时总余额 balance 也增加
-        await wallet.increment({
-          balance: Number(lockRequest.user_receive_amount),
-          recharge_balance: Number(lockRequest.user_receive_amount),
-          total_recharge_amount: Number(lockRequest.amount),
+        await wallet.update({
+          balance: ctx.app.Sequelize.literal(`balance + ${Number(lockRequest.user_receive_amount)}`),
+          recharge_balance: ctx.app.Sequelize.literal(`recharge_balance + ${Number(lockRequest.user_receive_amount)}`),
+          total_recharge_amount: ctx.app.Sequelize.literal(`total_recharge_amount + ${Number(lockRequest.amount)}`),
         }, { transaction });
       } else {
         await ctx.model.UserWallet.create({
@@ -341,8 +348,8 @@ class RechargeRequestService extends Service {
         biz_type: 1, // 充值
         amount: Number(lockRequest.user_receive_amount),
         balance_type: 1,
-        before_balance: wallet ? Number(wallet.balance) : 0,
-        after_balance: wallet ? Number(wallet.balance) + Number(lockRequest.user_receive_amount) : Number(lockRequest.user_receive_amount),
+        before_balance: beforeBalance,
+        after_balance: afterBalance,
         related_order_id: lockRequest.id,
         remark: remark || '充值审核通过加款',
       }, { transaction });

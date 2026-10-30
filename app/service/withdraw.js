@@ -180,12 +180,28 @@ class WithdrawService extends Service {
         remark: remark || null,
       }, { transaction });
 
-      // 创建时先扣除钱包余额 (由于已经锁定了行，直接在内存计算减去即可，或者用literal)
+      // 创建时先扣除钱包余额 (使用literal确保安全)
       const afterBalance = userBalance - money;
-      await wallet.update({ balance: afterBalance }, { transaction });
+      await wallet.update({ balance: ctx.app.Sequelize.literal(`balance - ${money}`) }, { transaction });
+
+      // 补充提现发起时的资金明细（UserWalletLog）
+      const logNo = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+      await ctx.model.UserWalletLog.create({
+        user_id: user.user_id,
+        log_no: logNo,
+        biz_type: 2, // 2: 提现扣款
+        amount: money,
+        balance_type: 1,
+        before_balance: userBalance,
+        after_balance: afterBalance,
+        related_order_id: request.id,
+        remark: remark || '发起提现扣除余额',
+        create_time: new Date(),
+      }, { transaction });
+
       await transaction.commit();
 
-      ctx.logger.info('[WithdrawService.create] 提现请求创建成功，订单号: %s，用户ID: %s，提现金额: %s，扣除前余额: %s，扣除后余额: %s，状态: %s', request.order_num, request.user_id, request.amount, beforeBalance, afterBalance, request.status);
+      ctx.logger.info('[WithdrawService.create] 提现请求创建成功，订单号: %s，用户ID: %s，提现金额: %s，扣除前余额: %s，扣除后余额: %s，状态: %s', request.order_num, request.user_id, request.amount, userBalance, afterBalance, request.status);
 
       // 发送 TG 异步通知
       ctx.runInBackground(async () => {
@@ -484,7 +500,10 @@ class WithdrawService extends Service {
         lock: transaction.LOCK.UPDATE,
       });
       if (wallet) {
-        await wallet.update({ balance: Number(wallet.balance) + Number(lockRequest.amount) }, { transaction, individualHooks: true });
+        const beforeBalance = Number(wallet.balance || 0);
+        const afterBalance = beforeBalance + Number(lockRequest.amount);
+
+        await wallet.update({ balance: ctx.app.Sequelize.literal(`balance + ${Number(lockRequest.amount)}`) }, { transaction, individualHooks: true });
 
         // 生成资金流水记录（退回提现金额）
         const logNo = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -494,8 +513,8 @@ class WithdrawService extends Service {
           biz_type: 5, // 提现驳回退款
           amount: Number(lockRequest.amount),
           balance_type: 1,
-          before_balance: Number(wallet.balance) - Number(lockRequest.amount),
-          after_balance: Number(wallet.balance),
+          before_balance: beforeBalance,
+          after_balance: afterBalance,
           related_order_id: lockRequest.id,
           remark: remark || '提现审核驳回，退回余额',
         }, { transaction });

@@ -337,26 +337,30 @@ class AdminOuterCustomerController extends Controller {
       shop_id: adminOuter.shop_id,
     });
 
-    const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
-    if (!wallet) {
-      ctx.throw(404, '用户钱包不存在');
-    }
-
-    if (Number(change_type) === 2 && Number(wallet.voucher_balance) < Number(amount)) {
-      ctx.throw(400, '用户钱包余额不足，无法扣除');
-    }
-
     const transaction = await ctx.model.transaction();
     try {
+      const wallet = await ctx.model.UserWallet.findOne({
+        where: { user_id: userId },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
+      });
+      if (!wallet) {
+        ctx.throw(404, '用户钱包不存在');
+      }
+
+      if (Number(change_type) === 2 && Number(wallet.voucher_balance) < Number(amount)) {
+        ctx.throw(400, '用户钱包余额不足，无法扣除');
+      }
+
       const before_balance = Number(wallet.voucher_balance);
       const after_balance = Number(change_type) === 1
         ? before_balance + Number(amount)
         : before_balance - Number(amount);
 
       if (Number(change_type) === 1) {
-        await wallet.increment('voucher_balance', { by: Number(amount), transaction });
+        await wallet.update({ voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${Number(amount)}`) }, { transaction });
       } else {
-        await wallet.decrement('voucher_balance', { by: Number(amount), transaction });
+        await wallet.update({ voucher_balance: ctx.app.Sequelize.literal(`voucher_balance - ${Number(amount)}`) }, { transaction });
       }
 
       const log_no = `B_BAL_${Date.now()}`;

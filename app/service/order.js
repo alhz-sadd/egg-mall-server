@@ -663,8 +663,18 @@ class OrderService extends Service {
         // 无论上级账号状态如何，我们只决定是否给这个直接上级加钱。
         // 上级账号异常只是他自己拿不到佣金，并不影响下级的正常订单流转。
         if (parentUser) {
-          const parentWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userObj.inviter_user_id } });
+          // 【重要修复】查询上级钱包时必须带上 transaction 和排他锁 (LOCK.UPDATE)
+          // 否则如果有多个下级同时支付，会导致并发读取到相同的 before_balance，产生财务日志脏数据
+          const parentWallet = await ctx.model.UserWallet.findOne({
+            where: { user_id: userObj.inviter_user_id },
+            transaction,
+            lock: transaction.LOCK.UPDATE,
+          });
+
           if (parentWallet) {
+            const beforeBalance = Number(parentWallet.balance || 0);
+            const afterBalance = beforeBalance + dynamicRevenue;
+
             await ctx.model.UserWallet.update({
               balance: ctx.app.Sequelize.literal(`balance + ${dynamicRevenue}`),
               voucher_balance: ctx.app.Sequelize.literal(`voucher_balance + ${dynamicRevenue}`),
@@ -682,8 +692,8 @@ class OrderService extends Service {
               biz_type: 5, // 动态收益发放
               amount: dynamicRevenue,
               balance_type: 1,
-              before_balance: Number(parentWallet.balance),
-              after_balance: Number(parentWallet.balance) + dynamicRevenue,
+              before_balance: beforeBalance,
+              after_balance: afterBalance,
               related_order_id: progress.id,
               from_user_id: dbUserId, // 记录佣金来源的下级用户ID
               remark: '下级任务订单动态收益',
