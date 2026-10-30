@@ -187,8 +187,9 @@ module.exports = () => {
       }
 
       // 手机端的接口统一 HTTP 200 返回，业务错误码由 body.code 区分
+      // 【关键修复 2026-10-30】：如果是 401 (Token 过期)，绝对不能被强转为 200，必须老老实实返回 401 让前端去拦截踢下线！
       if (isMobile) {
-        ctx.status = 200;
+        ctx.status = status === 401 ? 401 : 200;
       } else {
         ctx.status = status;
       }

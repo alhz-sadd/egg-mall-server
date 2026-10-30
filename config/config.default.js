@@ -54,8 +54,8 @@ module.exports = appInfo => {
   // JWT 配置
   config.jwt = {
     secret: process.env.JWT_SECRET,
-    expiresIn: '2h', // Access Token 过期时间
-    refreshExpiresIn: '7d', // Refresh Token 过期时间
+    expiresIn: '4h', // 将 Access Token 改为 4 小时，过期后强制用户重新登录
+    refreshExpiresIn: '4h', // 废弃刷新方案，保持与 Access Token 一致
   };
 
   // bcrypt 密码加密配置
