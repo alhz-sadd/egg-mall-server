@@ -182,13 +182,13 @@ module.exports = () => {
 
       // 针对移动端 404 错误（如用户不存在、任务不存在等），强制转换 code 为 200 并返回 data: null
       // 避免触发前端 Axios 全局异常拦截器导致页面其他接口被中断、页面崩溃
-      if (isMobileError && status === 404) {
+      if (isMobile && status === 404) {
         code = 200;
         body.code = 200;
       }
 
       // 手机端的接口统一 HTTP 200 返回，业务错误码由 body.code 区分
-      if (isMobileError) {
+      if (isMobile) {
         ctx.status = 200;
       } else {
         ctx.status = status;

@@ -19,7 +19,15 @@ module.exports = appInfo => {
 
   // 跨域配置
   config.cors = {
-    origin: ctx => ctx.request.header.origin || '*',
+    // 动态校验 origin，严格禁止在 credentials 为 true 时返回 '*'，防止 TG 内置浏览器及严格模式浏览器直接阻断请求
+    origin: ctx => {
+      const reqOrigin = ctx.request.header.origin;
+      if (!reqOrigin || reqOrigin === 'null') {
+        // 如果没有 origin 或者为 null，返回当前请求的 host，绝对不能返回 '*'
+        return ctx.request.protocol + '://' + ctx.request.host;
+      }
+      return reqOrigin;
+    },
     allowMethods: 'GET,HEAD,PUT,POST,DELETE,PATCH,OPTIONS',
     allowHeaders: 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, lang, token, shop-id, tenant-id, referer, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform',
     exposeHeaders: 'Authorization, Cache-Control, Content-Type, Expires, Pragma',

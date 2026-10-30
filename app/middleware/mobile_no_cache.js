@@ -13,23 +13,10 @@ module.exports = () => {
       ctx.set('Pragma', 'no-cache');
       ctx.set('Expires', '0');
 
-      // 2. 增加宽容的跨域和请求头放行 (CORS)
-      // 注意：不能使用 '*' 当请求携带 credentials (凭证/Token) 时，否则会被浏览器严格模式拦截
-      const origin = ctx.request.get('Origin');
-      if (origin) {
-        ctx.set('Access-Control-Allow-Origin', origin);
-      } else {
-        ctx.set('Access-Control-Allow-Origin', '*');
-      }
-      ctx.set('Access-Control-Allow-Credentials', 'true');
-      ctx.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, Cache-Control, Pragma, Expires, Accept-Language, language, lang, token, shop-id, tenant-id, referer, sec-ch-ua, sec-ch-ua-mobile, sec-ch-ua-platform');
-      ctx.set('Access-Control-Allow-Methods', 'PUT, POST, GET, DELETE, OPTIONS');
-
-      // 3. 处理 OPTIONS 预检请求，直接返回 204
-      if (ctx.method === 'OPTIONS') {
-        ctx.status = 204;
-        return;
-      }
+      // 2. 处理跨域头 (移除这里与 egg-cors 冲突的手动 CORS 设置，避免产生重复头导致浏览器拦截)
+      // 注意：egg-cors 插件已经在全局生效，此处重复设置会导致 Access-Control-Allow-Origin 出现两个值，从而在部分严格的浏览器（如 TG 内置 WebKit）中直接触发网络错误 (Network Error) 导致前端拿不到数据显示 --
+      
+      // 3. 处理 OPTIONS 预检请求 (交给 egg-cors 处理即可，避免中间件冲突)
     }
 
     await next();

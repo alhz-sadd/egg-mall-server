@@ -475,17 +475,17 @@ class TaskService extends Service {
         const wares = {
           goods_id: unpaidProgress.goods_id,
           wares_name: unpaidProgress.goods_title,
-          total_price: orderAmount,
+          total_price: Number(orderAmount.toFixed(2)),
           pic_url: picUrl,
         };
 
         const order = {
           order_id: unpaidProgress.order_id,
-          total_price: orderAmount,
-          revenue_rate: yieldRate, // 收益率
-          return_money: revenue, // 回报金额 (静态收益)
-          parent_revenue_rate: parentYieldRate,
-          parent_revenue: revenue * parentYieldRate, // 动态收益 = 静态收益 * 上级收益率
+          total_price: Number(orderAmount.toFixed(2)),
+          revenue_rate: Number(yieldRate.toFixed(4)), // 收益率
+          return_money: Number(revenue.toFixed(2)), // 回报金额 (静态收益)
+          parent_revenue_rate: Number(parentYieldRate.toFixed(4)),
+          parent_revenue: Number((revenue * parentYieldRate).toFixed(2)), // 动态收益 = 静态收益 * 上级收益率
           order_type: taskItem ? (taskItem.is_lucky_order === 1 ? 2 : 1) : 1, // 1:普通订单, 2:幸运订单
           c_time: unpaidProgress.create_time,
         };
@@ -787,9 +787,9 @@ class TaskService extends Service {
       await nextProgress.update({
         order_id: orderNo,
         goods_id: waresModel.id,
-        goods_price: goodsPrice,
+        goods_price: Number(goodsPrice.toFixed(2)),
         goods_title: waresModel.goods_name,
-        revenue,
+        revenue: Number(revenue.toFixed(2)),
         is_processing: 1,
         is_triggered: 1,
         update_time: cTime,
@@ -817,17 +817,17 @@ class TaskService extends Service {
       const wares = {
         goods_id: waresModel.id,
         wares_name: waresModel.goods_name,
-        total_price: goodsPrice,
+        total_price: Number(goodsPrice.toFixed(2)),
         pic_url: picUrl,
       };
 
       const order = {
         order_id: orderNo,
-        total_price: goodsPrice,
-        revenue_rate: yieldRate, // 收益率
-        return_money: revenue, // 回报金额(即静态收益)
-        parent_revenue_rate: parentYieldRate,
-        parent_revenue: revenue * parentYieldRate, // 动态收益 = 静态收益 * 上级收益率
+        total_price: Number(goodsPrice.toFixed(2)),
+        revenue_rate: Number(yieldRate.toFixed(4)), // 收益率
+        return_money: Number(revenue.toFixed(2)), // 回报金额(即静态收益)
+        parent_revenue_rate: Number(parentYieldRate.toFixed(4)),
+        parent_revenue: Number((revenue * parentYieldRate).toFixed(2)), // 动态收益 = 静态收益 * 上级收益率
         order_type: isLuckyOrder === 1 ? 2 : 1, // 1:普通订单, 2:幸运订单
         c_time: cTime,
       };
