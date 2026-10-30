@@ -143,4 +143,11 @@ module.exports = {
   'system.reverse_image_empty': 'A imagem traseira não pode estar vazia',
   'task.too_many_people_grabbing': 'Muitas pessoas a tentar receber encomendas neste momento, por favor tente novamente mais tarde.',
   'task.need_complete_task_to_withdraw': 'Você precisa concluir as tarefas antes de retirar',
+  'user.phone_length_error': 'Account length cannot exceed 20 characters',
+  'withdraw.withdraw_amount_min': 'Withdrawal amount is below the minimum limit',
+  'withdraw.withdraw_amount_max': 'Withdrawal amount exceeds the maximum limit',
+  'order.order_is_paying': 'Payment is processing, please do not click repeatedly',
+  'order.balance_not_enough_pay': 'Insufficient balance to pay',
+  'task.task_is_generating': 'Task is generating, please do not click repeatedly',
+  'withdraw.withdraw_is_processing': 'Withdrawal is processing, please do not click repeatedly',
 };

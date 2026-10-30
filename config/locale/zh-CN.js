@@ -143,4 +143,11 @@ module.exports = {
   'system.reverse_image_empty': '反面图片不能为空',
   'task.too_many_people_grabbing': '当前时段抢单人数过多，请稍后再试',
   'task.need_complete_task_to_withdraw': '需要完成任务后才能提现',
+  'user.phone_length_error': '账号长度不能超过20位',
+  'withdraw.withdraw_amount_min': '提现金额低于最低限制',
+  'withdraw.withdraw_amount_max': '提现金额超出最高限制',
+  'order.order_is_paying': '支付处理中，请勿重复点击',
+  'order.balance_not_enough_pay': '余额不足，无法支付',
+  'task.task_is_generating': '任务生成中，请勿重复点击',
+  'withdraw.withdraw_is_processing': '提现处理中，请勿重复点击',
 };

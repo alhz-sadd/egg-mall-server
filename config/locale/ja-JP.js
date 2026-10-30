@@ -143,4 +143,11 @@ module.exports = {
   'system.reverse_image_empty': '裏面画像は空にできません',
   'task.too_many_people_grabbing': '現在、注文を確定している人が多すぎます。後でもう一度お試しください。',
   'task.need_complete_task_to_withdraw': '出金する前にタスクを完了する必要があります',
+  'user.phone_length_error': 'Account length cannot exceed 20 characters',
+  'withdraw.withdraw_amount_min': 'Withdrawal amount is below the minimum limit',
+  'withdraw.withdraw_amount_max': 'Withdrawal amount exceeds the maximum limit',
+  'order.order_is_paying': 'Payment is processing, please do not click repeatedly',
+  'order.balance_not_enough_pay': 'Insufficient balance to pay',
+  'task.task_is_generating': 'Task is generating, please do not click repeatedly',
+  'withdraw.withdraw_is_processing': 'Withdrawal is processing, please do not click repeatedly',
 };

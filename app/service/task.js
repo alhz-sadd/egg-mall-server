@@ -456,9 +456,18 @@ class TaskService extends Service {
         let picUrl = '';
         if (unpaidProgress.goods_id) {
           const unpaidGoods = await ctx.model.GoodsTask.findOne({ where: { id: unpaidProgress.goods_id } });
-          if (unpaidGoods) {
-            if (unpaidGoods.goods_images && Array.isArray(unpaidGoods.goods_images) && unpaidGoods.goods_images.length > 0) {
-              picUrl = unpaidGoods.goods_images[0];
+          if (unpaidGoods && unpaidGoods.goods_images) {
+            try {
+              let images = unpaidGoods.goods_images;
+              if (typeof images === 'string') {
+                images = JSON.parse(images);
+              }
+              if (Array.isArray(images) && images.length > 0) {
+                picUrl = images[0];
+              }
+            } catch (err) {
+              ctx.logger.warn(`[TaskService.search] 未支付订单商品图片解析失败, goods_id: ${unpaidGoods.id}`);
+              picUrl = '';
             }
           }
         }
@@ -525,16 +534,18 @@ class TaskService extends Service {
         // 为了安全，直接将这个子项标记为处理中
         await nextProgress.update({ is_processing: 1 }, { transaction: t });
         await t.commit();
-
-        // 剩下的逻辑不再需要锁，因为该子项已经被标记为处理中
-        currentItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: nextProgress.task_item_id } });
-        if (!currentItem) {
-          ctx.throw(500, ctx.__('task.task_sub_config_missing'));
-        }
       } catch (err) {
-        // 捕获异常，回滚事务并释放 Redis 锁
-        await t.rollback();
+        // 捕获异常，回滚事务
+        if (!t.finished) {
+          await t.rollback();
+        }
         throw err;
+      }
+
+      // 剩下的逻辑不再需要锁，因为该子项已经被标记为处理中
+      currentItem = await ctx.model.ShopTaskItem.findOne({ where: { item_id: nextProgress.task_item_id } });
+      if (!currentItem) {
+        ctx.throw(500, ctx.__('task.task_sub_config_missing'));
       }
 
       // 6. 选取商品

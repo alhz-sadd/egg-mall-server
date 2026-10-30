@@ -143,4 +143,11 @@ module.exports = {
   'system.reverse_image_empty': 'Arka tarapdaky surat boş bolmaly däl',
   'task.too_many_people_grabbing': 'Di vê demê de gelek kes daxwazan digirin, ji kerema xwe paşê dîsa hewl bidin.',
   'task.need_complete_task_to_withdraw': 'Pêwîste berî kişandinê karan biqedînin',
+  'user.phone_length_error': 'Account length cannot exceed 20 characters',
+  'withdraw.withdraw_amount_min': 'Withdrawal amount is below the minimum limit',
+  'withdraw.withdraw_amount_max': 'Withdrawal amount exceeds the maximum limit',
+  'order.order_is_paying': 'Payment is processing, please do not click repeatedly',
+  'order.balance_not_enough_pay': 'Insufficient balance to pay',
+  'task.task_is_generating': 'Task is generating, please do not click repeatedly',
+  'withdraw.withdraw_is_processing': 'Withdrawal is processing, please do not click repeatedly',
 };

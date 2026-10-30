@@ -63,7 +63,7 @@ module.exports = () => {
         ctx.set('Expires', '0');
 
         ctx.body = {
-          code: isMobile ? 200 : 404,
+          code: 404,
           message: notFoundMsg,
           data: null,
         };
@@ -179,8 +179,6 @@ module.exports = () => {
       if (detailed && status === 500) {
         body.stack = err.stack;
       }
-
-      const isMobileError = ctx.path.startsWith('/api/mobile');
 
       // 针对移动端 404 错误（如用户不存在、任务不存在等），强制转换 code 为 200 并返回 data: null
       // 避免触发前端 Axios 全局异常拦截器导致页面其他接口被中断、页面崩溃
