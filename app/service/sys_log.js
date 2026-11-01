@@ -663,11 +663,12 @@ class SysLogService extends Service {
    */
   async loginLogs(query = {}, adminUser = null) {
     const { ctx, app } = this;
-    const { username, login_result, login_ip, login_location, device_type, page = 1, page_size = 10, shop_id, user_type, user_id } = query;
+    const { username, nickname, login_result, login_ip, login_location, device_type, page = 1, page_size = 10, shop_id, user_type, user_id } = query;
     const { Op } = app.Sequelize;
 
     const where = {};
     if (username) where.username = { [Op.like]: `%${username}%` };
+    if (nickname) where['$user.nickname$'] = { [Op.like]: `%${nickname}%` };
     if (user_id) where.user_id = Number(user_id);
     if (login_result !== undefined && login_result !== '') {
       where.login_result = Number(login_result);
@@ -831,7 +832,7 @@ class SysLogService extends Service {
 
     const where = {};
     if (oper_username) where.username = { [Op.like]: `%${oper_username}%` };
-    if (oper_name) where.username = { [Op.like]: `%${oper_name}%` };
+    if (oper_name) where['$user.nickname$'] = { [Op.like]: `%${oper_name}%` };
 
     if (oper_status !== undefined && oper_status !== '') where.status = Number(oper_status);
     if (status !== undefined && status !== '') where.status = Number(status);
