@@ -64,6 +64,7 @@ module.exports = app => {
   // 兼容老版本 H5 缓存
   router.get('/api/mobile/getUserTaskInfo', auth, controller.mobile.task.getUserTaskInfo);
   router.get('/api/mobile/invite/info', auth, controller.mobile.invite.info);
+  router.post('/api/mobile/invite/info', auth, controller.mobile.invite.info); // 兼容 TG 死缓存，提供 POST 方式
   router.get('/api/mobile/account/invite-code', auth, controller.mobile.user.inviteCode);
   router.put('/api/mobile/account/vip-level', auth, controller.mobile.user.updateVipLevel);
   router.get('/api/mobile/account/balance', auth, controller.mobile.user.balance);

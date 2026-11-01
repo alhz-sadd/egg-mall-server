@@ -98,7 +98,7 @@ class TaskController extends Controller {
 
       // 如果返回的状态是 -1 (代表暂无任务)，则通过 message 返回多语言提示，让前端弹窗
       let message = 'success';
-      if (result && result.task_status === -1) {
+      if (result && (result.task_status === -1 || result.task_status === 0)) {
         message = ctx.__('task.task_not_exist_disabled') || '暂无可用任务';
       }
 

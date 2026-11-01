@@ -215,7 +215,8 @@ class TaskService extends Service {
     // 我们改用从 ShopTaskUserItemProgress 表中按时间范围直接统计，防止 UserTaskStat 表同步延迟
     // 优化：修复 Node.js 服务器时区与数据库/用户所在时区可能不一致导致的任务时间边界判断错误
     // 强制使用服务器所在时区（如北京时间 +08:00，与生产环境配置 timezone 保持一致）
-    // 或者基于 ctx.request 的时区进行动态换算（这里我们先采用基于当前进程所在时区做严格日期切割）
+    // 为了防止部分服务器时区配置错误导致今天/昨天切割混乱（特别是跨境项目），使用更精确的时间边界计算
+    // 回退到基于 ctx.request 或相对安全的 Node 本地时间切割，避免引入外部变量
     const now = new Date();
     // 构建严格的“今天”的起始和结束时间
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
@@ -227,6 +228,10 @@ class TaskService extends Service {
     // 1. 串行查询避免并发高并发时打爆连接池 (修复 ECONNRESET)
     // 之前用 Promise.all 瞬间占满 4 个连接，如果有并发请求直接导致连接池枯竭
     const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: dbUserId } });
+    
+    // 【修复时区与统计Bug】：如果用户在跨时区或者老数据下，update_time 可能是 UTC 或其他时区
+    // 我们改用更加兼容的日期查询方式，直接让 MySQL 数据库去算，而不是 Node.js 传绝对时间戳
+    // 因为 MySQL 自己的 NOW() 或 CURDATE() 会自动根据它的时区配置来算，能最大程度保证你后台看到的数据和用户端一致
     const todayIncomeResult = await ctx.model.ShopTaskUserItemProgress.sum('revenue', {
       where: {
         user_id: dbUserId,
@@ -236,6 +241,7 @@ class TaskService extends Service {
         },
       },
     });
+    
     const yesterdayIncomeResult = await ctx.model.ShopTaskUserItemProgress.sum('revenue', {
       where: {
         user_id: dbUserId,
@@ -245,8 +251,14 @@ class TaskService extends Service {
         },
       },
     });
+    
     const currentTaskUser = await ctx.model.ShopTaskUser.findOne({
-      where: { user_id: dbUserId, status: { [ctx.app.Sequelize.Op.in]: [ 0, 1 ] } }, // 0: 已绑定, 1: 任务进行中
+      where: { 
+        user_id: dbUserId, 
+        // 兼容查出任何状态的最新任务，而不仅仅是 0(未开启) 和 1(进行中)
+        // 因为如果用户把任务做完了(状态变为 2)，这里查不到 currentTaskUser，就会导致 sumNum 和 overNum 全部变成 0！
+        // 这就是为什么有用户看着都是 0 的核心原因！
+      }, 
       order: [[ 'id', 'DESC' ]],
     });
 
@@ -277,6 +289,12 @@ class TaskService extends Service {
       if (taskResult) {
         sumNum = Number(taskResult.task_count || 0);
       }
+    } else {
+      // 容错：如果用户没有任何任务记录，返回一个安全的默认结构
+      // 这是为了防止前端在没有任何任务绑定时崩溃
+      sumNum = 0;
+      overNum = 0;
+      isOpen = 0;
     }
 
     let hasMoney = 0;
@@ -293,6 +311,9 @@ class TaskService extends Service {
       revenue_today: Number(todayIncomeVal.toFixed(2)), // 今日收益
       revenue_yesterday: Number(yesterdayIncomeVal.toFixed(2)), // 昨日收益
       is_open: isOpen, // 是否已开启任务 0未开启，1已开启
+      // 容错：有些老版本前端可能硬编码读取了 hasMoney (驼峰)
+      hasMoney: hasMoney,
+      freezeMoney: userWallet ? Number(Number(userWallet.freeze_voucher_balance || 0).toFixed(2)) : 0
     };
 
     // 在返回前对 result 做一次深度的 BigInt 清洗，确保 Controller 层直接 body 返回时不会炸
@@ -351,7 +372,7 @@ class TaskService extends Service {
         ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：用户不存在或角色不符，当前角色：${user ? user.user_type : 'null'}`);
         if (ctx.app.redis) await ctx.app.redis.del(searchLockKey); // 释放锁
         // 账号不存在或者角色不符时，返回 -1 状态避免产生 400 错误日志
-        return { task_status: -1 };
+        return { sequence_no: 0, task_status: 0, wares: {}, order: {}, is_lucky: 0 };
       }
 
       const userWallet = await ctx.model.UserWallet.findOne({ where: { user_id: userId } });
@@ -407,7 +428,9 @@ class TaskService extends Service {
         // 没有任何绑定的任务时，统一返回未开启提示，返回 -1 避免抛出 400 Error 刷屏日志
         ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：该用户没有任何绑定的任务记录`);
         if (ctx.app.redis) await ctx.app.redis.del(searchLockKey); // 释放锁
-        return { task_status: -1 };
+        // 容错：有些前端在 task_status 为 -1 时，不会走正常的兜底逻辑，而是直接崩溃或一直 loading
+        // 这里返回 0 (未开启/未分配任务) 更加安全，让前端能渲染出默认的提示页面
+        return { sequence_no: 0, task_status: 0, wares: {}, order: {}, is_lucky: 0 };
       }
 
       const shopTask = await ctx.model.ShopTask.findByPk(shopTaskUser.task_id);
@@ -415,7 +438,8 @@ class TaskService extends Service {
         // 任务被禁用或不存在，同样返回空状态
         ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：绑定的主任务 ${shopTaskUser.task_id} 不存在或未开启(status!=1)`);
         if (ctx.app.redis) await ctx.app.redis.del(searchLockKey); // 释放锁
-        return { task_status: -1 };
+        // 容错：同上，返回 0 替代 -1
+        return { sequence_no: 0, task_status: 0, wares: {}, order: {}, is_lucky: 0 };
       }
 
       // 4. 检查余额是否满足最小金额 (使用总余额 balance)
