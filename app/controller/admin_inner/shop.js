@@ -249,6 +249,66 @@ class ShopController extends Controller {
   }
 
   /**
+   * 获取店铺分配的菜单ID列表
+   */
+  async getShopMenus() {
+    const { ctx } = this;
+    const { shop_id } = ctx.params;
+
+    const menus = await ctx.model.SysShopMenu.findAll({
+      where: { shop_id },
+      attributes: [ 'menu_id' ],
+    });
+
+    ctx.body = {
+      code: 200,
+      message: '获取成功',
+      data: menus.map(m => m.menu_id),
+    };
+  }
+
+  /**
+   * 更新店铺分配的菜单
+   */
+  async updateShopMenus() {
+    const { ctx } = this;
+    const { shop_id } = ctx.params;
+    const { menuIds } = ctx.request.body;
+
+    ctx.validate({
+      menuIds: { type: 'array', itemType: 'int', required: true },
+    }, ctx.request.body);
+
+    const transaction = await ctx.model.transaction();
+    try {
+      // 1. 删除旧的菜单关联
+      await ctx.model.SysShopMenu.destroy({
+        where: { shop_id },
+        transaction,
+      });
+
+      // 2. 插入新的菜单关联
+      if (menuIds.length > 0) {
+        const records = menuIds.map(menu_id => ({
+          shop_id,
+          menu_id,
+        }));
+        await ctx.model.SysShopMenu.bulkCreate(records, { transaction });
+      }
+
+      await transaction.commit();
+
+      ctx.body = {
+        code: 200,
+        message: '更新成功',
+      };
+    } catch (err) {
+      await transaction.rollback();
+      throw err;
+    }
+  }
+
+  /**
    * 删除店铺 (深度级联清理)
    */
   async destroy() {

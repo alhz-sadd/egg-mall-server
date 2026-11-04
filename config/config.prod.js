@@ -7,7 +7,7 @@
 module.exports = () => {
   return {
     // 生产环境域名
-    appBaseUrl: process.env.APP_BASE_URL || 'http://47.238.77.10:7001',
+    appBaseUrl: process.env.APP_BASE_URL || 'http://47.131.176.215:7001',
     sequelize: {
       // 生产环境使用 MySQL
       dialect: 'mysql',
@@ -15,7 +15,7 @@ module.exports = () => {
       port: 3306,
       database: 'egg_mall',
       username: 'egg_mall',
-      password: 'pizEe5PLjGWJhnWL',
+      password: 'DeZGE7LxKD5sRRBp',
       timezone: '+08:00',
       logging: false,
     },

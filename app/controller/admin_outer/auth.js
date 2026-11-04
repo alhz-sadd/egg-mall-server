@@ -21,13 +21,25 @@ class AdminOuterAuthController extends CommonAuthController {
       ctx.throw(401, '未登录');
     }
 
-    const { user_id, user_type } = adminOuter;
+    const { user_id, user_type, shop_id } = adminOuter;
     let permissions = [];
     let roles = [];
 
     // 根据规范：查询 sys_user_role -> role_id -> role_key, sys_role_menu -> menu_id -> perm_key
     // 只有 A/B 端 (user_type = 1/2/3) 才走权限体系
     if ([ 1, 2, 3 ].includes(user_type)) {
+      // 1. 获取店铺级别的菜单限制 (新增逻辑)
+      let shopMenuIds = null;
+      if (shop_id && ctx.model.SysShopMenu) {
+        const shopMenus = await ctx.model.SysShopMenu.findAll({
+          where: { shop_id },
+          attributes: [ 'menu_id' ],
+        });
+        if (shopMenus.length > 0) {
+          shopMenuIds = shopMenus.map(m => m.menu_id);
+        }
+      }
+
       // 1. 获取用户绑定的角色 ID
       const userRoles = await ctx.model.SysUserRole.findAll({
         where: { user_id },
@@ -54,7 +66,16 @@ class AdminOuterAuthController extends CommonAuthController {
           where: { role_id: { [ctx.app.Sequelize.Op.in]: roleIds } },
           attributes: [ 'menu_id' ],
         });
-        const menuIds = roleMenus.map(rm => rm.menu_id);
+        let menuIds = roleMenus.map(rm => rm.menu_id);
+
+        // 将角色菜单和店铺菜单取交集
+        if (shopMenuIds !== null) {
+          if (user_type === 2 && menuIds.length === 0) {
+            menuIds = shopMenuIds;
+          } else {
+            menuIds = menuIds.filter(id => shopMenuIds.includes(id));
+          }
+        }
 
         if (menuIds.length > 0) {
           // 4. 查询关联的菜单，过滤出按钮级别
@@ -68,6 +89,9 @@ class AdminOuterAuthController extends CommonAuthController {
             attributes: [ 'perms' ],
           });
           permissions = btns.map(m => m.perms);
+        } else if (shopMenuIds !== null) {
+           // 如果有店铺限制但交集为空，没有权限
+           permissions = [];
         } else {
           // 终极兜底：如果连角色都没配置任何菜单权限（如刚创建的店长角色），为了避免白屏，返回所有外端权限
           const allBtns = await ctx.model.SysMenu.findAll({
@@ -204,8 +228,21 @@ class AdminOuterAuthController extends CommonAuthController {
       ctx.throw(401, '未登录');
     }
 
-    const { user_id, user_type } = adminOuter;
+    const { user_id, user_type, shop_id } = adminOuter;
     let menuIds = [];
+
+    // 1. 获取店铺级别的菜单限制 (新增逻辑)
+    let shopMenuIds = null;
+    if (shop_id && ctx.model.SysShopMenu) {
+      const shopMenus = await ctx.model.SysShopMenu.findAll({
+        where: { shop_id },
+        attributes: [ 'menu_id' ],
+      });
+      // 只有当平台为该店铺配置了菜单时，才启用店铺菜单过滤
+      if (shopMenus.length > 0) {
+        shopMenuIds = shopMenus.map(m => m.menu_id);
+      }
+    }
 
     // B端获取动态路由：user_id -> sys_user_role -> role_id -> sys_role_menu -> menu_id -> sys_menu
     const userRoles = await ctx.model.SysUserRole.findAll({
@@ -228,6 +265,20 @@ class AdminOuterAuthController extends CommonAuthController {
       menuIds = roleMenus.map(rm => rm.menu_id);
     }
 
+    // 将角色菜单和店铺菜单取交集
+    let finalMenuIds = [];
+    if (shopMenuIds !== null) {
+      if (user_type === 2 && menuIds.length === 0) {
+        // 如果是店长且没有角色菜单限制，直接使用店铺的菜单
+        finalMenuIds = shopMenuIds;
+      } else {
+        // 取交集
+        finalMenuIds = menuIds.filter(id => shopMenuIds.includes(id));
+      }
+    } else {
+      finalMenuIds = menuIds;
+    }
+
     // 查询外端的所有启用菜单 (状态由 enable 字段控制，1正常0停用)
     // 根据规范：过滤出 menu_type=1 和 menu_type=2（目录和菜单），过滤掉 menu_type=3（按钮）
     const where = {
@@ -236,10 +287,13 @@ class AdminOuterAuthController extends CommonAuthController {
       api_tag: 'outer',
     };
 
-    if (menuIds.length > 0) {
-      where.menu_id = { [ctx.app.Sequelize.Op.in]: menuIds };
+    if (finalMenuIds.length > 0) {
+      where.menu_id = { [ctx.app.Sequelize.Op.in]: finalMenuIds };
+    } else if (shopMenuIds !== null) {
+      // 如果经过交集过滤后菜单为空，说明该账号在店铺权限下没有任何菜单，为了安全直接查不到
+      where.menu_id = -1;
     } else {
-      // 终极兜底：如果连角色都没配置任何菜单权限（如刚创建的店长角色），为了避免左侧菜单空白，展示所有外端菜单
+      // 终极兜底：如果没有店铺限制且连角色都没配置任何菜单权限（如刚创建的店长角色），为了避免左侧菜单空白，展示所有外端菜单
       // 也就是不加上 menu_id 的限制条件，直接查所有 api_tag='outer' 的菜单
     }
 

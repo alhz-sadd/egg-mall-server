@@ -42,6 +42,7 @@ module.exports = {
   SYS_ROLE: 'sys_role', // 系统角色表
   SYS_MENU: 'sys_menu', // B系统菜单按钮表
   SYS_ROLE_MENU: 'sys_role_menu', // 角色-菜单中间表
+  SYS_SHOP_MENU: 'sys_shop_menu', // 店铺-菜单中间表
   SYS_USER_ROLE: 'sys_user_role', // 用户-菜单中间表
 
   SYS_H5_CONFIG: 'sys_h5_config', // H5配置表
