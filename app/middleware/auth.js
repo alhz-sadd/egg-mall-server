@@ -39,8 +39,14 @@ module.exports = () => {
 
       ctx.state.user = decoded;
 
-      // 为了移动端接口（/api/mobile/），如果有shop_id，将其挂载到 ctx.state.shop_id
+      // 跨店铺隔离核心校验：
+      // 如果当前请求是移动端接口（通常是 C 端用户），且 Token 中带有 shop_id
+      // 则必须校验 Token 中的 shop_id 是否与当前访问的站点环境 (ctx.shopId) 匹配
       if (decoded.shop_id) {
+        // ctx.shopId 是在 getShopId 中间件中解析出来的当前站点 ID
+        if (ctx.shopId && ctx.shopId !== 0 && String(decoded.shop_id) !== String(ctx.shopId)) {
+          ctx.throw(401, ctx.__('auth.shop_not_match') || '登录环境异常：账号所属店铺与当前站点不匹配，请重新登录');
+        }
         ctx.state.shop_id = decoded.shop_id;
       }
     } catch (err) {

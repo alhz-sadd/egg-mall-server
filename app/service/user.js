@@ -506,13 +506,13 @@ class UserService extends Service {
     }
 
     const accessToken = app.jwt.sign(
-      { userId: user.user_id, user_phone: user.username, type: 'user' },
+      { userId: user.user_id, user_phone: user.username, type: 'user', shop_id: user.shop_id },
       app.config.jwt.secret,
       { expiresIn: app.config.jwt.expiresIn },
     );
 
     const refreshToken = app.jwt.sign(
-      { userId: user.user_id, type: 'user', isRefresh: true },
+      { userId: user.user_id, type: 'user', shop_id: user.shop_id, isRefresh: true },
       app.config.jwt.secret,
       { expiresIn: app.config.jwt.refreshExpiresIn },
     );
