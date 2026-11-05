@@ -345,22 +345,21 @@ class TaskService extends Service {
     // --- 核心优化：将 Redis 防连点分布式锁提前到函数最顶部 ---
     // 防止用户或脚本并发连点瞬间打爆数据库连接池 (解决 90 次连点引发 400+ 查询导致的卡顿问题)
     const searchLockKey = `search_task_lock:${userId}`;
+    let lockAcquired = false;
     if (ctx.app.redis) {
-      const acquired = await ctx.app.redis.set(searchLockKey, 'locked', 'EX', 3, 'NX');
+      // 把过期时间改短：从 3 秒缩短为 1 秒，防止由于网络波动等原因导致长时间被拦截
+      const acquired = await ctx.app.redis.set(searchLockKey, 'locked', 'EX', 1, 'NX');
       if (!acquired) {
         ctx.logger.warn(`[任务埋点] 用户 ${userId} 搜索任务被拦截，原因：触发了 Redis 分布式防连点锁`);
-        // 使用 ctx.body 直接返回前端可识别的状态，避免抛出 Error 导致大量后台日志
-        // 这里可以直接返回 { code: 429, message: ... } 或前端能接受的任务状态结构
-        // 因为这是一个频繁发生的正常拦截行为，不需要记录到 ERROR 级别日志里
         ctx.status = 200;
         ctx.body = {
           code: 429,
           message: ctx.__('task.task_is_generating') || '任务生成中，请勿重复点击',
-          data: { sequence_no: 0, task_status: 1, wares: {}, order: {}, is_lucky: 0 }, // 根据前端所需格式返回，或仅返回提示
+          data: { sequence_no: 0, task_status: 1, wares: {}, order: {}, is_lucky: 0 }, 
         };
-        // 中断执行，但不是抛异常
         return ctx.body.data;
       }
+      lockAcquired = true;
     }
 
     try {
@@ -864,8 +863,12 @@ class TaskService extends Service {
         is_lucky: isLuckyOrder,
       };
     } catch (err) {
-      if (ctx.app.redis) await ctx.app.redis.del(searchLockKey);
       throw err;
+    } finally {
+      // 核心优化：不论成功还是报错，只要逻辑执行完毕，立刻释放锁
+      if (lockAcquired && ctx.app.redis) {
+        await ctx.app.redis.del(searchLockKey).catch(e => ctx.logger.error('Redis del search lock error', e));
+      }
     }
   }
 }
