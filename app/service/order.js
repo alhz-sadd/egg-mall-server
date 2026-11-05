@@ -630,28 +630,25 @@ class OrderService extends Service {
       // 6.3 记录/更新到 user_task_stat
       const todayStr = dayjs().format('YYYY-MM-DD');
       
-      // 核心修复：使用 upsert（存在则更新，不存在则插入）或者用原生的 INSERT ... ON DUPLICATE KEY UPDATE
-      // 避免并发环境下的 findOne + create 造成的唯一索引冲突
-      
-      const [statRecord, created] = await ctx.model.UserTaskStat.findOrCreate({
-        where: { user_id: dbUserId, stat_date: todayStr },
-        defaults: {
-          task_order_count: 1,
-          task_income: revenue,
-          create_time: new Date(),
-          update_time: new Date(),
-        },
-        transaction,
-      });
-
-      if (!created) {
-        // 如果不是新创建的，说明记录已存在，执行累加更新
-        await statRecord.update({
-          task_order_count: ctx.app.Sequelize.literal('task_order_count + 1'),
-          task_income: ctx.app.Sequelize.literal(`task_income + ${revenue}`),
-          update_time: new Date(),
-        }, { transaction });
-      }
+      // 最终修复方案：使用 MySQL 原生的 INSERT ... ON DUPLICATE KEY UPDATE
+      // 完全绕过 Sequelize 的 findOrCreate 在事务中可能引发的死锁和读写冲突问题
+      await ctx.model.query(
+        `INSERT INTO user_task_stat (user_id, stat_date, task_order_count, task_income, create_time, update_time) 
+         VALUES (:userId, :statDate, 1, :revenue, NOW(), NOW()) 
+         ON DUPLICATE KEY UPDATE 
+         task_order_count = task_order_count + 1, 
+         task_income = task_income + :revenue, 
+         update_time = NOW()`,
+        {
+          replacements: {
+            userId: dbUserId,
+            statDate: todayStr,
+            revenue: revenue,
+          },
+          type: ctx.model.Sequelize.QueryTypes.INSERT,
+          transaction,
+        }
+      );
 
       // 7. 处理上级返佣 (如果有上级)
       if (userObj.inviter_user_id && dynamicRevenue > 0) {
