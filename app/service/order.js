@@ -727,7 +727,12 @@ class OrderService extends Service {
       if (err.status) {
         throw err;
       }
-      ctx.throw(400, '支付失败：' + err.message);
+      let detail = '';
+      if (err.errors && err.errors.length > 0) {
+        detail = ' (' + err.errors.map(e => e.message).join(', ') + ')';
+      }
+      ctx.logger.error('[订单支付失败]', err);
+      ctx.throw(400, '支付失败：' + err.message + detail);
     } finally {
       if (lockAcquired && ctx.app.redis) {
         await ctx.app.redis.del(lockKey).catch(e => ctx.logger.error('Redis del lock error', e));
