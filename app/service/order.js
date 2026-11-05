@@ -631,6 +631,8 @@ class OrderService extends Service {
       const todayStr = dayjs().format('YYYY-MM-DD');
       const statRecord = await ctx.model.UserTaskStat.findOne({
         where: { user_id: dbUserId, stat_date: todayStr },
+        transaction,
+        lock: transaction.LOCK.UPDATE,
       });
       if (statRecord) {
         await statRecord.update({
