@@ -101,13 +101,13 @@ module.exports = appInfo => {
     enable: true, // 全局开启
     match: /^\/api\//, // 只对 /api/ 开头的接口进行压缩
   };
-  // OSS 配置
+  // OSS (现在实际是 AWS S3) 配置
   config.oss = {
     client: {
-      accessKeyId: process.env.OSS_ACCESS_KEY_ID || '',
-      accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET || '',
-      endpoint: process.env.OSS_ENDPOINT || 'oss-cn-hongkong.aliyuncs.com', // 注意：香港节点应该是 oss-cn-hongkong
-      bucket: process.env.OSS_BUCKET || 'mall-assect',
+      accessKeyId: process.env.OSS_ACCESS_KEY_ID || '', // 请在 .env 中填入 AWS S3 的 Access Key
+      accessKeySecret: process.env.OSS_ACCESS_KEY_SECRET || '', // 请在 .env 中填入 AWS S3 的 Secret Key
+      endpoint: process.env.OSS_ENDPOINT || 's3.ap-southeast-1.amazonaws.com', // 替换为 AWS S3 新加坡节点的 endpoint
+      bucket: process.env.OSS_BUCKET || 'mall-assets-backup', // 替换为您的 AWS S3 存储桶名称
       secure: true, // 强制返回 https 协议的 URL
     },
   };
