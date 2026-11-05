@@ -14,16 +14,20 @@ class WithdrawConfigService extends Service {
    */
   async get(adminId) {
     const { ctx } = this;
-    const where = { status: 1 };
+    const where = {};
     if (adminId !== undefined) {
       where.admin_id = adminId;
     }
-    let config = await ctx.model.WithdrawConfig.findOne({ where });
-
-    // 如果不存在配置，创建默认配置
-    if (!config) {
-      config = await this.createDefault(adminId);
-    }
+    const [config] = await ctx.model.WithdrawConfig.findOrCreate({
+      where,
+      defaults: {
+        admin_id: adminId || 0,
+        min_money: 10.00,
+        need_task: true,
+        sx_rate: 0.03,
+        status: 1,
+      }
+    });
 
     return {
       min_money: String(config.min_money),
@@ -43,12 +47,17 @@ class WithdrawConfigService extends Service {
     if (adminId !== undefined) {
       where.admin_id = adminId;
     }
-    let config = await ctx.model.WithdrawConfig.findOne({ where });
-
-    // 如果不存在配置，创建默认配置
-    if (!config) {
-      config = await this.createDefault(adminId);
-    }
+    
+    const [config] = await ctx.model.WithdrawConfig.findOrCreate({
+      where,
+      defaults: {
+        admin_id: adminId || 0,
+        min_money: 10.00,
+        need_task: true,
+        sx_rate: 0.03,
+        status: 1,
+      }
+    });
 
     return {
       id: config.id,
@@ -75,7 +84,11 @@ class WithdrawConfigService extends Service {
     if (adminId !== undefined) {
       configData.admin_id = adminId;
     }
-    return await ctx.model.WithdrawConfig.create(configData);
+    const [config] = await ctx.model.WithdrawConfig.findOrCreate({
+      where: { admin_id: adminId || 0 },
+      defaults: configData
+    });
+    return config;
   }
 
   /**
@@ -106,7 +119,16 @@ class WithdrawConfigService extends Service {
       where.admin_id = adminId;
     }
     // 查找现有配置
-    let config = await ctx.model.WithdrawConfig.findOne({ where });
+    const [config] = await ctx.model.WithdrawConfig.findOrCreate({
+      where,
+      defaults: {
+        admin_id: adminId || 0,
+        min_money: minMoney,
+        need_task: String(need_task).toLowerCase() === 'true',
+        sx_rate: String(sx_rate),
+        status: 1,
+      }
+    });
 
     const updateData = {
       min_money: minMoney,
@@ -114,18 +136,7 @@ class WithdrawConfigService extends Service {
       sx_rate: String(sx_rate),
     };
 
-    if (config) {
-      await config.update(updateData);
-      config = await ctx.model.WithdrawConfig.findByPk(config.id);
-    } else {
-      if (adminId !== undefined) {
-        updateData.admin_id = adminId;
-      }
-      config = await ctx.model.WithdrawConfig.create({
-        ...updateData,
-        status: 1,
-      });
-    }
+    await config.update(updateData);
 
     return {
       id: config.id,

@@ -207,16 +207,17 @@ class RechargeService extends Service {
 
     // 员工添加和赠送客户都直接增加用户余额 (使用 UserWallet)
     if (Number(amount) > 0) {
-      const wallet = await ctx.model.UserWallet.findOne({ where: { user_id: user.user_id } });
-      if (wallet) {
-        await wallet.increment({
+      const [wallet, created] = await ctx.model.UserWallet.findOrCreate({
+        where: { user_id: user.user_id },
+        defaults: {
           balance: Number(amount),
           recharge_balance: Number(amount),
           total_recharge_amount: Number(amount),
-        });
-      } else {
-        await ctx.model.UserWallet.create({
-          user_id: user.user_id,
+        },
+      });
+
+      if (!created) {
+        await wallet.increment({
           balance: Number(amount),
           recharge_balance: Number(amount),
           total_recharge_amount: Number(amount),

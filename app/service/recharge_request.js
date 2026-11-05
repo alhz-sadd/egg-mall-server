@@ -312,31 +312,27 @@ class RechargeRequestService extends Service {
       }, { transaction });
 
       // 更新钱包余额
-      const wallet = await ctx.model.UserWallet.findOne({
-        where: { user_id: user.user_id },
-        transaction,
-        lock: transaction.LOCK.UPDATE,
-      });
-
       let beforeBalance = 0;
       let afterBalance = Number(lockRequest.user_receive_amount);
 
-      if (wallet) {
+      const [wallet, created] = await ctx.model.UserWallet.findOrCreate({
+        where: { user_id: user.user_id },
+        defaults: {
+          balance: Number(lockRequest.user_receive_amount),
+          recharge_balance: Number(lockRequest.user_receive_amount),
+          total_recharge_amount: Number(lockRequest.amount),
+        },
+        transaction,
+      });
+
+      if (!created) {
         beforeBalance = Number(wallet.balance || 0);
         afterBalance = beforeBalance + Number(lockRequest.user_receive_amount);
-
-        // 用户走充值，并且B端通过的金额是 recharge_balance，同时总余额 balance 也增加
+        
         await wallet.update({
           balance: ctx.app.Sequelize.literal(`balance + ${Number(lockRequest.user_receive_amount)}`),
           recharge_balance: ctx.app.Sequelize.literal(`recharge_balance + ${Number(lockRequest.user_receive_amount)}`),
           total_recharge_amount: ctx.app.Sequelize.literal(`total_recharge_amount + ${Number(lockRequest.amount)}`),
-        }, { transaction });
-      } else {
-        await ctx.model.UserWallet.create({
-          user_id: user.user_id,
-          balance: Number(lockRequest.user_receive_amount),
-          recharge_balance: Number(lockRequest.user_receive_amount),
-          total_recharge_amount: Number(lockRequest.amount),
         }, { transaction });
       }
 
