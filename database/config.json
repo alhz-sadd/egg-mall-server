@@ -7,16 +7,16 @@
     "dialect": "mysql"
   },
   "test": {
-    "username": "egg_mall",
+    "username": "egg-mall",
     "password": "pizEe5PLjGWJhnWL",
-    "database": "egg_mall",
+    "database": "egg-mall",
     "host": "47.238.77.10",
     "dialect": "mysql"
   },
   "production": {
-    "username": "egg_mall",
+    "username": "egg-mall",
     "password": "pizEe5PLjGWJhnWL",
-    "database": "egg_mall",
+    "database": "egg-mall",
     "host": "47.238.77.10",
     "dialect": "mysql"
   }
