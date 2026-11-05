@@ -629,24 +629,26 @@ class OrderService extends Service {
 
       // 6.3 记录/更新到 user_task_stat
       const todayStr = dayjs().format('YYYY-MM-DD');
-      const statRecord = await ctx.model.UserTaskStat.findOne({
+      
+      // 核心修复：使用 upsert（存在则更新，不存在则插入）或者用原生的 INSERT ... ON DUPLICATE KEY UPDATE
+      // 避免并发环境下的 findOne + create 造成的唯一索引冲突
+      
+      const [statRecord, created] = await ctx.model.UserTaskStat.findOrCreate({
         where: { user_id: dbUserId, stat_date: todayStr },
-        transaction,
-        lock: transaction.LOCK.UPDATE,
-      });
-      if (statRecord) {
-        await statRecord.update({
-          task_order_count: ctx.app.Sequelize.literal('task_order_count + 1'),
-          task_income: ctx.app.Sequelize.literal(`task_income + ${revenue}`),
-          update_time: new Date(),
-        }, { transaction });
-      } else {
-        await ctx.model.UserTaskStat.create({
-          user_id: dbUserId,
-          stat_date: todayStr,
+        defaults: {
           task_order_count: 1,
           task_income: revenue,
           create_time: new Date(),
+          update_time: new Date(),
+        },
+        transaction,
+      });
+
+      if (!created) {
+        // 如果不是新创建的，说明记录已存在，执行累加更新
+        await statRecord.update({
+          task_order_count: ctx.app.Sequelize.literal('task_order_count + 1'),
+          task_income: ctx.app.Sequelize.literal(`task_income + ${revenue}`),
           update_time: new Date(),
         }, { transaction });
       }
