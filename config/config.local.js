@@ -11,11 +11,11 @@ module.exports = () => {
     sequelize: {
       // 本地开发使用 MySQL
       dialect: 'mysql',
-      host: '47.238.77.10',
-      port: 3306,
-      database: 'egg_test',
-      username: 'egg_test',
-      password: 'CmH3WLkLLK5GM8SW',
+      host: process.env.DB_HOST || '127.0.0.1',
+      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
+      database: process.env.DB_DATABASE || 'egg_test',
+      username: process.env.DB_USERNAME || 'egg_test',
+      password: process.env.DB_PASSWORD || 'CmH3WLkLLK5GM8SW',
       timezone: '+08:00',
       logging: console.log,
     },

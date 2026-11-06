@@ -87,7 +87,9 @@ class OrderService extends Service {
       status: mappedStatus,
       pic_url: picUrl,
       wares_name: progress.goods_title || '',
-      c_time: progress.create_time ? new Date(progress.create_time).toISOString() : null,
+      c_time: progress.order_id && progress.order_id.length >= 13 && !isNaN(Number(progress.order_id.substring(0, 13)))
+        ? new Date(Number(progress.order_id.substring(0, 13))).toISOString()
+        : (progress.create_time ? new Date(progress.create_time).toISOString() : null),
       u_time: progress.update_time ? new Date(progress.update_time).toISOString() : null,
     };
   }
@@ -274,7 +276,11 @@ class OrderService extends Service {
         status: mappedStatus,
         pic_url: picUrl,
         wares_name: progress.goods_title || '',
-        c_time: progress.create_time ? new Date(progress.create_time).toISOString() : null,
+        // c_time: progress.create_time ? new Date(progress.create_time).toISOString() : null,
+        // 由于任务进度是批量生成的（导致 create_time 一样），真正的订单触发时间其实隐含在 order_id (时间戳) 中
+        c_time: progress.order_id && progress.order_id.length >= 13 && !isNaN(Number(progress.order_id.substring(0, 13)))
+          ? new Date(Number(progress.order_id.substring(0, 13))).toISOString()
+          : (progress.create_time ? new Date(progress.create_time).toISOString() : null),
       });
     }
 
@@ -431,7 +437,9 @@ class OrderService extends Service {
       status: mappedStatus,
       pic_url: picUrl,
       wares_name: progress.goods_title || '',
-      c_time: progress.create_time ? new Date(progress.create_time).toISOString() : null,
+      c_time: progress.order_id && progress.order_id.length >= 13 && !isNaN(Number(progress.order_id.substring(0, 13)))
+        ? new Date(Number(progress.order_id.substring(0, 13))).toISOString()
+        : (progress.create_time ? new Date(progress.create_time).toISOString() : null),
       need_price: Number(needPrice), // 不足金额 = 商品价格 - 用户余额
     };
   }

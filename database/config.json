@@ -1,9 +1,9 @@
 {
   "development": {
-    "username": "egg-test",
-    "password": "NPbkZ3LACjMZ7WjK",
-    "database": "egg-test",
-    "host": "47.238.77.10",
+    "username": "egg_test",
+    "password": "CmH3WLkLLK5GM8SW",
+    "database": "egg_test",
+    "host": "47.131.176.215",
     "dialect": "mysql"
   },
   "test": {

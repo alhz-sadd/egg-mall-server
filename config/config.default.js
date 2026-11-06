@@ -117,8 +117,8 @@ module.exports = appInfo => {
     dialect: 'mysql',
     host: process.env.DB_HOST || '127.0.0.1',
     port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
-    database: 'egg-test',
-    username: 'egg-test',
+    database: process.env.DB_DATABASE || 'egg_test',
+    username: process.env.DB_USERNAME || 'egg_test',
     password: process.env.DB_PASSWORD,
     // 增加底层连接参数，防止低端网络造成的包读取错误
     dialectOptions: {
