@@ -23,6 +23,7 @@ import ExportSysMenu = require('../../../app/model/sys_menu');
 import ExportSysOperLog = require('../../../app/model/sys_oper_log');
 import ExportSysRole = require('../../../app/model/sys_role');
 import ExportSysRoleMenu = require('../../../app/model/sys_role_menu');
+import ExportSysShopMenu = require('../../../app/model/sys_shop_menu');
 import ExportSysUser = require('../../../app/model/sys_user');
 import ExportSysUserRole = require('../../../app/model/sys_user_role');
 import ExportUserCommissionLog = require('../../../app/model/user_commission_log');
@@ -57,6 +58,7 @@ declare module 'egg' {
     SysOperLog: ReturnType<typeof ExportSysOperLog>;
     SysRole: ReturnType<typeof ExportSysRole>;
     SysRoleMenu: ReturnType<typeof ExportSysRoleMenu>;
+    SysShopMenu: ReturnType<typeof ExportSysShopMenu>;
     SysUser: ReturnType<typeof ExportSysUser>;
     SysUserRole: ReturnType<typeof ExportSysUserRole>;
     UserCommissionLog: ReturnType<typeof ExportUserCommissionLog>;
