@@ -167,7 +167,7 @@ module.exports = appInfo => {
     client: {
       port: 6379,
       host: '127.0.0.1',
-      password: 'Aa7890..',
+      password: '',
       db: 0,
     },
   };
