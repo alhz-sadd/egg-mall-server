@@ -19,6 +19,8 @@
     "autod": "autod"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1164.0",
+    "@aws-sdk/s3-request-presigner": "^3.1164.0",
     "axios": "^1.20.0",
     "bcrypt": "^6.0.0",
     "dayjs": "^1.11.10",

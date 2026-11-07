@@ -3,6 +3,7 @@
 const Service = require('egg').Service;
 const fs = require('fs');
 const path = require('path');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 
 /**
  * 文件上传服务层
@@ -45,19 +46,47 @@ class UploadService extends Service {
     // OSS 上的文件路径
     const objectName = `uploads/${dir}/${dateDir}/${filename}`;
 
-    let result;
     try {
-      // 上传文件至 OSS
-      result = await ctx.oss.put(objectName, file.filepath);
+      // 从 ENDPOINT 中提取 region，例如 s3.ap-southeast-1.amazonaws.com 提取 ap-southeast-1
+      const endpoint = process.env.OSS_ENDPOINT || 's3.ap-southeast-1.amazonaws.com';
+      const regionMatch = endpoint.match(/s3\.([a-z0-9-]+)\.amazonaws\.com/);
+      const region = regionMatch ? regionMatch[1] : 'ap-southeast-1';
+
+      // 初始化 AWS S3 客户端
+      const s3Client = new S3Client({
+        region: region,
+        credentials: {
+          accessKeyId: process.env.OSS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.OSS_ACCESS_KEY_SECRET,
+        },
+      });
+
+      // 读取文件流
+      const fileStream = fs.createReadStream(file.filepath);
+
+      // 构建上传命令
+      const command = new PutObjectCommand({
+        Bucket: process.env.OSS_BUCKET,
+        Key: objectName,
+        Body: fileStream,
+        ContentType: file.mimeType || 'image/jpeg', // 确保图片在浏览器中直接预览
+      });
+
+      // 上传文件至 AWS S3
+      await s3Client.send(command);
     } catch (err) {
-      ctx.logger.error('OSS 上传失败:', err);
+      ctx.logger.error('AWS S3 上传失败:', err);
       // 抛出具体的原始错误信息，方便直接在前端看到问题所在
       ctx.throw(500, err.message || 'upload.image_upload_failed');
     }
 
+    // 构建 AWS S3 访问地址
+    const endpoint = process.env.OSS_ENDPOINT || 's3.ap-southeast-1.amazonaws.com';
+    const fileUrl = `https://${process.env.OSS_BUCKET}.${endpoint}/${objectName}`;
+
     return {
-      url: result.url,
-      path: result.url, // OSS 返回绝对路径，如果需要存储相对路径可以使用 '/' + result.name
+      url: fileUrl,
+      path: fileUrl, // 返回绝对路径
       name: file.filename,
       size: fileSize,
     };
