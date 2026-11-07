@@ -51,8 +51,8 @@ class UploadService extends Service {
       result = await ctx.oss.put(objectName, file.filepath);
     } catch (err) {
       ctx.logger.error('OSS 上传失败:', err);
-      // 将具体的错误信息抛出，方便在线上环境排查 500 错误的原因
-      ctx.throw(500, 'upload.image_upload_failed');
+      // 抛出具体的原始错误信息，方便直接在前端看到问题所在
+      ctx.throw(500, err.message || 'upload.image_upload_failed');
     }
 
     return {

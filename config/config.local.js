@@ -7,15 +7,15 @@
 module.exports = () => {
   return {
     // 本地开发域名
-    appBaseUrl: process.env.APP_BASE_URL || 'http://127.0.0.1:7001',
+    appBaseUrl: 'http://127.0.0.1:7001',
     sequelize: {
       // 本地开发使用 MySQL
       dialect: 'mysql',
-      host: process.env.DB_HOST || '127.0.0.1',
-      port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306,
-      database: process.env.DB_DATABASE || 'egg_test',
-      username: process.env.DB_USERNAME || 'egg_test',
-      password: process.env.DB_PASSWORD || 'CmH3WLkLLK5GM8SW',
+      host: '47.131.176.215',
+      port: 3306,
+      database: 'egg_test',
+      username: 'egg_test',
+      password: 'CmH3WLkLLK5GM8SW',
       timezone: '+08:00',
       logging: console.log,
     },
