@@ -69,12 +69,20 @@ module.exports = {
       },
     });
 
-    await queryInterface.addIndex('shop_h5_binding', [ 'shop_id', 'is_deleted' ], {
-      name: 'idx_shop_h5_binding_shop_id',
-    });
-    await queryInterface.addIndex('shop_h5_binding', [ 'h5_url', 'is_deleted' ], {
-      name: 'idx_shop_h5_binding_url',
-    });
+    // 检查索引是否存在，如果不存在再添加
+    const [results] = await queryInterface.sequelize.query(`SHOW INDEX FROM shop_h5_binding WHERE Key_name = 'idx_shop_h5_binding_shop_id'`);
+    if (results.length === 0) {
+      await queryInterface.addIndex('shop_h5_binding', [ 'shop_id', 'is_deleted' ], {
+        name: 'idx_shop_h5_binding_shop_id',
+      });
+    }
+
+    const [results2] = await queryInterface.sequelize.query(`SHOW INDEX FROM shop_h5_binding WHERE Key_name = 'idx_shop_h5_binding_url'`);
+    if (results2.length === 0) {
+      await queryInterface.addIndex('shop_h5_binding', [ 'h5_url', 'is_deleted' ], {
+        name: 'idx_shop_h5_binding_url',
+      });
+    }
   },
 
   async down(queryInterface, Sequelize) {

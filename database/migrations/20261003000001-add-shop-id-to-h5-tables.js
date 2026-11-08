@@ -6,30 +6,42 @@ module.exports = {
     const { BIGINT } = Sequelize;
 
     // Add shop_id to sys_h5_config
-    await queryInterface.addColumn('sys_h5_config', 'shop_id', {
-      type: BIGINT,
-      allowNull: false,
-      defaultValue: 0,
-      comment: '所属店铺ID，0表示全局',
-    });
+    const tableInfo1 = await queryInterface.describeTable('sys_h5_config');
+    if (!tableInfo1.shop_id) {
+      await queryInterface.addColumn('sys_h5_config', 'shop_id', {
+        type: BIGINT,
+        allowNull: false,
+        defaultValue: 0,
+        comment: '所属店铺ID，0表示全局',
+      });
+    }
 
     // Add index for shop_id on sys_h5_config
-    await queryInterface.addIndex('sys_h5_config', [ 'shop_id', 'is_deleted' ], {
-      name: 'idx_sys_h5_config_shop_id',
-    });
+    const [results1] = await queryInterface.sequelize.query(`SHOW INDEX FROM sys_h5_config WHERE Key_name = 'idx_sys_h5_config_shop_id'`);
+    if (results1.length === 0) {
+      await queryInterface.addIndex('sys_h5_config', [ 'shop_id', 'is_deleted' ], {
+        name: 'idx_sys_h5_config_shop_id',
+      });
+    }
 
     // Add shop_id to sys_h5_service
-    await queryInterface.addColumn('sys_h5_service', 'shop_id', {
-      type: BIGINT,
-      allowNull: false,
-      defaultValue: 0,
-      comment: '所属店铺ID，0表示全局',
-    });
+    const tableInfo2 = await queryInterface.describeTable('sys_h5_service');
+    if (!tableInfo2.shop_id) {
+      await queryInterface.addColumn('sys_h5_service', 'shop_id', {
+        type: BIGINT,
+        allowNull: false,
+        defaultValue: 0,
+        comment: '所属店铺ID，0表示全局',
+      });
+    }
 
     // Add index for shop_id on sys_h5_service
-    await queryInterface.addIndex('sys_h5_service', [ 'shop_id', 'is_deleted' ], {
-      name: 'idx_sys_h5_service_shop_id',
-    });
+    const [results2] = await queryInterface.sequelize.query(`SHOW INDEX FROM sys_h5_service WHERE Key_name = 'idx_sys_h5_service_shop_id'`);
+    if (results2.length === 0) {
+      await queryInterface.addIndex('sys_h5_service', [ 'shop_id', 'is_deleted' ], {
+        name: 'idx_sys_h5_service_shop_id',
+      });
+    }
   },
 
   async down(queryInterface, Sequelize) {

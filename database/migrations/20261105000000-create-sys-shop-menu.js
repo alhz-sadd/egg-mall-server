@@ -30,9 +30,12 @@ module.exports = {
       }
     });
 
-    await queryInterface.addIndex('sys_shop_menu', ['shop_id'], {
-      name: 'idx_sys_shop_menu_shop_id',
-    });
+    const [results] = await queryInterface.sequelize.query(`SHOW INDEX FROM sys_shop_menu WHERE Key_name = 'idx_sys_shop_menu_shop_id'`);
+    if (results.length === 0) {
+      await queryInterface.addIndex('sys_shop_menu', ['shop_id'], {
+        name: 'idx_sys_shop_menu_shop_id',
+      });
+    }
   },
 
   async down(queryInterface, Sequelize) {
