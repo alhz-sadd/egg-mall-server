@@ -49,7 +49,8 @@ class AdminOuterSalesRechargeAddressController extends Controller {
     const body = ctx.request.body;
 
     ctx.validate({
-      address: 'string',
+      address_trc20: { type: 'string', required: false },
+      address_erc20: { type: 'string', required: false },
       chain_type: { type: 'string', required: false },
       is_default: { type: 'int', required: false },
       status: { type: 'int', required: false },

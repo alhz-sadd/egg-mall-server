@@ -135,22 +135,15 @@ class AdminUserService extends Service {
       remark: '登录成功',
     });
 
-    // 生成双 Token
+    // 生成 Token
     const accessToken = ctx.app.jwt.sign(
       { adminId: admin.user_id, role: admin.role_id, username: admin.username, type: 'admin' },
       ctx.app.config.jwt.secret,
-      { expiresIn: ctx.app.config.jwt.expiresIn },
-    );
-
-    const refreshToken = ctx.app.jwt.sign(
-      { adminId: admin.user_id, type: 'admin', isRefresh: true },
-      ctx.app.config.jwt.secret,
-      { expiresIn: payload.remember ? '30d' : ctx.app.config.jwt.refreshExpiresIn },
+      { expiresIn: ctx.app.config.jwt.adminExpiresIn },
     );
 
     return {
       accessToken,
-      refreshToken,
     };
   }
 

@@ -37,11 +37,40 @@ class PublicConfigController extends Controller {
   }
 
   /**
+   * 提取当前请求绑定的 shop_id
+   */
+  async _getShopId() {
+    const { ctx } = this;
+    let host = ctx.request.header.origin || ctx.request.header.host || '';
+    host = host.replace(/^https?:\/\//, '');
+    const hostWithoutPort = host.split(':')[0];
+
+    let shopId = ctx.request.header['shop-id'] ? parseInt(ctx.request.header['shop-id'], 10) : 0;
+
+    if (!shopId && host) {
+      const binding = await ctx.model.ShopH5Binding.findOne({
+        where: {
+          [ctx.app.Sequelize.Op.or]: [
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${host}%` } },
+            { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } },
+          ],
+          type: 'h5',
+        },
+      });
+      if (binding) {
+        shopId = binding.shop_id;
+      }
+    }
+    return shopId;
+  }
+
+  /**
    * 获取 Banner 列表
    */
   async banners() {
     const { ctx } = this;
-    const list = await ctx.service.h5Config.getPublicList(1);
+    const shopId = await this._getShopId();
+    const list = await ctx.service.h5Config.getPublicList(1, shopId);
     ctx.body = { code: 200, data: this._formatList(list, 1) };
   }
 
@@ -50,7 +79,8 @@ class PublicConfigController extends Controller {
    */
   async notices() {
     const { ctx } = this;
-    const list = await ctx.service.h5Config.getPublicList(2);
+    const shopId = await this._getShopId();
+    const list = await ctx.service.h5Config.getPublicList(2, shopId);
     ctx.body = { code: 200, data: this._formatList(list, 2) };
   }
 
@@ -59,7 +89,8 @@ class PublicConfigController extends Controller {
    */
   async rules() {
     const { ctx } = this;
-    const list = await ctx.service.h5Config.getPublicList(3);
+    const shopId = await this._getShopId();
+    const list = await ctx.service.h5Config.getPublicList(3, shopId);
 
     // 只返回图片数组
     const images = list.map(item => item.cover_image).filter(img => img);
@@ -74,8 +105,13 @@ class PublicConfigController extends Controller {
   async homeProducts() {
     const { ctx } = this;
     const { page = 1, pageSize = 10, category_id, order_by, goods_type } = ctx.query;
+    const shopId = await this._getShopId();
 
     const where = { status: 1 };
+    
+    // 如果店铺有隔离商品的需求，这里可以加上 where.shop_id = shopId
+    // 如果商品是总后台共享的，可以保持不加。这里保守起见，如果数据库里商品有 shop_id，建议加上。
+    // where.shop_id = shopId;
 
     // 分类过滤 - 移除掉对 goods 表不存在的 category_id 查询
     // 如果之后需要支持分类，请关联对应的分类表或者新增该字段

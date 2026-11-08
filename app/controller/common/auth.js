@@ -37,7 +37,6 @@ class CommonAuthController extends Controller {
       message: '登录成功',
       data: formatData ? {
         token: result.accessToken,
-        refreshToken: result.refreshToken,
       } : result,
     };
   }
@@ -59,60 +58,8 @@ class CommonAuthController extends Controller {
    * （挂载在公共路由中供前端调用）
    */
   async refresh() {
-    const { ctx, app } = this;
-    const { refreshToken } = ctx.request.body;
-
-    if (!refreshToken) {
-      ctx.throw(401, '缺少 refreshToken');
-    }
-
-    try {
-      const decoded = app.jwt.verify(refreshToken, app.config.jwt.secret);
-      if (!decoded.isRefresh) {
-        ctx.throw(401, '无效的 refreshToken');
-      }
-
-      // 刷新前校验用户状态，防止被禁用的用户继续刷新 token
-      if (decoded.userId) {
-        const user = await ctx.model.SysUser.findByPk(decoded.userId, {
-          attributes: [ 'status', 'is_deleted' ],
-        });
-        if (!user || user.is_deleted === 1 || user.status !== 1) {
-          ctx.throw(401, '账号已被禁用，无法刷新 Token');
-        }
-      }
-
-      // 签发新的 accessToken
-      const payload = { ...decoded };
-      delete payload.isRefresh;
-      delete payload.iat;
-      delete payload.exp;
-
-      const newAccessToken = app.jwt.sign(
-        payload,
-        app.config.jwt.secret,
-        { expiresIn: app.config.jwt.expiresIn },
-      );
-
-      // 签发新的 refreshToken，实现无感刷新/会话顺延
-      const newRefreshToken = app.jwt.sign(
-        { ...payload, isRefresh: true },
-        app.config.jwt.secret,
-        { expiresIn: app.config.jwt.refreshExpiresIn },
-      );
-
-      ctx.body = {
-        code: 200,
-        message: '刷新成功',
-        data: {
-          token: newAccessToken, // 兼容 B端
-          accessToken: newAccessToken, // 兼容 C端
-          refreshToken: newRefreshToken, // 返回新的 refreshToken
-        },
-      };
-    } catch (err) {
-      ctx.throw(401, 'refreshToken 已过期或无效');
-    }
+    const { ctx } = this;
+    ctx.throw(404, '刷新Token接口已彻底停用');
   }
 
   /**
@@ -291,7 +238,6 @@ class CommonAuthController extends Controller {
 
   /**
    * 绑定前置：验证密码
-
    * @param {number[]} allowedUserTypes 允许的用户类型
    */
   async verifyPasswordForBind(allowedUserTypes) {
@@ -300,12 +246,43 @@ class CommonAuthController extends Controller {
     ctx.assert(username, 422, '账号不能为空');
     ctx.assert(password, 422, '密码不能为空');
 
+    const whereCondition = {
+      username,
+      user_type: { [ctx.model.Sequelize.Op.in]: allowedUserTypes },
+      is_deleted: 0,
+    };
+
+    // 如果不是 A端总后台管理员 (user_type 1)，则必须根据域名或请求头中的 shop_id 进行隔离
+    if (!allowedUserTypes.includes(1)) {
+      let host = ctx.request.header.origin || ctx.request.header.host || '';
+      host = host.replace(/^https?:\/\//, '');
+      const hostWithoutPort = host.split(':')[0];
+
+      let domainShopId = ctx.request.header['shop-id'] ? parseInt(ctx.request.header['shop-id'], 10) : 0;
+
+      if (!domainShopId && host) {
+        const binding = await ctx.model.ShopH5Binding.findOne({
+          where: {
+            [ctx.app.Sequelize.Op.or]: [
+              { h5_url: { [ctx.app.Sequelize.Op.like]: `%${host}%` } },
+              { h5_url: { [ctx.app.Sequelize.Op.like]: `%${hostWithoutPort}%` } },
+            ],
+            type: 'admin',
+          },
+        });
+        if (binding) {
+          domainShopId = binding.shop_id;
+        }
+      }
+
+      // 强制隔离 shop_id
+      if (domainShopId) {
+        whereCondition.shop_id = domainShopId;
+      }
+    }
+
     const user = await ctx.model.SysUser.findOne({
-      where: {
-        username,
-        user_type: { [ctx.model.Sequelize.Op.in]: allowedUserTypes },
-        is_deleted: 0,
-      },
+      where: whereCondition,
     });
     ctx.assert(user, 422, '账号不存在或类型不匹配');
 
@@ -369,7 +346,6 @@ class CommonAuthController extends Controller {
       message: '登录成功',
       data: formatData ? {
         token: data.accessToken,
-        refreshToken: data.refreshToken,
       } : data,
     };
   }

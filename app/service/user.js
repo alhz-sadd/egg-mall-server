@@ -511,12 +511,6 @@ class UserService extends Service {
       { expiresIn: app.config.jwt.expiresIn },
     );
 
-    const refreshToken = app.jwt.sign(
-      { userId: user.user_id, type: 'user', shop_id: user.shop_id, isRefresh: true },
-      app.config.jwt.secret,
-      { expiresIn: app.config.jwt.refreshExpiresIn },
-    );
-
     // 每次登录成功时，更新最后登录IP和时间到 sys_user 表，以便后台展示
     await user.update({
       last_login_ip: ip,
@@ -541,7 +535,7 @@ class UserService extends Service {
     // 返回格式化后的用户数据（user_id 已经是9-12位）
     const userData = this.formatUserData(user);
 
-    return { user: userData, accessToken, refreshToken };
+    return { user: userData, accessToken };
   }
 
   /**

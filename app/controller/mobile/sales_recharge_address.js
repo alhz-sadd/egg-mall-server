@@ -37,7 +37,7 @@ class MobileSalesRechargeAddressController extends Controller {
         is_default: 1,
         status: 1,
       },
-      attributes: [ 'address', 'chain_type', 'remark' ],
+      attributes: [ 'address_trc20', 'address_erc20', 'chain_type', 'remark' ],
     });
 
     ctx.body = {

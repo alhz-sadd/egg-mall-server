@@ -27,9 +27,15 @@ module.exports = app => {
       type: STRING(100),
       allowNull: true,
     },
-    address: {
+    address_trc20: {
       type: STRING(255),
       allowNull: true,
+      comment: '默认(TRC20)地址',
+    },
+    address_erc20: {
+      type: STRING(255),
+      allowNull: true,
+      comment: 'ERC20地址',
     },
     qr_code: {
       type: STRING(255),

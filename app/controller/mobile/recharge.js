@@ -186,28 +186,50 @@ class MobileRechargeController extends Controller {
       where: { c_user_id: userId },
     });
 
-    let salesAddress = null;
-
-    if (relation && relation.salesman_user_id) {
-      // 2. 查询该业务员的启用收款地址 (此处暂时取第一条，或者后续做成列表给用户选择)
-      const addressInfo = await ctx.model.SalesRechargeAddress.findOne({
-        where: {
-          sales_user_id: relation.salesman_user_id,
-          is_enable: 1,
-          is_deleted: 0,
-        },
-        attributes: [ 'address', 'channel_name', 'remark' ],
-      });
-      salesAddress = addressInfo || null;
-    }
-
-    // 3. 获取归属店铺的充值方式
+    // 2. 获取归属店铺的充值方式
     const shopId = relation ? relation.shop_id : 0;
     const payChannels = await ctx.service.payChannel.list({
       shop_id: shopId,
       channel_type: 1, // 1表示充值
       is_enable: 1,
     });
+
+    let salesAddress = null;
+
+    if (relation && relation.salesman_user_id) {
+      // 3. 查询该业务员的启用收款地址 (此处暂时取第一条，或者后续做成列表给用户选择)
+      const addressInfo = await ctx.model.SalesRechargeAddress.findOne({
+        where: {
+          sales_user_id: relation.salesman_user_id,
+          is_enable: 1,
+          is_deleted: 0,
+        },
+        attributes: [ 'address_trc20', 'address_erc20', 'channel_name', 'remark' ],
+      });
+      salesAddress = addressInfo || null;
+
+      // ==========================================
+      // 【关键逻辑修复】：如果 B端 禁用了某种充值渠道（比如 ERC20），
+      // 那么 C端 在获取业务员地址时，应该把被禁用的地址清空（隐藏）
+      // ==========================================
+      if (salesAddress) {
+        // 由于 salesAddress 是 Sequelize 返回的模型实例，直接修改可能无效或无法序列化
+        // 我们将其转为普通 JSON 对象
+        salesAddress = salesAddress.toJSON();
+
+        // 检查店铺充值渠道列表中是否包含特定的 channel_code (忽略大小写进行匹配)
+        const hasTrc20 = payChannels.list.some(c => c.channel_code.toUpperCase().includes('TRC20'));
+        const hasErc20 = payChannels.list.some(c => c.channel_code.toUpperCase().includes('ERC20'));
+
+        // 如果店铺没有开启该渠道，前端展示地址时不返回该地址
+        if (!hasTrc20) {
+          salesAddress.address_trc20 = null;
+        }
+        if (!hasErc20) {
+          salesAddress.address_erc20 = null;
+        }
+      }
+    }
 
     ctx.body = {
       code: 200,

@@ -21,22 +21,30 @@ class PayChannelService extends Service {
       where.channel_type = Number(channel_type);
     }
 
-    if (is_enable !== undefined && is_enable !== '') {
+    if (is_enable !== undefined && is_enable !== '' && is_enable !== null) {
       where.is_enable = Number(is_enable);
     }
 
-    const limit = page_size ? Number(page_size) : 10;
-    const offset = page ? (Number(page) - 1) * limit : 0;
+    // 不传 page 和 page_size 时，返回所有匹配数据（常用于C端列表获取）
+    const limit = page_size ? Number(page_size) : undefined;
+    const offset = page && limit ? (Number(page) - 1) * limit : undefined;
 
-    const result = await ctx.model.ShopPayChannel.findAndCountAll({
+    const queryOptions = {
       where,
-      limit,
-      offset,
       order: [
         [ 'sort', 'ASC' ],
         [ 'id', 'DESC' ],
       ],
-    });
+    };
+
+    if (limit !== undefined) {
+      queryOptions.limit = limit;
+      queryOptions.offset = offset;
+    }
+
+    // console.log('[DEBUG payChannel.list] => queryOptions: ', JSON.stringify(queryOptions));
+
+    const result = await ctx.model.ShopPayChannel.findAndCountAll(queryOptions);
 
     return {
       total: result.count,

@@ -354,16 +354,14 @@ class MobileWithdrawController extends Controller {
       }
 
       // 获取店铺启用的提现渠道
-      const payChannels = await ctx.model.ShopPayChannel.findAll({
-        where: {
-          shop_id: relation.shop_id,
-          channel_type: 2, // 2 表示提现
-          is_enable: 1, // 启用状态
-        },
-        order: [[ 'sort', 'ASC' ], [ 'id', 'ASC' ]],
+      // 使用 service 确保和充值接口逻辑一致
+      const payChannelsResult = await ctx.service.payChannel.list({
+        shop_id: relation.shop_id,
+        channel_type: 2, // 2 表示提现
+        is_enable: 1, // 启用状态
       });
 
-      channels = payChannels.map(item => ({
+      channels = payChannelsResult.list.map(item => ({
         channel_code: item.channel_code,
         channel_name: item.channel_name,
       }));

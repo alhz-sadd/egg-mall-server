@@ -14,8 +14,8 @@ class AdminInnerPayChannelController extends Controller {
     const result = await ctx.service.payChannel.list({
       shop_id,
       channel_type,
-      page,
-      page_size,
+      page: page || 1,
+      page_size: page_size || 10,
       is_enable,
     });
 
@@ -41,8 +41,8 @@ class AdminInnerPayChannelController extends Controller {
     const result = await ctx.service.payChannel.list({
       shop_id,
       channel_type,
-      page,
-      page_size,
+      page: page || 1,
+      page_size: page_size || 10,
       is_enable,
     });
 

@@ -111,13 +111,7 @@ class AdminOuterUserService extends Service {
     const accessToken = ctx.app.jwt.sign(
       { adminOuterId: adminOuter.user_id, username: adminOuter.username, type: 'admin_outer' },
       ctx.app.config.jwt.secret,
-      { expiresIn: ctx.app.config.jwt.expiresIn },
-    );
-
-    const refreshToken = ctx.app.jwt.sign(
-      { adminOuterId: adminOuter.user_id, type: 'admin_outer', isRefresh: true },
-      ctx.app.config.jwt.secret,
-      { expiresIn: ctx.app.config.jwt.refreshExpiresIn },
+      { expiresIn: ctx.app.config.jwt.adminExpiresIn },
     );
 
     return {
@@ -125,7 +119,6 @@ class AdminOuterUserService extends Service {
       adminOuterId: adminOuter.user_id,
       username: adminOuter.username,
       accessToken,
-      refreshToken,
     };
   }
 
@@ -140,20 +133,13 @@ class AdminOuterUserService extends Service {
     const accessToken = ctx.app.jwt.sign(
       { adminOuterId: adminOuter.user_id, username: adminOuter.username, type: 'admin_outer' },
       ctx.app.config.jwt.secret,
-      { expiresIn: ctx.app.config.jwt.expiresIn },
-    );
-
-    const refreshToken = ctx.app.jwt.sign(
-      { adminOuterId: adminOuter.user_id, type: 'admin_outer', isRefresh: true },
-      ctx.app.config.jwt.secret,
-      { expiresIn: ctx.app.config.jwt.refreshExpiresIn },
+      { expiresIn: ctx.app.config.jwt.adminExpiresIn },
     );
 
     return {
       adminOuterId: adminOuter.user_id,
       username: adminOuter.username,
       accessToken,
-      refreshToken,
     };
   }
 

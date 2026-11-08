@@ -82,17 +82,11 @@ class AdminInnerUserService extends Service {
     const accessToken = ctx.app.jwt.sign(
       { adminInnerId: adminInner.user_id, username: adminInner.username, type: 'admin_inner' },
       ctx.app.config.jwt.secret,
-      { expiresIn: ctx.app.config.jwt.expiresIn },
+      { expiresIn: ctx.app.config.jwt.adminExpiresIn },
     );
     console.log('JWT Secret (Signing):', ctx.app.config.jwt.secret);
 
-    const refreshToken = ctx.app.jwt.sign(
-      { adminInnerId: adminInner.user_id, type: 'admin_inner', isRefresh: true },
-      ctx.app.config.jwt.secret,
-      { expiresIn: ctx.app.config.jwt.refreshExpiresIn },
-    );
-
-    return { need_totp: false, accessToken, refreshToken };
+    return { need_totp: false, accessToken };
   }
 
   /**
@@ -106,16 +100,10 @@ class AdminInnerUserService extends Service {
     const accessToken = ctx.app.jwt.sign(
       { adminInnerId: adminInner.user_id, username: adminInner.username, type: 'admin_inner' },
       ctx.app.config.jwt.secret,
-      { expiresIn: ctx.app.config.jwt.expiresIn },
+      { expiresIn: ctx.app.config.jwt.adminExpiresIn },
     );
 
-    const refreshToken = ctx.app.jwt.sign(
-      { adminInnerId: adminInner.user_id, type: 'admin_inner', isRefresh: true },
-      ctx.app.config.jwt.secret,
-      { expiresIn: ctx.app.config.jwt.refreshExpiresIn },
-    );
-
-    return { accessToken, refreshToken };
+    return { accessToken };
   }
 
   /**
@@ -180,7 +168,7 @@ class AdminInnerUserService extends Service {
         {
           model: ctx.model.SalesRechargeAddress,
           as: 'salesRechargeAddress',
-          attributes: [ 'address' ],
+          attributes: [ 'address_trc20', 'address_erc20' ],
           required: false,
         },
       ],
@@ -194,7 +182,8 @@ class AdminInnerUserService extends Service {
         delete data.shop;
       }
       if (data.salesRechargeAddress) {
-        data.recharge_address = data.salesRechargeAddress.address;
+        data.recharge_address_trc20 = data.salesRechargeAddress.address_trc20;
+        data.recharge_address_erc20 = data.salesRechargeAddress.address_erc20;
         delete data.salesRechargeAddress;
       }
       return data;
@@ -243,9 +232,10 @@ class AdminInnerUserService extends Service {
     if (data.user_type === 3) {
       const addressRecord = await ctx.model.SalesRechargeAddress.findOne({
         where: { sales_user_id: id, shop_id: data.shop_id },
-        attributes: [ 'address' ],
+        attributes: [ 'address_trc20', 'address_erc20' ],
       });
-      data.recharge_address = addressRecord ? addressRecord.address : '';
+      data.recharge_address_trc20 = addressRecord ? addressRecord.address_trc20 : '';
+      data.recharge_address_erc20 = addressRecord ? addressRecord.address_erc20 : '';
     }
 
     return data;
@@ -311,11 +301,12 @@ class AdminInnerUserService extends Service {
     }
 
     // 处理业务员的充值地址
-    if (Number(user_type) === 3 && payload.recharge_address) {
+    if (Number(user_type) === 3 && (payload.recharge_address_trc20 || payload.recharge_address_erc20)) {
       await ctx.model.SalesRechargeAddress.create({
         sales_user_id: user.user_id,
         shop_id: user.shop_id,
-        address: payload.recharge_address,
+        address_trc20: payload.recharge_address_trc20 || null,
+        address_erc20: payload.recharge_address_erc20 || null,
       }, options);
     }
 
@@ -358,21 +349,25 @@ class AdminInnerUserService extends Service {
       await user.update(updateData, { transaction });
 
       // Handle recharge_address update for salesmen (user_type 3)
-      if (user.user_type === 3 && payload.recharge_address !== undefined) {
+      if (user.user_type === 3 && (payload.recharge_address_trc20 !== undefined || payload.recharge_address_erc20 !== undefined)) {
         const salesRechargeAddress = await ctx.model.SalesRechargeAddress.findOne({
           where: { sales_user_id: id, shop_id: user.shop_id },
           transaction,
         });
 
+        const addressUpdateData = {};
+        if (payload.recharge_address_trc20 !== undefined) addressUpdateData.address_trc20 = payload.recharge_address_trc20;
+        if (payload.recharge_address_erc20 !== undefined) addressUpdateData.address_erc20 = payload.recharge_address_erc20;
+
         if (salesRechargeAddress) {
           // Update existing recharge address
-          await salesRechargeAddress.update({ address: payload.recharge_address }, { transaction });
+          await salesRechargeAddress.update(addressUpdateData, { transaction });
         } else {
           // Create new recharge address
           await ctx.model.SalesRechargeAddress.create({
             sales_user_id: id,
             shop_id: user.shop_id,
-            address: payload.recharge_address,
+            ...addressUpdateData,
           }, { transaction });
         }
       }
