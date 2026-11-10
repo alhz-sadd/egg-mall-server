@@ -14,7 +14,7 @@ class AdminInnerUserService extends Service {
     const { username, password, googleCode } = payload;
 
     // 使用统一的方法获取真实的客户端 IP
-    const realIp = ctx.ip || ctx.request.ip || '127.0.0.1';
+    const realIp = ctx.realIp;
 
     const { ip = realIp, device = 1 } = meta;
 

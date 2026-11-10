@@ -18,7 +18,7 @@ class UserController extends Controller {
     const { ctx, service } = this;
 
     // 获取注册 IP
-    const clientIp = ctx.ip || ctx.request.ip || '127.0.0.1';
+    const clientIp = ctx.realIp;
 
     const { phone, password, confirm_password, invite_code, user_phone, user_password, user_invite_code } = ctx.request.body;
 
@@ -92,7 +92,7 @@ class UserController extends Controller {
     }
 
     const meta = {
-      ip: ctx.ip || ctx.request.ip || '127.0.0.1',
+      ip: ctx.realIp,
       userAgent: ctx.get('user-agent') || '',
       shopId,
     };

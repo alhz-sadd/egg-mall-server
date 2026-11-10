@@ -861,7 +861,7 @@ class AdminOuterCustomerService extends Service {
             operParam: JSON.stringify(payload),
             jsonResult: JSON.stringify({ code: 200, msg: '修改成功', 修改项: operResult }),
             status: 0,
-            operIp: ctx.ip,
+            operIp: ctx.realIp,
           });
         }
       }
@@ -911,7 +911,7 @@ class AdminOuterCustomerService extends Service {
       businessType: 2, // 2 表示修改 (根据 sys_operation_log 约定)
       operUrl: ctx.url,
       requestMethod: ctx.method,
-      operIp: ctx.ip,
+      operIp: ctx.realIp,
       operParam: JSON.stringify({ target_id: userId }),
     });
 
@@ -1045,7 +1045,7 @@ class AdminOuterCustomerService extends Service {
           operParam: JSON.stringify(payload),
           jsonResult: JSON.stringify({ code: 200, msg: '操作成功', 变动: `${isAdd ? '+' : '-'}${opAmount}` }),
           status: 0,
-          operIp: ctx.ip,
+          operIp: ctx.realIp,
         }).catch(err => ctx.logger.error('记录操作日志失败', err));
       }
 

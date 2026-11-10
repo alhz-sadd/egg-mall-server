@@ -513,7 +513,7 @@ class SysLogService extends Service {
         deviceType = map[deviceType] || 4;
       }
 
-      const ip = data.ip || data.login_ip || ctx.ip;
+      const ip = data.ip || data.login_ip || ctx.realIp;
       let location = data.location || data.login_location;
 
       // 如果未传入 location，或者 location 是空的，或者是'未知'，则通过 ip 解析地理位置
@@ -598,7 +598,7 @@ class SysLogService extends Service {
         return;
       }
 
-      const operIp = data.operIp || data.oper_ip || ctx.ip;
+      const operIp = data.operIp || data.oper_ip || ctx.realIp;
       let operLocation = data.operLocation || data.oper_location;
 
       if ((!operLocation || operLocation === '' || operLocation === '未知') && operIp) {

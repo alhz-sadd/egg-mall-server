@@ -109,7 +109,7 @@ class PointsDeductService extends Service {
         module: '资金管理',
         action: '人工扣减',
         content: `给C端用户(ID:${target_c_user_id})扣减资产(类型:${deduct_type}) 金额:${amount} 原因:${reason}`,
-        ip: ctx.ip,
+        ip: ctx.realIp,
       }, transaction);
 
       await transaction.commit();

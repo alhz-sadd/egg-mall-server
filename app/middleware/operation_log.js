@@ -31,7 +31,7 @@ module.exports = () => {
       const businessTypeInfo = { businessType, title };
       const parsedUa = ctx.service.sysLog.resolveUserAgent(ctx.request.header['user-agent']);
 
-      const ip = ctx.ip || ctx.request.ip || '127.0.0.1';
+      const ip = ctx.realIp;
       const location = await ctx.service.sysLog.resolveIpLocation(ip);
 
       // 获取操作人员信息

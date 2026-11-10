@@ -65,7 +65,7 @@ class AdminOuterCustomerController extends Controller {
         phone: registerPhone,
         password,
         promo_code: promoRecord.promo_code,
-        ip: ctx.ip,
+        ip: ctx.realIp,
       }, { user_id, user_type, shop_id });
 
       ctx.body = {

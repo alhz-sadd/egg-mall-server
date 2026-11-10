@@ -92,14 +92,14 @@ module.exports = () => {
         if (err.name === 'PayloadTooLargeError' || err.status === 413 || err.code === 'ECONNRESET') {
           ctx.logger.error(`[传输中断埋点] 状态码: ${status} | URL: ${ctx.method} ${ctx.url} | UserID: ${userId} | Error: ${err.message} | 客户端可能过早断开了连接或数据被截断`);
         } else {
-          ctx.logger.error(`[致命异常埋点] 状态码: ${status} | URL: ${ctx.method} ${ctx.url} | UserID: ${userId} | Error: ${err.message} | User-Agent: ${ctx.get('user-agent')} | IP: ${ctx.ip}`);
+          ctx.logger.error(`[致命异常埋点] 状态码: ${status} | URL: ${ctx.method} ${ctx.url} | UserID: ${userId} | Error: ${err.message} | User-Agent: ${ctx.get('user-agent')} | IP: ${ctx.realIp}`);
         }
         // 记录错误日志，并保留堆栈信息
         ctx.app.emit('error', err, ctx);
       } else {
         // 400 级别的业务拦截（如任务不存在、余额不足），降级为普通的 WARN，避免污染 common-error.log
         // 增加埋点信息
-        ctx.logger.warn(`[业务拦截埋点 ${status}] URL: ${ctx.method} ${ctx.url} | UserID: ${userId} | 拦截原因: ${message} | IP: ${ctx.ip}`);
+        ctx.logger.warn(`[业务拦截埋点 ${status}] URL: ${ctx.method} ${ctx.url} | UserID: ${userId} | 拦截原因: ${message} | IP: ${ctx.realIp}`);
       }
 
       // 处理参数校验类错误（如 egg-validate 抛出的错误）

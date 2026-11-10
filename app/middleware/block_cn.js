@@ -8,7 +8,7 @@ module.exports = () => {
     // 如果想要全局除了中国都能访问，则不需要跳过
 
     // 获取客户端真实 IP
-    const ip = ctx.ip || ctx.request.ip || ctx.ips[0];
+    const ip = ctx.realIp;
 
     // 开发环境本地调试时放行本地 IP
     if (ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1') {

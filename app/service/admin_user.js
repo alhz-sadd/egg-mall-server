@@ -687,7 +687,7 @@ class AdminUserService extends Service {
           phone: username,
           status: 1, // 1表示正常，0表示禁用
           inviter_user_id: finalBindAdminId || null,
-          last_login_ip: ctx.ip || '127.0.0.1',
+          last_login_ip: ctx.realIp,
           invite_code: inviteCode,
         }, { transaction });
       }
