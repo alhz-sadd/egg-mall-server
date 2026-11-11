@@ -60,4 +60,22 @@ module.exports = {
 
     return req.ip || this.ips[0] || '127.0.0.1';
   },
+
+  /**
+   * 清除字符串中的不可见字符和两端空格
+   * @param {string} str 待处理字符串
+   * @return {string} 处理后的字符串
+   */
+  cleanString(str) {
+    if (typeof str !== 'string') return str;
+    // 移除不可见字符 (Unicode 中的控制字符、格式控制符等)
+    // \u200B-\u200D: 零宽字符
+    // \uFEFF: 零宽不换行空格
+    // \u200E-\u200F: 左右方向标记 (用户提到的 \u200F 在此范围内)
+    // \u202A-\u202E: 方向控制字符
+    // \u00A0: 不换行空格 (Non-breaking space)
+    // \u0000-\u001F: 控制字符
+    // \u007F-\u009F: 控制字符
+    return str.replace(/[\u0000-\u001F\u007F-\u009F\u00A0\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '').trim();
+  },
 };

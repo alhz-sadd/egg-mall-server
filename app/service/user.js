@@ -89,7 +89,10 @@ class UserService extends Service {
    */
   async register(payload) {
     const { ctx, service } = this;
-    const { user_phone, user_password, confirm_password, user_invite_code } = payload;
+    let { user_phone, user_password, confirm_password, user_invite_code } = payload;
+
+    // 清理手机号/用户名中的不可见字符和空格
+    user_phone = ctx.cleanString(user_phone);
 
     // 校验两次密码是否一致
     if (user_password !== confirm_password) {
@@ -437,8 +440,11 @@ class UserService extends Service {
    */
   async login(payload, meta = {}) {
     const { ctx, app } = this;
-    const { user_phone, user_password } = payload;
+    let { user_phone, user_password } = payload;
     const { ip, shopId } = meta;
+
+    // 清理登录账号中的不可见字符和空格
+    user_phone = ctx.cleanString(user_phone);
 
     // 优化：去除 'LL' 前缀，改为纯数字，以防止 user_login_log 存入 BIGINT 时报错
     const logNo = Date.now().toString() + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -805,7 +811,10 @@ class UserService extends Service {
    */
   async saveLogisticsAddress(userId, payload) {
     const { ctx } = this;
-    const { name, phone, address, is_default = 0 } = payload;
+    let { name, phone, address, is_default = 0 } = payload;
+
+    name = ctx.cleanString(name);
+    phone = ctx.cleanString(phone);
 
     ctx.assert(name, 422, ctx.__('user.name_empty'));
     ctx.assert(phone, 422, ctx.__('user.contact_empty'));
@@ -1581,10 +1590,10 @@ class UserService extends Service {
 
     // 不允许通过此处修改密码和用户名
     const safePayload = {};
-    if (payload.nickname !== undefined) safePayload.nickname = payload.nickname;
+    if (payload.nickname !== undefined) safePayload.nickname = ctx.cleanString(payload.nickname);
     if (payload.email !== undefined) safePayload.email = payload.email;
     if (payload.avatar !== undefined) safePayload.avatar = payload.avatar;
-    if (payload.phone !== undefined) safePayload.phone = payload.phone;
+    if (payload.phone !== undefined) safePayload.phone = ctx.cleanString(payload.phone);
 
     await user.update(safePayload);
 
@@ -1614,7 +1623,10 @@ class UserService extends Service {
    */
   async updateReceiptInfo(userId, payload) {
     const { ctx } = this;
-    const { receipt_name, receipt_phone, receipt_address } = payload;
+    let { receipt_name, receipt_phone, receipt_address } = payload;
+
+    receipt_name = ctx.cleanString(receipt_name);
+    receipt_phone = ctx.cleanString(receipt_phone);
 
     ctx.assert(receipt_name, 422, ctx.__('address.consignee_name_empty'));
     ctx.assert(receipt_phone, 422, ctx.__('address.consignee_contact_empty'));

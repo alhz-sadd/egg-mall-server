@@ -11,7 +11,10 @@ class AdminInnerUserService extends Service {
    */
   async login(payload, meta = {}) {
     const { ctx } = this;
-    const { username, password, googleCode } = payload;
+    let { username, password, googleCode } = payload;
+
+    // 清理登录账号中的不可见字符和空格
+    username = ctx.cleanString(username);
 
     // 使用统一的方法获取真实的客户端 IP
     const realIp = ctx.realIp;
@@ -249,7 +252,12 @@ class AdminInnerUserService extends Service {
    */
   async create(payload, options = {}) {
     const { ctx } = this;
-    const { username, password, user_type, shop_id, role_id, status, nickname, phone, email, avatar, remark } = payload;
+    let { username, password, user_type, shop_id, role_id, status, nickname, phone, email, avatar, remark } = payload;
+
+    // 清理不可见字符和空格
+    username = ctx.cleanString(username);
+    nickname = ctx.cleanString(nickname || username);
+    phone = ctx.cleanString(phone);
 
     // 检查账号在同店铺下是否存在 (A端管理员 shop_id 视为 null，也需要排重)
     // 根据需求：不同店铺允许存在同名账号
@@ -337,7 +345,11 @@ class AdminInnerUserService extends Service {
       const fields = [ 'nickname', 'phone', 'email', 'avatar', 'role_id', 'status', 'remark', 'shop_id', 'user_type' ];
       fields.forEach(field => {
         if (payload[field] !== undefined) {
-          updateData[field] = payload[field];
+          if (field === 'nickname' || field === 'phone') {
+            updateData[field] = ctx.cleanString(payload[field]);
+          } else {
+            updateData[field] = payload[field];
+          }
         }
       });
 
