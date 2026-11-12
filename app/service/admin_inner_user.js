@@ -13,8 +13,8 @@ class AdminInnerUserService extends Service {
     const { ctx } = this;
     let { username, password, googleCode } = payload;
 
-    // 彻底清理登录用户名中的所有非法字符（仅保留数字和加号）
-    username = ctx.cleanPhone(username);
+    // 清理登录用户名中的不可见字符（不再强制仅保留数字，以支持字母账号）
+    username = ctx.cleanString(username);
 
     // 使用统一的方法获取真实的客户端 IP
     const realIp = ctx.realIp;
@@ -254,8 +254,9 @@ class AdminInnerUserService extends Service {
     const { ctx } = this;
     let { username, password, user_type, shop_id, role_id, status, nickname, phone, email, avatar, remark } = payload;
 
-    // 彻底清理用户名和手机号（仅保留数字和加号）
-    username = ctx.cleanPhone(username);
+    // 清理用户名中的不可见字符（不再强制仅保留数字，以支持字母账号）
+    username = ctx.cleanString(username);
+    // 手机号如果是纯数字格式，可以继续保留 cleanPhone
     phone = ctx.cleanPhone(phone);
     
     // 如果是 C 端用户（user_type === 4），强制校验手机号格式
