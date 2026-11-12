@@ -78,4 +78,30 @@ module.exports = {
     // \u007F-\u009F: 控制字符
     return str.replace(/[\u0000-\u001F\u007F-\u009F\u00A0\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '').trim();
   },
+
+  /**
+   * 彻底清除字符串中的所有空格（包括中间的）和不可见字符
+   * 适用于手机号、用户名等不应包含空格的字段
+   * @param {string} str 待处理字符串
+   * @return {string} 处理后的字符串
+   */
+  cleanAllSpaces(str) {
+    if (typeof str !== 'string') return str;
+    // \s 匹配所有空白字符
+    return str.replace(/[\s\u0000-\u001F\u007F-\u009F\u00A0\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+  },
+
+  /**
+   * 严格清理手机号/账号字段
+   * 仅保留数字和加号，移除所有其他字符（包括空格、括号、横线、不可见字符）
+   * @param {string} str 待处理字符串
+   * @return {string} 处理后的字符串
+   */
+  cleanPhone(str) {
+    if (typeof str !== 'string') return str;
+    // 1. 先清理不可见字符
+    const noInvisible = str.replace(/[\u0000-\u001F\u007F-\u009F\u00A0\u200B-\u200D\uFEFF\u200E\u200F\u202A-\u202E]/g, '');
+    // 2. 只保留数字和加号，移除其他所有字符（包括空格）
+    return noInvisible.replace(/[^\d+]/g, '');
+  },
 };

@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'Ескі құпия сөз қате',
   'auth.confirm_pwd_empty': 'Құпия сөзді растау бос болмауы керек',
   'auth.referral_code_invalid': 'Жарамсыз шақыру коды',
+  'auth.phone_format_error': 'Телефон нөмірінің форматы қате, тек сандар мен "+" белгісіне рұқсат етіледі.',
   'user.user_not_exist': 'Пайдаланушы жоқ',
   'user.customer_not_exist': 'Тұтынушы жоқ',
   'user.c_account_create_success': 'B2C тұтынушы тіркелгісі сәтті жасалды',

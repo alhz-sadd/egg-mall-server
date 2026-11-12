@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': '이전 비밀번호가 올바르지 않습니다',
   'auth.confirm_pwd_empty': '비밀번호 확인은 비워둘 수 없습니다',
   'auth.referral_code_invalid': '유효하지 않은 추천 코드',
+  'auth.phone_format_error': '전화번호 형식이 올바르지 않습니다. 숫자와 "+"만 허용됩니다.',
   'user.user_not_exist': '사용자가 존재하지 않습니다',
   'user.customer_not_exist': '고객이 존재하지 않습니다',
   'user.c_account_create_success': 'B2C 고객 계정 생성 성공',

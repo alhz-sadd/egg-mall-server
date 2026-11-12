@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'Ancien mot de passe incorrect',
   'auth.confirm_pwd_empty': 'Le mot de passe de confirmation ne peut pas être vide',
   'auth.referral_code_invalid': 'Code de parrainage invalide',
+  'auth.phone_format_error': 'Format de téléphone invalide. Seuls les chiffres et "+" sont autorisés.',
   'user.user_not_exist': "L'utilisateur n'existe pas",
   'user.customer_not_exist': "Le client n'existe pas",
   'user.c_account_create_success': 'Création du compte client B2C réussie',

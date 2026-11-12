@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'Невірний старий пароль',
   'auth.confirm_pwd_empty': 'Підтвердження пароля не може бути порожнім',
   'auth.referral_code_invalid': 'Недійсний реферальний код',
+  'auth.phone_format_error': 'Невірний формат номера телефону. Допускаються лише цифри та "+".',
   'user.user_not_exist': 'Користувач не існує',
   'user.customer_not_exist': 'Клієнт не існує',
   'user.c_account_create_success': 'Акаунт B2C клієнта успішно створено',

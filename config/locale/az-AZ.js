@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'Köhnə şifrə səhvdir',
   'auth.confirm_pwd_empty': 'Şifrənin təsdiqi boş ola bilməz',
   'auth.referral_code_invalid': 'Dəvət kodu etibarsızdır',
+  'auth.phone_format_error': 'Telefon formatı yanlış, yalnız rəqəmlər və "+" işarəsinə icazə verilir.',
   'user.user_not_exist': 'İstifadəçi mövcud deyil',
   'user.customer_not_exist': 'Müştəri mövcud deyil',
   'user.c_account_create_success': 'C-tərəfi hesabı uğurla yaradıldı',

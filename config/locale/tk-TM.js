@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'Köne parol nädogry',
   'auth.confirm_pwd_empty': 'Tassyklaýjy parol boş bolup bilmez',
   'auth.referral_code_invalid': 'Çakylyk kody nädogry',
+  'auth.phone_format_error': 'Telefon belginiň formaty nädogry, diňe sanlara we "+" belgisini ulanmaga rugsat berilýär.',
   'user.user_not_exist': 'Ulanyjy ýok',
   'user.customer_not_exist': 'Müşderi ýok',
   'user.c_account_create_success': 'Hasap üstünlikli döredildi',

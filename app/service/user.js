@@ -91,8 +91,14 @@ class UserService extends Service {
     const { ctx, service } = this;
     let { user_phone, user_password, confirm_password, user_invite_code } = payload;
 
-    // 清理手机号/用户名中的不可见字符和空格
-    user_phone = ctx.cleanString(user_phone);
+    // 彻底清理手机号中的所有非法字符（仅保留数字和加号）
+    user_phone = ctx.cleanPhone(user_phone);
+
+    // 强校验：确保清理后的手机号只包含数字和可选的加号，且不能为空
+    const phoneRegex = /^\+?[0-9]+$/;
+    if (!user_phone || !phoneRegex.test(user_phone)) {
+      ctx.throw(422, ctx.__('auth.phone_format_error') || 'Invalid phone format. Only numbers and "+" are allowed.');
+    }
 
     // 校验两次密码是否一致
     if (user_password !== confirm_password) {
@@ -443,7 +449,7 @@ class UserService extends Service {
     let { user_phone, user_password } = payload;
     const { ip, shopId } = meta;
 
-    // 清理登录账号中的不可见字符和空格
+    // 登录时使用基础清理逻辑，不强制剔除字母和横线，以兼容存量老用户
     user_phone = ctx.cleanString(user_phone);
 
     // 优化：去除 'LL' 前缀，改为纯数字，以防止 user_login_log 存入 BIGINT 时报错
@@ -1593,7 +1599,17 @@ class UserService extends Service {
     if (payload.nickname !== undefined) safePayload.nickname = ctx.cleanString(payload.nickname);
     if (payload.email !== undefined) safePayload.email = payload.email;
     if (payload.avatar !== undefined) safePayload.avatar = payload.avatar;
-    if (payload.phone !== undefined) safePayload.phone = ctx.cleanString(payload.phone);
+    if (payload.phone !== undefined) {
+      let cleanedPhone = ctx.cleanPhone(payload.phone);
+      // 如果是 C 端用户，强校验格式
+      if (user.user_type === 4) {
+        const phoneRegex = /^\+?[0-9]+$/;
+        if (!cleanedPhone || !phoneRegex.test(cleanedPhone)) {
+          ctx.throw(422, ctx.__('auth.phone_format_error') || 'Invalid phone format. Only numbers and "+" are allowed.');
+        }
+      }
+      safePayload.phone = cleanedPhone;
+    }
 
     await user.update(safePayload);
 

@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'Netačna stara lozinka',
   'auth.confirm_pwd_empty': 'Potvrda lozinke ne može biti prazna',
   'auth.referral_code_invalid': 'Nevažeći pozivni kod',
+  'auth.phone_format_error': 'Neispravan format telefona. Dozvoljeni su samo brojevi i "+".',
   'user.user_not_exist': 'Korisnik ne postoji',
   'user.customer_not_exist': 'Kupac ne postoji',
   'user.c_account_create_success': 'B2C nalog kupca uspešno kreiran',

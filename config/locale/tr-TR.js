@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'Yanlış eski şifre',
   'auth.confirm_pwd_empty': 'Şifre onayı boş olamaz',
   'auth.referral_code_invalid': 'Geçersiz davet kodu',
+  'auth.phone_format_error': 'Geçersiz telefon formatı. Sadece rakamlara ve "+" işaretine izin verilir.',
   'user.user_not_exist': 'Kullanıcı mevcut değil',
   'user.customer_not_exist': 'Müşteri mevcut değil',
   'user.c_account_create_success': 'B2C müşteri hesabı başarıyla oluşturuldu',

@@ -10,7 +10,11 @@ class ShopService extends Service {
    */
   async create(payload) {
     const { ctx } = this;
-    const { shop_name, contact_person, contact_phone, remark, status } = payload;
+    let { shop_name, contact_person, contact_phone, remark, status } = payload;
+
+    shop_name = ctx.cleanString(shop_name);
+    contact_person = ctx.cleanString(contact_person);
+    contact_phone = ctx.cleanString(contact_phone);
 
     if (!shop_name) {
       ctx.throw(422, '店铺名称不能为空');
@@ -84,7 +88,12 @@ class ShopService extends Service {
 
     fields.forEach(field => {
       if (payload[field] !== undefined) {
-        updateData[field] = payload[field];
+        let value = payload[field];
+        // 对名称、联系人、电话、地址等字符串字段进行清理
+        if (typeof value === 'string' && [ 'shop_name', 'contact_person', 'contact_phone', 'address', 'remark' ].includes(field)) {
+          value = ctx.cleanString(value);
+        }
+        updateData[field] = value;
       }
     });
 

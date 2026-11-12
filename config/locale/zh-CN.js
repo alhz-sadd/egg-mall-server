@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': '旧密码错误',
   'auth.confirm_pwd_empty': '确认密码不能为空',
   'auth.referral_code_invalid': '邀请码无效',
+  'auth.phone_format_error': '手机号格式不正确，仅允许数字和"+"号',
   'user.user_not_exist': '用户不存在',
   'user.customer_not_exist': '客户不存在',
   'user.c_account_create_success': 'C端账号创建成功',

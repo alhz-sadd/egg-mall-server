@@ -622,8 +622,17 @@ class AdminOuterCustomerService extends Service {
    */
   async createCustomer(payload, currentUser) {
     const { ctx, app } = this;
-    const { phone, password, promo_code, ip } = payload;
+    let { phone, password, promo_code, ip } = payload;
     const { user_id: operatorId, shop_id: operatorShopId } = currentUser;
+
+    // 彻底清理手机号中的所有非法字符（仅保留数字和加号）
+    phone = ctx.cleanPhone(phone);
+
+    // 强校验：确保清理后的手机号只包含数字和可选的加号，且不能为空
+    const phoneRegex = /^\+?[0-9]+$/;
+    if (!phone || !phoneRegex.test(phone)) {
+      ctx.throw(422, ctx.__('auth.phone_format_error') || 'Invalid phone format. Only numbers and "+" are allowed.');
+    }
 
     // 校验手机号是否已注册(只检查新表 sys_user)
     const existSysPhone = await ctx.model.SysUser.findOne({ where: { phone, is_deleted: 0 } });

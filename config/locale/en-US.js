@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'Incorrect old password',
   'auth.confirm_pwd_empty': 'Confirm password cannot be empty',
   'auth.referral_code_invalid': 'Referral code invalid',
+  'auth.phone_format_error': 'Invalid phone format. Only numbers and "+" are allowed.',
   'user.user_not_exist': 'User does not exist',
   'user.customer_not_exist': 'Customer does not exist',
   'user.c_account_create_success': 'Account created successfully',

@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'Falsches altes Passwort',
   'auth.confirm_pwd_empty': 'Die Passwortbestätigung darf nicht leer sein',
   'auth.referral_code_invalid': 'Ungültiger Einladungscode',
+  'auth.phone_format_error': 'Ungültiges Telefonformat. Nur Zahlen und "+" sind erlaubt.',
   'user.user_not_exist': 'Benutzer existiert nicht',
   'user.customer_not_exist': 'Kunde existiert nicht',
   'user.c_account_create_success': 'B2C-Kundenkonto erfolgreich erstellt',

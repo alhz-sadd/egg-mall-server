@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'Köne parol nädogry',
   'auth.confirm_pwd_empty': 'Paroly tassyklamak boş bolmaly däl',
   'auth.referral_code_invalid': 'Nädogry çakylyk kody',
+  'auth.phone_format_error': 'شێوازی ژمارەی تەلەفۆن هەڵەیە، تەنها ژمارە و نیشانەی "+" ڕێپێدراوە.',
   'user.user_not_exist': 'Ulanyjy ýok',
   'user.customer_not_exist': 'Müşderi ýok',
   'user.c_account_create_success': 'B2C müşderi hasaby üstünlikli döredildi',

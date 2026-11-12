@@ -32,6 +32,7 @@ module.exports = {
   'auth.old_pwd_error': 'Eski parol xato',
   'auth.confirm_pwd_empty': "Tasdiqlash paroli bo'sh bo'lishi mumkin emas",
   'auth.referral_code_invalid': 'Taklif kodi yaroqsiz',
+  'auth.phone_format_error': "Telefon raqami formati noto'g'ri, faqat raqamlar va '+' belgisiga ruxsat beriladi.",
   'user.user_not_exist': 'Foydalanuvchi mavjud emas',
   'user.customer_not_exist': 'Mijoz mavjud emas',
   'user.c_account_create_success': 'C-darajali hisob muvaffaqiyatli yaratildi',

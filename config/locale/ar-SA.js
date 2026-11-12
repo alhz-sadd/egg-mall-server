@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'كلمة المرور القديمة غير صحيحة',
   'auth.confirm_pwd_empty': 'لا يمكن أن يكون تأكيد كلمة المرور فارغاً',
   'auth.referral_code_invalid': 'رمز الدعوة غير صالح',
+  'auth.phone_format_error': "تنسيق رقم الهاتف غير صحيح، يسمح فقط بالأرقام وعلامة '+'",
   'user.user_not_exist': 'المستخدم غير موجود',
   'user.customer_not_exist': 'العميل غير موجود',
   'user.c_account_create_success': 'تم إنشاء حساب عميل B2C بنجاح',

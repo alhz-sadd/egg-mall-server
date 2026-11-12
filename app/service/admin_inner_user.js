@@ -13,8 +13,8 @@ class AdminInnerUserService extends Service {
     const { ctx } = this;
     let { username, password, googleCode } = payload;
 
-    // 清理登录账号中的不可见字符和空格
-    username = ctx.cleanString(username);
+    // 彻底清理登录用户名中的所有非法字符（仅保留数字和加号）
+    username = ctx.cleanPhone(username);
 
     // 使用统一的方法获取真实的客户端 IP
     const realIp = ctx.realIp;
@@ -254,10 +254,20 @@ class AdminInnerUserService extends Service {
     const { ctx } = this;
     let { username, password, user_type, shop_id, role_id, status, nickname, phone, email, avatar, remark } = payload;
 
-    // 清理不可见字符和空格
-    username = ctx.cleanString(username);
+    // 彻底清理用户名和手机号（仅保留数字和加号）
+    username = ctx.cleanPhone(username);
+    phone = ctx.cleanPhone(phone);
+    
+    // 如果是 C 端用户（user_type === 4），强制校验手机号格式
+    if (payload.user_type === 4) {
+      const phoneRegex = /^\+?[0-9]+$/;
+      if (!username || !phoneRegex.test(username)) {
+        ctx.throw(422, ctx.__('auth.phone_format_error') || '手机号格式不正确，仅允许数字和"+"号');
+      }
+    }
+    
+    // 昵称保留中间空格，仅清理不可见字符和首尾空格
     nickname = ctx.cleanString(nickname || username);
-    phone = ctx.cleanString(phone);
 
     // 检查账号在同店铺下是否存在 (A端管理员 shop_id 视为 null，也需要排重)
     // 根据需求：不同店铺允许存在同名账号
@@ -345,7 +355,9 @@ class AdminInnerUserService extends Service {
       const fields = [ 'nickname', 'phone', 'email', 'avatar', 'role_id', 'status', 'remark', 'shop_id', 'user_type' ];
       fields.forEach(field => {
         if (payload[field] !== undefined) {
-          if (field === 'nickname' || field === 'phone') {
+          if (field === 'phone') {
+            updateData[field] = ctx.cleanAllSpaces(payload[field]);
+          } else if (field === 'nickname') {
             updateData[field] = ctx.cleanString(payload[field]);
           } else {
             updateData[field] = payload[field];

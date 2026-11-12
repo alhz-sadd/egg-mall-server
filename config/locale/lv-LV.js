@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'Nepareiza vecā parole',
   'auth.confirm_pwd_empty': 'Paroles apstiprinājums nevar būt tukšs',
   'auth.referral_code_invalid': 'Nederīgs ielūguma kods',
+  'auth.phone_format_error': 'Nederīgs tālruņa formāts. Atļauti tikai cipari un "+".',
   'user.user_not_exist': 'Lietotājs neeksistē',
   'user.customer_not_exist': 'Klients neeksistē',
   'user.c_account_create_success': 'B2C klienta konts veiksmīgi izveidots',

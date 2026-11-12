@@ -58,6 +58,8 @@ class PayChannelService extends Service {
    */
   async create(payload) {
     const { ctx } = this;
+    if (payload.channel_name) payload.channel_name = ctx.cleanString(payload.channel_name);
+    if (payload.channel_code) payload.channel_code = ctx.cleanAllSpaces(payload.channel_code);
     return await ctx.model.ShopPayChannel.create(payload);
   }
 
@@ -113,6 +115,9 @@ class PayChannelService extends Service {
       delete payload.channel_name;
       delete payload.channel_type;
     }
+
+    if (payload.channel_name) payload.channel_name = ctx.cleanString(payload.channel_name);
+    if (payload.channel_code) payload.channel_code = ctx.cleanAllSpaces(payload.channel_code);
 
     await channel.update(payload);
 

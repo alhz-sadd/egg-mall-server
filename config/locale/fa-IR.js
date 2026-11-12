@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': 'رمز عبور قبلی اشتباه است',
   'auth.confirm_pwd_empty': 'تأیید رمز عبور نمی‌تواند خالی باشد',
   'auth.referral_code_invalid': 'کد دعوت نامعتبر است',
+  'auth.phone_format_error': 'فرمت شماره تلفن نامعتبر است. فقط اعداد و "+" مجاز هستند.',
   'user.user_not_exist': 'کاربر وجود ندارد',
   'user.customer_not_exist': 'مشتری وجود ندارد',
   'user.c_account_create_success': 'حساب مشتری B2C با موفقیت ایجاد شد',

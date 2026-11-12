@@ -186,7 +186,12 @@ class AdminOuterUserService extends Service {
   // 创建B端员工
   async create(payload) {
     const { ctx } = this;
-    const { username, password, nickname, phone, shop_id, user_type, created_by } = payload;
+    let { username, password, nickname, phone, shop_id, user_type, created_by } = payload;
+
+    // 清理首尾空格和不可见字符
+    username = ctx.cleanString(username);
+    nickname = ctx.cleanString(nickname);
+    phone = ctx.cleanString(phone);
 
     // 检查账号在当前店铺是否已存在
     const existing = await ctx.model.SysUser.findOne({
@@ -244,6 +249,10 @@ class AdminOuterUserService extends Service {
     const updateData = { ...payload };
     delete updateData.user_id;
     delete updateData.invite_code;
+
+    // 清理首尾空格和不可见字符
+    if (updateData.nickname !== undefined) updateData.nickname = ctx.cleanString(updateData.nickname);
+    if (updateData.phone !== undefined) updateData.phone = ctx.cleanString(updateData.phone);
 
     await user.update(updateData);
     return user;

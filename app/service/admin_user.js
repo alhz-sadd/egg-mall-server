@@ -588,8 +588,13 @@ class AdminUserService extends Service {
    */
   async create(payload) {
     const { ctx } = this;
-    const { username, password, nickname, gender, phone, email, bind_admin_id, remark, bindRechargeaddress } = payload;
+    let { username, password, nickname, gender, phone, email, bind_admin_id, remark, bindRechargeaddress } = payload;
     let { role } = payload;
+
+    // 清理首尾空格和不可见字符
+    username = ctx.cleanString(username);
+    nickname = ctx.cleanString(nickname);
+    phone = ctx.cleanString(phone);
 
     ctx.assert(username, 422, '账号不能为空');
     ctx.assert(password, 422, '密码不能为空');
@@ -734,9 +739,9 @@ class AdminUserService extends Service {
     delete payload.admin_code;
     delete payload.invite_code;
 
-    if (payload.nickname !== undefined) updateData.nickname = payload.nickname;
+    if (payload.nickname !== undefined) updateData.nickname = ctx.cleanString(payload.nickname);
     if (payload.gender !== undefined) updateData.gender = Number(payload.gender);
-    if (payload.phone !== undefined) updateData.phone = payload.phone;
+    if (payload.phone !== undefined) updateData.phone = ctx.cleanString(payload.phone);
     if (payload.email !== undefined) updateData.email = payload.email;
     if (payload.bind_admin_id !== undefined) {
       updateData.bind_admin_id = payload.bind_admin_id !== '' ? Number(payload.bind_admin_id) : null;

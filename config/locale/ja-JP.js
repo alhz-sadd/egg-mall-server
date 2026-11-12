@@ -34,6 +34,7 @@ module.exports = {
   'auth.old_pwd_error': '古いパスワードが間違っています',
   'auth.confirm_pwd_empty': '確認用パスワードは空にできません',
   'auth.referral_code_invalid': '無効な招待コード',
+  'auth.phone_format_error': '電話番号の形式が正しくありません。数字と「+」のみ使用可能です。',
   'user.user_not_exist': 'ユーザーが存在しません',
   'user.customer_not_exist': '顧客が存在しません',
   'user.c_account_create_success': 'B2C顧客アカウント作成成功',
